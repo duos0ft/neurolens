@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 
+from app.api.profile import router as profile_router
+
 app = FastAPI(
     title="NeuroLens API",
-    description="Backend API for the NeuroLens workplace communication assistant.",
     version="0.1.0",
 )
+
+app.include_router(profile_router)
 
 
 @app.get("/health")

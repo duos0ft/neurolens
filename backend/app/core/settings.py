@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     supabase_publishable_key: str
     supabase_secret_key: str
 
+    test_user_email: str
+    test_user_password: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
