@@ -5,7 +5,7 @@ __pycache__/
 venv/
 
 # Environment / secrets
-.env
+backend/.env
 .env.local
 *.env.local
 
