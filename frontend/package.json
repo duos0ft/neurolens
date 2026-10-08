@@ -10,9 +10,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write && eslint . --fix",
-    "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint .",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint ."
   },
   "dependencies": {
     "react": "^19.3.0",
