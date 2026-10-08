@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write && eslint . --fix",
-    "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint ."
+    "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint .",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -21,6 +23,8 @@
     "@rsbuild/core": "^2.2.12",
     "@rsbuild/plugin-react": "^2.1.1",
     "@rsbuild/plugin-tailwindcss": "^2.0.3",
+    "@storybook/addon-a11y": "^10.6.1",
+    "@storybook/addon-docs": "^10.6.1",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^24.19.1",
     "@types/react": "^19.3.0",
@@ -31,6 +35,8 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
     "prettier": "^3.9.9",
+    "storybook": "^10.6.1",
+    "storybook-react-rsbuild": "^3.6.0",
     "tailwindcss": "4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1"

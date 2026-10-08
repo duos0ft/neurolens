@@ -1,0 +1,30 @@
+{
+  "name": "@neurolens/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.2.0",
+    "lucide-react": "^1.53.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^2.2.12",
+    "@rsbuild/plugin-react": "^2.1.1",
+    "@rsbuild/plugin-tailwindcss": "^2.0.3",
+    "@storybook/addon-a11y": "^10.6.1",
+    "@storybook/addon-docs": "^10.6.1",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "storybook": "^10.6.1",
+    "storybook-react-rsbuild": "^3.6.0",
+    "tailwindcss": "4",
+    "typescript": "^5.9"
+  }
+}
