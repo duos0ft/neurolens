@@ -1,14 +1,16 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
 import httpx
 from authlib.integrations.httpx_client import OAuthError
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from joserfc.errors import JoseError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_employee
 from app.core.database import get_db
 from app.core.oauth import (
     create_auth0_client,
@@ -17,6 +19,7 @@ from app.core.oauth import (
 from app.core.settings import settings
 from app.models.auth_flow import AuthFlow
 from app.models.employee import Employee
+from app.models.employee_session import EmployeeSession
 from app.services.auth0 import verify_id_token
 from app.services.auth_flow import consume_auth_flow
 from app.services.oauth import (
@@ -189,6 +192,51 @@ async def callback(
         httponly=True,
         secure=settings.session_cookie_secure,
         samesite="lax",
+        path="/",
+    )
+
+    return response
+
+
+@router.get("/me")
+async def get_me(
+    employee: Annotated[Employee, Depends(get_current_employee)],
+):
+    return {
+        "id": employee.user_id,
+        "role": employee.role,
+        "status": employee.status,
+    }
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    session_token = request.cookies.get(settings.session_cookie_name)
+
+    if session_token:
+        await db.execute(
+            update(EmployeeSession)
+            .where(
+                EmployeeSession.session_hash == hash_token(session_token),
+                EmployeeSession.revoked_at.is_(None),
+            )
+            .values(
+                revoked_at=datetime.now(timezone.utc),
+            )
+        )
+
+        await db.commit()
+
+    response = RedirectResponse(
+        url=f"{settings.frontend_url}/login",
+        status_code=303,
+    )
+
+    response.delete_cookie(
+        key=settings.session_cookie_name,
         path="/",
     )
 
