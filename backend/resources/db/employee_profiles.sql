@@ -42,3 +42,12 @@ on public.employee_profiles
 for delete
 to authenticated
 using ((select auth.uid()) = user_id);
+
+alter table public.employee_profiles
+drop constraint employee_profile_user_id_fkey;
+
+alter table public.employee_profiles
+    add constraint employee_profiles_user_id_fkey
+        foreign key (user_id)
+            references public.employees (user_id)
+            on delete cascade;
