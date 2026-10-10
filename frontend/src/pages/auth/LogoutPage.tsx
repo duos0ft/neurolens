@@ -8,7 +8,7 @@ import { Loading } from "../../components/loading";
 export function Component() {
     const { authenticated, loading } = useAuth();
     const logoutStarted = useRef(false);
-    const [ error, setError ] = useState(false);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         if (loading || !authenticated || logoutStarted.current) {
@@ -37,7 +37,7 @@ export function Component() {
         }
 
         void startLogout();
-    }, [ loading, authenticated ]);
+    }, [loading, authenticated]);
 
     if (loading) {
         return <Loading title="Checking your session..." />;

@@ -15,7 +15,7 @@ export function Component() {
 
         redirectStarted.current = true;
         window.location.replace("/api/auth/login");
-    }, [ loading, authenticated ]);
+    }, [loading, authenticated]);
 
     if (loading) {
         return <Loading size="xl" title="Checking your session" description="Please wait a moment..." />;

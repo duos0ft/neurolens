@@ -11,7 +11,7 @@ const errorMessages: Record<string, string> = {
 };
 
 export function Component() {
-    const [ searchParams ] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const reason = searchParams.get("reason") ?? "";
 
     const description = errorMessages[reason] ?? "Something went wrong while signing you in. Please try again.";
