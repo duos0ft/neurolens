@@ -2,7 +2,6 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.core.settings import settings
 
-
 AUTH0_BASE_URL = f"https://{settings.auth0_domain}"
 
 
