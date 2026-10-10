@@ -66,23 +66,19 @@
 
     /* Orb */
     --orb-gradient: radial-gradient(
-            circle at 32% 28%,
-            #ffffff 0%,
-            #bfe0ff 14%,
-            #6fb4ff 36%,
-            #2c7bff 62%,
-            #0a5cff 80%,
-            #0626b8 100%
+        circle at 32% 28%,
+        #ffffff 0%,
+        #bfe0ff 14%,
+        #6fb4ff 36%,
+        #2c7bff 62%,
+        #0a5cff 80%,
+        #0626b8 100%
     );
 
     /* Comfort */
     --text-root: 16px;
 
-    --font-reading: "Work Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    system-ui,
-    sans-serif;
+    --font-reading: "Work Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
     --leading-body: 1.65;
     --tracking-body: -0.005em;
@@ -170,17 +166,11 @@
 /* Alternative reading fonts */
 
 [data-font="hyperlegible"] {
-    --font-reading: "Atkinson Hyperlegible",
-    -apple-system,
-    system-ui,
-    sans-serif;
+    --font-reading: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
 }
 
 [data-font="lexend"] {
-    --font-reading: "Lexend",
-    -apple-system,
-    system-ui,
-    sans-serif;
+    --font-reading: "Lexend", -apple-system, system-ui, sans-serif;
 }
 
 /* =========================================================
@@ -244,21 +234,11 @@
     /* -------------------------------------------------------
        Fonts
        ------------------------------------------------------- */
-    --font-sans: "Work Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    system-ui,
-    sans-serif;
+    --font-sans: "Work Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
-    --font-hyperlegible: "Atkinson Hyperlegible",
-    -apple-system,
-    system-ui,
-    sans-serif;
+    --font-hyperlegible: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
 
-    --font-lexend: "Lexend",
-    -apple-system,
-    system-ui,
-    sans-serif;
+    --font-lexend: "Lexend", -apple-system, system-ui, sans-serif;
 
     /* -------------------------------------------------------
        Typography
@@ -346,8 +326,7 @@
 
     --shadow-composer: 0 6px 24px rgb(24 24 27 / 5%);
 
-    --shadow-popover: 0 20px 50px rgb(24 24 27 / 10%),
-    0 2px 6px rgb(24 24 27 / 5%);
+    --shadow-popover: 0 20px 50px rgb(24 24 27 / 10%), 0 2px 6px rgb(24 24 27 / 5%);
 
     --shadow-orb: 0 24px 48px -12px rgb(10 92 255 / 35%);
 

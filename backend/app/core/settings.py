@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     session_cookie_name: str = "neurolens_session"
     session_lifetime_seconds: int = 604800  # 7 days
     session_cookie_secure: bool = True
+    csrf_secret_key: str
 
     # OAuth
     oauth_state_lifetime_seconds: int = 600  # 10 minutes

@@ -1,41 +1,45 @@
 {
-  "name": "frontend",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "rsbuild build",
-    "dev": "rsbuild",
-    "preview": "rsbuild preview",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier . --write && eslint . --fix",
-    "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint ."
-  },
-  "dependencies": {
-    "@auth0/auth0-react": "^2.28.2",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "react-router": "^8.4.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "9",
-    "@rsbuild/core": "^2.2.12",
-    "@rsbuild/plugin-react": "^2.1.1",
-    "@rsbuild/plugin-tailwindcss": "^2.0.3",
-    "@stylistic/eslint-plugin": "^5.10.0",
-    "@types/node": "^24.19.1",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "eslint": "9",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.6",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "globals": "^17.13.0",
-    "prettier": "^3.9.9",
-    "tailwindcss": "4",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.1"
-  },
-  "packageManager": "yarn@4.18.1"
+    "name": "frontend",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "rsbuild build",
+        "dev": "rsbuild",
+        "preview": "rsbuild preview",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier . --write && eslint . --fix",
+        "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint ."
+    },
+    "dependencies": {
+        "@auth0/auth0-react": "^2.28.2",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "lucide-react": "^1.54.0",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0",
+        "react-router": "^8.4.0",
+        "tailwind-merge": "^3.7.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "9",
+        "@rsbuild/core": "^2.2.12",
+        "@rsbuild/plugin-react": "^2.1.1",
+        "@rsbuild/plugin-tailwindcss": "^2.0.3",
+        "@stylistic/eslint-plugin": "^5.10.0",
+        "@types/node": "^24.19.1",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "eslint": "9",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.6",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "globals": "^17.13.0",
+        "prettier": "^3.9.9",
+        "tailwindcss": "4",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.71.1"
+    },
+    "packageManager": "yarn@4.18.1"
 }

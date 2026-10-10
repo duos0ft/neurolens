@@ -7,44 +7,44 @@ import prettierRecommended from "eslint-plugin-prettier/recommended";
 import stylistic from "@stylistic/eslint-plugin";
 
 export default defineConfig([
-  {
-    ignores: [ "node_modules/**", "dist/**", "storybook-static/**", "coverage/**" ],
-  },
-  {
-    files: [ "**/*.{js,mjs,cjs,jsx,ts,tsx}" ],
-    extends: [ js.configs.recommended, tseslint.configs.recommended ],
-  },
-  {
-    files: [ "src/**/*.{js,jsx,ts,tsx}" ],
-    languageOptions: {
-      globals: globals.browser,
+    {
+        ignores: [ "node_modules/**", "dist/**", "storybook-static/**", "coverage/**" ],
     },
-    plugins: {
-      "react-hooks": reactHooks,
+    {
+        files: [ "**/*.{js,mjs,cjs,jsx,ts,tsx}" ],
+        extends: [ js.configs.recommended, tseslint.configs.recommended ],
     },
-    rules: {
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
+    {
+        files: [ "src/**/*.{js,jsx,ts,tsx}" ],
+        languageOptions: {
+            globals: globals.browser,
+        },
+        plugins: {
+            "react-hooks": reactHooks,
+        },
+        rules: {
+            "react-hooks/rules-of-hooks": "error",
+            "react-hooks/exhaustive-deps": "warn",
+        },
     },
-  },
-  {
-    files: [ "*.{js,mjs,cjs,ts}", ".storybook/**/*.{js,mjs,ts,tsx}" ],
-    languageOptions: {
-      globals: globals.node,
+    {
+        files: [ "*.{js,mjs,cjs,ts}", ".storybook/**/*.{js,mjs,ts,tsx}" ],
+        languageOptions: {
+            globals: globals.node,
+        },
     },
-  },
-  prettierRecommended,
-  {
-    files: [ "**/*.{js,mjs,cjs,jsx,ts,tsx}" ],
-    plugins: {
-      "@stylistic": stylistic,
+    prettierRecommended,
+    {
+        files: [ "**/*.{js,mjs,cjs,jsx,ts,tsx}" ],
+        plugins: {
+            "@stylistic": stylistic,
+        },
+        rules: {
+            "prettier/prettier": "off",
+            "@stylistic/quotes": [ "error", "double" ],
+            "@stylistic/jsx-quotes": [ "error", "prefer-double" ],
+            "@stylistic/array-bracket-spacing": [ "error", "always" ],
+            "@stylistic/object-curly-spacing": [ "error", "always" ],
+        },
     },
-    rules: {
-      "prettier/prettier": "off",
-      "@stylistic/quotes": [ "error", "double" ],
-      "@stylistic/jsx-quotes": [ "error", "prefer-double" ],
-      "@stylistic/array-bracket-spacing": [ "error", "always" ],
-      "@stylistic/object-curly-spacing": [ "error", "always" ],
-    },
-  },
 ]);

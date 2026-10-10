@@ -98,6 +98,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "authlib" },
     { name = "fastapi" },
+    { name = "fastapi-csrf-protect" },
     { name = "httpx" },
     { name = "joserfc" },
     { name = "pydantic-settings" },
@@ -119,6 +120,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.32.0" },
     { name = "authlib", specifier = ">=1.8.0" },
     { name = "fastapi", specifier = ">=0.142.2" },
+    { name = "fastapi-csrf-protect", specifier = ">=1.0.7" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "joserfc", extras = ["cryptography"], specifier = ">=1.7.5" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
@@ -311,6 +313,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/56/4f/f7c30a73127e0a8bbffe788369b8359e530b01ae06e2757936fa35bc5e6d/fastapi-0.142.2.tar.gz", hash = "sha256:06366626f2e70576367714d9ab2fe8472e6c8456dba69b399f9f797ab5e92570", size = 466721, upload-time = "2026-09-30T09:51:11.277Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/b6/78aaf9141fb46742928c113f3cf6ef2259d538cb02b604b7656c1dc9883c/fastapi-0.142.2-py3-none-any.whl", hash = "sha256:bd5f4d81f1e93a88bcd77caf4dfe3c2dbffc3805407a0007e9a114c18b3a670b", size = 144409, upload-time = "2026-09-30T09:51:09.8Z" },
+]
+
+[[package]]
+name = "fastapi-csrf-protect"
+version = "1.0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "itsdangerous" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "starlette" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/1a/fedbcb4aba24ccc8abfb5d30e08112073c6a9f20b8d88adbdd3051ceedac/fastapi_csrf_protect-1.0.7.tar.gz", hash = "sha256:888b15b232625aae5b997fbcf81ef45633a7694f0312a054f1eec6d132b295fb", size = 207326, upload-time = "2025-09-16T07:06:08.586Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/10/f248aab919678444723d557da918088e5c737b44e03e3aa4a0ad7afc7dae/fastapi_csrf_protect-1.0.7-py3-none-any.whl", hash = "sha256:ca3c5b50564af932ac4ed3d06caeed61bf16eed13a31cfe2bdfc3f7c1e8612a3", size = 18412, upload-time = "2025-09-16T07:06:05.926Z" },
 ]
 
 [[package]]
@@ -509,6 +526,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/cb/8ac0172223afbccb63986cc25049b154ecfb5e85932587206f42317be31d/itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173", size = 54410, upload-time = "2024-04-16T21:28:15.614Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef", size = 16234, upload-time = "2024-04-16T21:28:14.499Z" },
 ]
 
 [[package]]

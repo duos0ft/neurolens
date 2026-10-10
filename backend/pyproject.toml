@@ -8,6 +8,7 @@ dependencies = [
     "asyncpg>=0.32.0",
     "authlib>=1.8.0",
     "fastapi>=0.142.2",
+    "fastapi-csrf-protect>=1.0.7",
     "httpx>=0.28.1",
     "joserfc[cryptography]>=1.7.5",
     "pydantic-settings>=2.15.0",

@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,7 @@ from app.services.oauth import hash_token
 
 async def create_employee_session(
     db: AsyncSession,
-    employee_id,
+    employee_id: uuid.UUID,
 ) -> str:
     session_token = secrets.token_urlsafe(32)
 

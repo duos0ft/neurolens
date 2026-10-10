@@ -1,23 +1,18 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { Navigate, Outlet, useLocation } from "react-router";
 
+import { useAuth } from "../providers/AuthProvider";
+
 export function RequireAuth() {
-    const { isAuthenticated, isLoading } = useAuth0();
+    const { authenticated, loading } = useAuth();
     const location = useLocation();
 
-    if (isLoading) {
+    if (loading) {
         return null;
     }
 
-    if (!isAuthenticated) {
-        return (
-            <Navigate
-                to="/login"
-                state={{ from: location }}
-                replace
-            />
-        );
+    if (!authenticated) {
+        return <Navigate to="/auth/login" state={{ from: location }} replace />;
     }
 
-    return <Outlet/>;
+    return <Outlet />;
 }
