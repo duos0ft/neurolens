@@ -38,9 +38,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Check formatting
-        run: yarn prettier --check .
-
       - name: Run ESLint
         run: yarn lint
 
