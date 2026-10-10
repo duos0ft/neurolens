@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router";
+import { RequireAuth } from "./RequireAuth";
 
 export const router = createBrowserRouter([
     {
@@ -11,6 +12,7 @@ export const router = createBrowserRouter([
     },
     {
         path: "/app",
+        Component: RequireAuth,
         children: [
             {
                 index: true,

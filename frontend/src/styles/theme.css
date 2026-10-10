@@ -1,0 +1,476 @@
+/*
+ * NeuroLens — Tailwind CSS v4 Theme
+ *
+ * Default font: Work Sans
+ * Accessibility fonts: Atkinson Hyperlegible, Lexend
+ *
+ * Theme switching:
+ *   data-theme="light"
+ *   data-theme="dark"
+ *
+ * Comfort settings:
+ *   data-text-size="s|m|l|xl"
+ *   data-leading="compact"
+ *   data-font="hyperlegible|lexend"
+ *   data-reduce-motion="true"
+ *
+ * Import this file after Tailwind CSS.
+ */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* =========================================================
+   1. Semantic Variables — Light Theme
+   ========================================================= */
+
+:root {
+    /* Backgrounds */
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --subtle: #fafafa;
+    --muted: #f4f4f5;
+
+    /* Borders */
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+
+    /* Foreground */
+    --fg: #18181b;
+    --fg-body: #3f3f46;
+    --fg-soft: #52525b;
+    --fg-muted: #71717a;
+    --fg-faint: #a1a1aa;
+
+    /* Primary */
+    --primary: #18181b;
+    --on-primary: #ffffff;
+    --primary-hover: #3f3f46;
+
+    /* Accent */
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --accent-border: #bfdbfe;
+
+    /* Interface */
+    --seg: #ffffff;
+    --header: rgb(255 255 255 / 85%);
+
+    /* Positive feedback */
+    --pos-bg: #ecfdf5;
+    --pos-fg: #047857;
+
+    /* Negative feedback — amber rather than red */
+    --neg-bg: #fffbeb;
+    --neg-fg: #b45309;
+
+    /* Orb */
+    --orb-gradient: radial-gradient(
+            circle at 32% 28%,
+            #ffffff 0%,
+            #bfe0ff 14%,
+            #6fb4ff 36%,
+            #2c7bff 62%,
+            #0a5cff 80%,
+            #0626b8 100%
+    );
+
+    /* Comfort */
+    --text-root: 16px;
+
+    --font-reading: "Work Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+
+    --leading-body: 1.65;
+    --tracking-body: -0.005em;
+
+    color-scheme: light;
+}
+
+/* =========================================================
+   2. Semantic Variables — Dark Theme
+   ========================================================= */
+
+[data-theme="dark"] {
+    /* Backgrounds */
+    --bg: #09090b;
+    --surface: #18181b;
+    --subtle: #111113;
+    --muted: #27272a;
+
+    /* Borders */
+    --border: #2a2a2f;
+    --border-strong: #3f3f46;
+
+    /* Foreground */
+    --fg: #fafafa;
+    --fg-body: #d4d4d8;
+    --fg-soft: #a1a1aa;
+    --fg-muted: #8e8e96;
+    --fg-faint: #63636b;
+
+    /* Primary */
+    --primary: #fafafa;
+    --on-primary: #18181b;
+    --primary-hover: #e4e4e7;
+
+    /* Accent */
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --accent-soft: rgb(59 130 246 / 12%);
+    --accent-border: rgb(59 130 246 / 35%);
+
+    /* Interface */
+    --seg: #3f3f46;
+    --header: rgb(9 9 11 / 80%);
+
+    /* Positive feedback */
+    --pos-bg: rgb(16 185 129 / 14%);
+    --pos-fg: #34d399;
+
+    /* Negative feedback */
+    --neg-bg: rgb(245 158 11 / 14%);
+    --neg-fg: #fbbf24;
+
+    color-scheme: dark;
+}
+
+/* =========================================================
+   3. Comfort & Accessibility
+   ========================================================= */
+
+/* Text size */
+
+[data-text-size="s"] {
+    --text-root: 14px;
+}
+
+[data-text-size="m"] {
+    --text-root: 16px;
+}
+
+[data-text-size="l"] {
+    --text-root: 18px;
+}
+
+[data-text-size="xl"] {
+    --text-root: 21px;
+}
+
+/* Reading density */
+
+[data-leading="compact"] {
+    --leading-body: 1.45;
+    --tracking-body: -0.015em;
+}
+
+/* Alternative reading fonts */
+
+[data-font="hyperlegible"] {
+    --font-reading: "Atkinson Hyperlegible",
+    -apple-system,
+    system-ui,
+    sans-serif;
+}
+
+[data-font="lexend"] {
+    --font-reading: "Lexend",
+    -apple-system,
+    system-ui,
+    sans-serif;
+}
+
+/* =========================================================
+   4. Semantic Tailwind Tokens
+   ========================================================= */
+
+@theme inline {
+    /* Backgrounds */
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-subtle: var(--subtle);
+    --color-muted: var(--muted);
+
+    /* Borders */
+    --color-border: var(--border);
+    --color-border-strong: var(--border-strong);
+
+    /* Foreground */
+    --color-fg: var(--fg);
+    --color-fg-body: var(--fg-body);
+    --color-fg-soft: var(--fg-soft);
+    --color-fg-muted: var(--fg-muted);
+    --color-fg-faint: var(--fg-faint);
+
+    /* Primary */
+    --color-primary: var(--primary);
+    --color-on-primary: var(--on-primary);
+    --color-primary-hover: var(--primary-hover);
+
+    /* Accent */
+    --color-accent: var(--accent);
+    --color-accent-hover: var(--accent-hover);
+    --color-accent-soft: var(--accent-soft);
+    --color-accent-border: var(--accent-border);
+
+    /* Interface */
+    --color-seg: var(--seg);
+    --color-header: var(--header);
+
+    /* Feedback */
+    --color-pos-bg: var(--pos-bg);
+    --color-pos-fg: var(--pos-fg);
+    --color-neg-bg: var(--neg-bg);
+    --color-neg-fg: var(--neg-fg);
+
+    /* Dynamic reading font */
+    --font-body: var(--font-reading);
+}
+
+/* =========================================================
+   5. Tailwind Design Tokens
+   ========================================================= */
+
+@theme {
+    /* -------------------------------------------------------
+       Colors
+       ------------------------------------------------------- */
+    --color-zinc-750: #2a2a2f;
+    --color-zinc-850: #18181b;
+
+    /* -------------------------------------------------------
+       Fonts
+       ------------------------------------------------------- */
+    --font-sans: "Work Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+
+    --font-hyperlegible: "Atkinson Hyperlegible",
+    -apple-system,
+    system-ui,
+    sans-serif;
+
+    --font-lexend: "Lexend",
+    -apple-system,
+    system-ui,
+    sans-serif;
+
+    /* -------------------------------------------------------
+       Typography
+
+       Custom typography uses em values so it can
+       respond to NeuroLens comfort settings.
+
+       Tailwind's default text sizes remain available.
+       ------------------------------------------------------- */
+    --text-hero: 1.8em;
+    --text-hero--line-height: 1.2;
+    --text-hero--letter-spacing: -0.02em;
+
+    --text-title: 0.95em;
+
+    --text-meta: 0.8em;
+
+    --text-caption: 0.76em;
+
+    --text-eyebrow: 0.72em;
+    --text-eyebrow--letter-spacing: 0.07em;
+
+    --text-panel: 15px;
+
+    /* Font weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+
+    /* Line heights */
+    --leading-relaxed: 1.65;
+    --leading-compact: 1.45;
+    --leading-ui: 1.3;
+    --leading-tight: 1.2;
+
+    /* Letter spacing */
+    --tracking-relaxed: -0.005em;
+    --tracking-compact: -0.015em;
+    --tracking-display: -0.02em;
+    --tracking-eyebrow: 0.07em;
+
+    /* -------------------------------------------------------
+       Border Radii
+       ------------------------------------------------------- */
+    --radius-xs: 8px;
+    --radius-sm: 10px;
+    --radius-seg: 11px;
+    --radius-md: 14px;
+    --radius-lg: 16px;
+    --radius-xl: 18px;
+    --radius-bubble: 20px;
+    --radius-composer: 24px;
+    --radius-full: 9999px;
+
+    /* -------------------------------------------------------
+       Layout Dimensions
+
+       Tailwind's standard spacing scale remains intact.
+       ------------------------------------------------------- */
+    --spacing-sidebar: 256px;
+    --spacing-header: 64px;
+
+    --spacing-content: 720px;
+    --spacing-calendar: 760px;
+
+    /* Controls */
+    --spacing-control-sm: 30px;
+    --spacing-control-md: 32px;
+    --spacing-control-lg: 34px;
+    --spacing-control-xl: 36px;
+    --spacing-control-nav: 38px;
+
+    /* Containers */
+    --container-content: 720px;
+    --container-calendar: 760px;
+
+    /* -------------------------------------------------------
+       Shadows
+
+       Intended primarily for floating elements.
+       ------------------------------------------------------- */
+    --shadow-seg: 0 1px 3px rgb(0 0 0 / 8%);
+
+    --shadow-knob: 0 1px 3px rgb(0 0 0 / 20%);
+
+    --shadow-composer: 0 6px 24px rgb(24 24 27 / 5%);
+
+    --shadow-popover: 0 20px 50px rgb(24 24 27 / 10%),
+    0 2px 6px rgb(24 24 27 / 5%);
+
+    --shadow-orb: 0 24px 48px -12px rgb(10 92 255 / 35%);
+
+    /* -------------------------------------------------------
+       Blur
+       ------------------------------------------------------- */
+    --blur-header: 16px;
+
+    /* -------------------------------------------------------
+       Motion
+       ------------------------------------------------------- */
+    --ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    --animate-breathe: breathe 6s ease-in-out infinite;
+
+    --animate-orb-pulse: orb-pulse 1.4s ease-in-out infinite;
+
+    @keyframes breathe {
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.045);
+        }
+    }
+
+    @keyframes orb-pulse {
+        0%,
+        100% {
+            transform: scale(0.85);
+            opacity: 0.7;
+        }
+
+        50% {
+            transform: scale(1.1);
+            opacity: 1;
+        }
+    }
+}
+
+/* =========================================================
+   6. Custom Utilities
+   ========================================================= */
+
+/* Decorative NeuroLens orb */
+
+@utility bg-orb {
+    background: var(--orb-gradient);
+}
+
+/* Chat message bubble */
+
+@utility rounded-bubble {
+    border-radius: 20px 20px 6px 20px;
+}
+
+/* Transition timing */
+
+@utility duration-fast {
+    transition-duration: 150ms;
+}
+
+@utility duration-base {
+    transition-duration: 200ms;
+}
+
+/* =========================================================
+   7. Base Styles
+   ========================================================= */
+
+@layer base {
+    html {
+        font-size: var(--text-root);
+    }
+
+    body {
+        min-height: 100vh;
+
+        background: var(--bg);
+        color: var(--fg);
+
+        font-family: var(--font-reading);
+        line-height: var(--leading-body);
+        letter-spacing: var(--tracking-body);
+
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    *,
+    ::before,
+    ::after {
+        border-color: var(--border);
+    }
+
+    a {
+        color: var(--accent);
+    }
+
+    a:hover {
+        color: var(--accent-hover);
+    }
+
+    /* Respect native focus indication */
+    :focus-visible {
+        outline-color: var(--accent);
+    }
+}
+
+/* =========================================================
+   8. Reduced Motion
+   ========================================================= */
+
+[data-reduce-motion="true"] .animate-breathe,
+[data-reduce-motion="true"] .animate-orb-pulse {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-breathe,
+    .animate-orb-pulse {
+        animation: none;
+    }
+}
