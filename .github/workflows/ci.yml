@@ -48,6 +48,22 @@ jobs:
     name: Backend - Tests, Lint & Format
     runs-on: ubuntu-latest
 
+    env:
+      APP_ENV: testing
+
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: test-publishable-key
+      SUPABASE_SECRET_KEY: test-secret-key
+
+      DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+
+      AUTH0_DOMAIN: example.auth0.com
+      AUTH0_CLIENT_ID: test-client-id
+      AUTH0_CLIENT_SECRET: test-client-secret
+      AUTH0_REDIRECT_URI: http://localhost:3000/api/auth/callback
+
+      CSRF_SECRET_KEY: test-only-csrf-secret-key
+
     defaults:
       run:
         working-directory: backend
