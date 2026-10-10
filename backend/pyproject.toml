@@ -9,6 +9,7 @@ dependencies = [
     "authlib>=1.8.0",
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
+    "joserfc[cryptography]>=1.7.5",
     "pydantic-settings>=2.15.0",
     "sqlalchemy[asyncio]>=2.1.4",
     "supabase>=2.32.0",
