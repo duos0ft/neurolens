@@ -7,10 +7,10 @@
         "build": "rsbuild build",
         "dev": "rsbuild",
         "preview": "rsbuild preview",
+        "format": "prettier --write . && eslint . --fix",
+        "format:check": "prettier --check .",
         "lint": "eslint .",
-        "lint:fix": "eslint . --fix",
-        "format": "prettier . --write && eslint . --fix",
-        "format:check": "prettier \"**/*.{css,json,md,mdx,yml,yaml,html}\" --check && eslint ."
+        "lint:fix": "eslint . --fix"
     },
     "dependencies": {
         "class-variance-authority": "^0.7.1",

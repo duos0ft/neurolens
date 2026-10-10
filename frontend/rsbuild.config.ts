@@ -3,7 +3,7 @@ import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginTailwindcss } from "@rsbuild/plugin-tailwindcss";
 
 export default defineConfig({
-    plugins: [pluginReact(), pluginTailwindcss()],
+    plugins: [ pluginReact(), pluginTailwindcss() ],
     server: {
         proxy: {
             "/api": {

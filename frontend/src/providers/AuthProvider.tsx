@@ -11,8 +11,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-    const [employee, setEmployee] = useState<AuthenticatedEmployee | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [ employee, setEmployee ] = useState<AuthenticatedEmployee | null>(null);
+    const [ loading, setLoading ] = useState(true);
 
     useEffect(() => {
         const controller = new AbortController();
