@@ -20,7 +20,6 @@ from joserfc.errors import JoseError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import csrf_config  # Register CSRF configuration
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db
@@ -37,7 +36,6 @@ from app.services.oauth import (
     hash_token,
 )
 from app.services.session import create_employee_session
-
 
 logger = logging.getLogger(__name__)
 

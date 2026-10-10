@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-from fastapi import HTTPException, Request, status, Depends
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
