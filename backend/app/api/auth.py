@@ -92,6 +92,7 @@ async def login(
             nonce=oidc_nonce,
             code_challenge=generate_code_challenge(code_verifier),
             code_challenge_method="S256",
+            connection="email",
         )
 
     auth_flow = AuthFlow(

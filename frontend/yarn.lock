@@ -12,40 +12,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@auth0/auth0-auth-js@npm:^1.16.1":
-  version: 1.16.1
-  resolution: "@auth0/auth0-auth-js@npm:1.16.1"
-  dependencies:
-    jose: "npm:^6.0.8"
-    openid-client: "npm:^6.8.0"
-  checksum: 10c0/083e9f6395ce486714b220328657fd29a0139946c3e4af4b9240ee5af4a558abf216e35eb20ec96c36da0c704f9be331c3c4941e6f5d20d2eee4f1a90805d00f
-  languageName: node
-  linkType: hard
-
-"@auth0/auth0-react@npm:^2.28.2":
-  version: 2.28.2
-  resolution: "@auth0/auth0-react@npm:2.28.2"
-  dependencies:
-    "@auth0/auth0-spa-js": "npm:^2.28.2"
-  peerDependencies:
-    react: ^16.11.0 || ^17 || ^18 || ~19.0.1 || ~19.1.2 || ^19.2.1
-    react-dom: ^16.11.0 || ^17 || ^18 || ~19.0.1 || ~19.1.2 || ^19.2.1
-  checksum: 10c0/f78ae4032df9fb8800bbbfd81ec3dddcf2648eeede1ecbb62e7d49d9cd84544e941703db0e8cc85f517ae2d2cad8195dbc022e999b4a55501e0f05970b0c9142
-  languageName: node
-  linkType: hard
-
-"@auth0/auth0-spa-js@npm:^2.28.2":
-  version: 2.28.3
-  resolution: "@auth0/auth0-spa-js@npm:2.28.3"
-  dependencies:
-    "@auth0/auth0-auth-js": "npm:^1.16.1"
-    browser-tabs-lock: "npm:^1.3.0"
-    dpop: "npm:^2.1.1"
-    es-cookie: "npm:~1.3.2"
-  checksum: 10c0/3b778afdab790a3d836511c87cee031a0ba69caae751ee7590c97e898c58b9c5a99bd0f3eb8b2fff3432f048f49cf5b4e46e3174b8705ac7c8d26a5fd0ed63ea
-  languageName: node
-  linkType: hard
-
 "@babel/code-frame@npm:^7.29.7":
   version: 7.29.7
   resolution: "@babel/code-frame@npm:7.29.7"
@@ -1158,15 +1124,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"browser-tabs-lock@npm:^1.3.0":
-  version: 1.3.0
-  resolution: "browser-tabs-lock@npm:1.3.0"
-  dependencies:
-    lodash: "npm:>=4.17.21"
-  checksum: 10c0/b1f9cbd221725cf3228daf42360ea6a97f69b29e0475ef734bc5a6bd5c27b61f99db716c49808988a1c735d828207dcaa3a8802e605d0195538fbf9e25d1753b
-  languageName: node
-  linkType: hard
-
 "browserslist@npm:^4.24.0":
   version: 4.29.3
   resolution: "browserslist@npm:4.29.3"
@@ -1303,13 +1260,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dpop@npm:^2.1.1":
-  version: 2.1.2
-  resolution: "dpop@npm:2.1.2"
-  checksum: 10c0/2f4e167d58316562a8d5f3a5b7433bc4fa2edb2fd61ee0ffba066fe59693b464d5f743d3b46a4f4eb26b40e9d8fd57b947a585b2a541f1ae0f3bb4d75dba74f5
-  languageName: node
-  linkType: hard
-
 "electron-to-chromium@npm:^1.5.439":
   version: 1.5.449
   resolution: "electron-to-chromium@npm:1.5.449"
@@ -1324,13 +1274,6 @@ __metadata:
     graceful-fs: "npm:^4.2.4"
     tapable: "npm:^2.3.3"
   checksum: 10c0/fea1f02aa89793fecfd3ab0764be988fdf10dd5147ef65548726d918e68e3b9cf84224de37387356b54eee69363e4d59d9624dd7be9a23a0b1f568c46fa7a8a2
-  languageName: node
-  linkType: hard
-
-"es-cookie@npm:~1.3.2":
-  version: 1.3.2
-  resolution: "es-cookie@npm:1.3.2"
-  checksum: 10c0/26eb6e06b25b5569d8763fcb23b5335a5098e354b0a9a7bc5122e8c8705003307187a165ddaeda5cff08fa4cc8e1675dbddd5709279fb27cfa8875514dc3eccb
   languageName: node
   linkType: hard
 
@@ -1597,7 +1540,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "frontend@workspace:."
   dependencies:
-    "@auth0/auth0-react": "npm:^2.28.2"
     "@eslint/js": "npm:9"
     "@rsbuild/core": "npm:^2.2.12"
     "@rsbuild/plugin-react": "npm:^2.1.1"
@@ -1745,13 +1687,6 @@ __metadata:
   bin:
     jiti: lib/jiti-cli.mjs
   checksum: 10c0/1b1e2310a490dce1aeea3da5f5dfe18273516c20ce48be2e98eb8ea452d5f3dcc8fd0cfd6d28b4052a24c5dbab6e3089b2d7e79f0bce7915b10d750929563c42
-  languageName: node
-  linkType: hard
-
-"jose@npm:^6.0.8, jose@npm:^6.2.12":
-  version: 6.2.12
-  resolution: "jose@npm:6.2.12"
-  checksum: 10c0/e8582b946fabcae228819982dda4849908c353e9cb098f02f773635aa0d2f4917f17484c7441b8d526e564013b4cf96951455c94f81d0a39ee765bad44ce293d
   languageName: node
   linkType: hard
 
@@ -1967,13 +1902,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash@npm:>=4.17.21":
-  version: 4.18.1
-  resolution: "lodash@npm:4.18.1"
-  checksum: 10c0/757228fc68805c59789e82185135cf85f05d0b2d3d54631d680ca79ec21944ec8314d4533639a14b8bcfbd97a517e78960933041a5af17ecb693ec6eecb99a27
-  languageName: node
-  linkType: hard
-
 "lru-cache@npm:^5.1.1":
   version: 5.1.1
   resolution: "lru-cache@npm:5.1.1"
@@ -2041,23 +1969,6 @@ __metadata:
   version: 2.0.57
   resolution: "node-releases@npm:2.0.57"
   checksum: 10c0/fe5b68fba1fef524243b54828a118f13a4a40db08bb42c0b92680c3ca5c246f4ae6f139515071d46b9a3a9195945f5ac78064f5b7674c4dcc3dd6bfe933ff9e8
-  languageName: node
-  linkType: hard
-
-"oauth4webapi@npm:^3.8.8":
-  version: 3.8.8
-  resolution: "oauth4webapi@npm:3.8.8"
-  checksum: 10c0/1f7d35ba8d7d5aa9ce9ec5959a4611ed2b5dd7830172b1546749b91dda8c53f7934e669c6f81e912c64e3ae4fc681d4d6ce149b42cc9d17db97162bf8765e028
-  languageName: node
-  linkType: hard
-
-"openid-client@npm:^6.8.0":
-  version: 6.8.8
-  resolution: "openid-client@npm:6.8.8"
-  dependencies:
-    jose: "npm:^6.2.12"
-    oauth4webapi: "npm:^3.8.8"
-  checksum: 10c0/b1d60ca45623c77b8869b5a9725e25309cca20d32823861c5f72f0e9126a3ce43da2a93be964bfe771a39560f356c06adaedb2be29fe1762c4d097f91a4b620e
   languageName: node
   linkType: hard
 

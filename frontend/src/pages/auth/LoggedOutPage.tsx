@@ -18,7 +18,7 @@ export function Component() {
                 </p>
             </div>
 
-            <Link to="/auth/login" className={styles.button}>
+            <Link to="/auth/login" className={styles.link}>
                 Sign in again
             </Link>
         </div>
