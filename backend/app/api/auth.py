@@ -16,7 +16,7 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
-from joserfc.errors import JoseError
+from joserfc.errors import JoseError, InvalidClaimError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -175,6 +175,13 @@ async def callback(
             id_token,
             flow.oidc_nonce,
         )
+
+    except InvalidClaimError as exc:
+        logger.warning(
+            "Auth0 ID token rejected: %s",
+            exc,
+        )
+        return reject_authentication("authentication_failed")
 
     except (
         OAuthError,
