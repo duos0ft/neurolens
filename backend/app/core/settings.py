@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     # PostgreSQL
     database_url: str
+    migration_database_url: str | None = None
 
     # Auth0
     auth0_domain: str

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,13 +10,14 @@ from app.models.base import Base
 
 class Employee(Base):
     __tablename__ = "employees"
+
     __table_args__ = (
         CheckConstraint(
             "role IN ('admin', 'employee')",
             name="employees_role_check",
         ),
         CheckConstraint(
-            "status IN ('active', 'suspended')",
+            "status IN ('invited', 'active', 'suspended')",
             name="employees_status_check",
         ),
         {"schema": "public"},
@@ -25,6 +26,7 @@ class Employee(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
 
     auth0_user_id: Mapped[str | None] = mapped_column(
@@ -36,13 +38,13 @@ class Employee(Base):
     role: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        default="employee",
+        server_default="employee",
     )
 
     status: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        default="active",
+        server_default="invited",
     )
 
     created_at: Mapped[datetime] = mapped_column(

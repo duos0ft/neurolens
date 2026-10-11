@@ -1,7 +1,15 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,12 +18,27 @@ from app.models.base import Base
 
 class EmployeeSession(Base):
     __tablename__ = "employee_sessions"
-    __table_args__ = {"schema": "public"}
+
+    __table_args__ = (
+        CheckConstraint(
+            "expires_at > created_at",
+            name="employee_sessions_valid_expiry",
+        ),
+        Index(
+            "employee_sessions_employee_id_idx",
+            "employee_id",
+        ),
+        Index(
+            "employee_sessions_expires_at_idx",
+            "expires_at",
+        ),
+        {"schema": "public"},
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
     )
 
     session_hash: Mapped[str] = mapped_column(
@@ -26,7 +49,10 @@ class EmployeeSession(Base):
 
     employee_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("public.employees.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "public.employees.user_id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
     )
 
