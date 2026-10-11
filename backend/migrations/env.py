@@ -18,6 +18,13 @@ from app.models.employee_session import EmployeeSession  # noqa: F401
 config = context.config
 migration_url = settings.migration_database_url or settings.database_url
 
+MANAGED_TABLES = {
+    "employees",
+    "employee_profiles",
+    "employee_sessions",
+    "auth_flows",
+}
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -46,8 +53,11 @@ def run_migrations_offline() -> None:
 
 
 def include_name(name, type_, parent_names):
-    if type_ == "table" and name == "alembic_version":
-        return False
+    if type_ == "schema":
+        return name in (None, "public")
+
+    if type_ == "table":
+        return parent_names.get("schema_name") in (None, "public") and name in MANAGED_TABLES
 
     return True
 

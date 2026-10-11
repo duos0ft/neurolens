@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Text, func, text
+from sqlalchemy import CheckConstraint, DateTime, Index, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,11 @@ class Employee(Base):
             "status IN ('invited', 'active', 'suspended')",
             name="employees_status_check",
         ),
+        Index(
+            "employees_email_lower_idx",
+            text("lower(email)"),
+            unique=True,
+        ),
         {"schema": "public"},
     )
 
@@ -32,6 +37,11 @@ class Employee(Base):
     auth0_user_id: Mapped[str | None] = mapped_column(
         Text,
         unique=True,
+        nullable=True,
+    )
+
+    email: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 
