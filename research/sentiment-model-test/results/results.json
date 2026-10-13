@@ -1,0 +1,120 @@
+{
+  "cardiffnlp/twitter-roberta-base-sentiment-latest": {
+    "All": {
+      "n": 1745,
+      "accuracy": 0.7473,
+      "macro_f1": 0.7454
+    },
+    "GitHub": {
+      "n": 713,
+      "accuracy": 0.7125,
+      "macro_f1": 0.7219
+    },
+    "Jira": {
+      "n": 588,
+      "accuracy": 0.7721,
+      "macro_f1": 0.6916
+    },
+    "Stack Overflow": {
+      "n": 444,
+      "accuracy": 0.7703,
+      "macro_f1": 0.7748
+    }
+  },
+  "SamLowe/roberta-base-go_emotions (emotions mapped to polarity)": {
+    "All": {
+      "n": 1745,
+      "accuracy": 0.7834,
+      "macro_f1": 0.7603
+    },
+    "GitHub": {
+      "n": 713,
+      "accuracy": 0.6592,
+      "macro_f1": 0.6378
+    },
+    "Jira": {
+      "n": 588,
+      "accuracy": 0.9031,
+      "macro_f1": 0.8701
+    },
+    "Stack Overflow": {
+      "n": 444,
+      "accuracy": 0.8243,
+      "macro_f1": 0.8191
+    }
+  },
+  "j-hartmann/emotion-english-distilroberta-base (emotions mapped to polarity)": {
+    "All": {
+      "n": 1745,
+      "accuracy": 0.6946,
+      "macro_f1": 0.6419
+    },
+    "GitHub": {
+      "n": 713,
+      "accuracy": 0.6129,
+      "macro_f1": 0.5509
+    },
+    "Jira": {
+      "n": 588,
+      "accuracy": 0.7976,
+      "macro_f1": 0.6969
+    },
+    "Stack Overflow": {
+      "n": 444,
+      "accuracy": 0.6892,
+      "macro_f1": 0.6857
+    }
+  },
+  "MoritzLaurer/deberta-v3-large-zeroshot-v2.0 (zero-shot)": {
+    "All": {
+      "n": 1745,
+      "accuracy": 0.7209,
+      "macro_f1": 0.7157
+    },
+    "GitHub": {
+      "n": 713,
+      "accuracy": 0.7223,
+      "macro_f1": 0.7261
+    },
+    "Jira": {
+      "n": 588,
+      "accuracy": 0.7228,
+      "macro_f1": 0.6174
+    },
+    "Stack Overflow": {
+      "n": 444,
+      "accuracy": 0.7162,
+      "macro_f1": 0.721
+    }
+  },
+  "siebert/sentiment-roberta-large-english (non-neutral messages only)": {
+    "All": {
+      "n": 876,
+      "accuracy": 0.8619,
+      "macro_f1": 0.8617
+    }
+  },
+  "roberta-base fine-tuned on folds 1-9 (ours)": {
+    "All": {
+      "n": 1745,
+      "accuracy": 0.8711,
+      "macro_f1": 0.8659
+    },
+    "GitHub": {
+      "n": 713,
+      "accuracy": 0.8612,
+      "macro_f1": 0.8614
+    },
+    "Jira": {
+      "n": 588,
+      "accuracy": 0.8878,
+      "macro_f1": 0.8474
+    },
+    "Stack Overflow": {
+      "n": 444,
+      "accuracy": 0.8649,
+      "macro_f1": 0.8662
+    },
+    "train_n": 15669
+  }
+}
