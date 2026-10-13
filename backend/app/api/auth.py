@@ -27,7 +27,9 @@ from app.core.oauth import create_auth0_client, get_auth0_token_url
 from app.core.settings import settings
 from app.models.auth_flow import AuthFlow
 from app.models.employee import Employee
+from app.models.employee_profile import EmployeeProfile
 from app.models.employee_session import EmployeeSession
+from app.schemas.employee import AuthenticatedEmployeeResponse
 from app.services.auth0 import verify_id_token
 from app.services.auth_flow import consume_auth_flow
 from app.services.oauth import (
@@ -236,18 +238,30 @@ async def callback(
     return response
 
 
-@router.get("/me")
+@router.get("/me", response_model=AuthenticatedEmployeeResponse)
 async def get_me(
     employee: Annotated[Employee, Depends(get_current_employee)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     response: Response,
-):
+) -> AuthenticatedEmployeeResponse:
+    profile = await db.scalar(
+        select(EmployeeProfile).where(
+            EmployeeProfile.user_id == employee.user_id,
+        )
+    )
+
     response.headers["Cache-Control"] = "no-store"
 
-    return {
-        "id": employee.user_id,
-        "role": employee.role,
-        "status": employee.status,
-    }
+    return AuthenticatedEmployeeResponse(
+        id=employee.user_id,
+        email=employee.email,
+        role=employee.role,
+        status=employee.status,
+        display_name=profile.display_name if profile else None,
+        job_title=profile.job_title if profile else None,
+        department=profile.department if profile else None,
+        team=profile.team if profile else None,
+    )
 
 
 @router.get("/csrf")

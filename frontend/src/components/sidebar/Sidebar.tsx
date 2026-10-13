@@ -16,6 +16,7 @@ import { cn } from "../../lib/cn";
 import { SidebarItem } from "./SidebarItem";
 import { sidebarStyles as styles } from "./Sidebar.styles";
 import { Button } from "../button";
+import { SidebarAccount } from "./SidebarAccount";
 
 const navigation = [
     { label: "Assistant", path: "/assistant", icon: MessageSquare },
@@ -113,6 +114,7 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
                     </div>
                 )}
             </div>
+            <SidebarAccount />
         </aside>
     );
 }

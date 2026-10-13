@@ -44,6 +44,21 @@ class EmployeeProfile(Base):
         nullable=True,
     )
 
+    job_title: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    department: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    team: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     timezone: Mapped[str] = mapped_column(
         Text,
         nullable=False,
