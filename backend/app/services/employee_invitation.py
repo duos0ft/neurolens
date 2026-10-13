@@ -7,9 +7,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.settings import settings
+from app.models.email_outbox import EmailOutbox
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.schemas.employee import EmployeeRole
+from app.services.invitation_crypto import InvitationCryptoService
 from app.services.oauth import hash_token
 
 
@@ -25,7 +27,7 @@ class EmployeeInvitationService:
         self,
         email: str,
         role: EmployeeRole = EmployeeRole.EMPLOYEE,
-    ) -> tuple[Employee, str]:
+    ) -> Employee:
         normalized_email = email.strip().lower()
 
         existing_employee = await self.db.scalar(
@@ -45,9 +47,8 @@ class EmployeeInvitationService:
             provisioning_status="pending",
         )
 
-        self.db.add(employee)
-
         try:
+            self.db.add(employee)
             await self.db.flush()
 
             invitation = EmployeeInvitation(
@@ -60,13 +61,25 @@ class EmployeeInvitationService:
             )
 
             self.db.add(invitation)
+            await self.db.flush()
+
+            crypto = InvitationCryptoService()
+
+            outbox = EmailOutbox(
+                invitation_id=invitation.id,
+                encrypted_token=crypto.encrypt(
+                    token=invitation_token,
+                    invitation_id=str(invitation.id),
+                ),
+                status="pending",
+            )
+
+            self.db.add(outbox)
             await self.db.commit()
 
         except IntegrityError as error:
             await self.db.rollback()
 
-            # Distinguish a concurrent email conflict from
-            # unrelated database integrity failures.
             existing = await self.db.scalar(
                 select(Employee.user_id).where(func.lower(Employee.email) == normalized_email)
             )
@@ -83,7 +96,7 @@ class EmployeeInvitationService:
             await self.db.rollback()
             raise
 
-        return employee, invitation_token
+        return employee
 
     async def claim_invitation(
         self,

@@ -11,6 +11,7 @@ from app.core.settings import settings
 # Import models so Alembic can discover their tables.
 from app.models.auth_flow import AuthFlow  # noqa: F401
 from app.models.base import Base
+from app.models.email_outbox import EmailOutbox  # noqa: F401
 from app.models.employee import Employee  # noqa: F401
 from app.models.employee_invitation import EmployeeInvitation  # noqa: F401
 from app.models.employee_profile import EmployeeProfile  # noqa: F401
@@ -25,6 +26,7 @@ MANAGED_TABLES = {
     "employee_sessions",
     "employee_invitations",
     "auth_flows",
+    "email_outbox",
 }
 
 if config.config_file_name is not None:

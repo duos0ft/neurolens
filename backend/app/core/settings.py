@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +35,11 @@ class Settings(BaseSettings):
     oauth_state_lifetime_seconds: int = 600  # 10 minutes
     invitation_lifetime_days: int = 7
     invitation_provisioning_lease_seconds: int = 300
+
+    # Email
+    resend_api_key: str
+    resend_from_email: EmailStr = "onboarding@resend.dev"
+    invitation_encryption_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.api.auth import router as auth_router
 from app.api.employees import router as employees_router
+from app.api.employee_invitations import router as employee_invitations_router
 
 app = FastAPI(
     title="NeuroLens API",
@@ -10,6 +11,7 @@ app = FastAPI(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(employees_router, prefix="/api")
+app.include_router(employee_invitations_router, prefix="/api")
 
 
 @app.get("/health")

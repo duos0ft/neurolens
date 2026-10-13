@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class EmployeeRole(StrEnum):
@@ -37,10 +37,29 @@ class InviteEmployeeRequest(BaseModel):
     role: EmployeeRole = EmployeeRole.EMPLOYEE
 
 
-class InviteEmployeeResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class InvitationStatus(StrEnum):
+    PENDING = "pending"
+    PROVISIONING = "provisioning"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
+    READY = "ready"
+    ACCEPTED = "accepted"
+    FAILED = "failed"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
 
+
+class InvitationDeliveryStatus(StrEnum):
+    PENDING = "pending"
+    SENDING = "sending"
+    SENT = "sent"
+    FAILED = "failed"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
+
+
+class InviteEmployeeResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr
     role: EmployeeRole
     status: EmployeeStatus
+    invitation_status: InvitationStatus
+    delivery_status: InvitationDeliveryStatus

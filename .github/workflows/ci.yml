@@ -107,10 +107,10 @@ jobs:
           cache-dependency-glob: backend/uv.lock
 
       - name: Install Python
-        run: uv python install 3.12
+        run: uv python install 3.14
 
       - name: Install dependencies
-        run: uv sync --locked --group dev --python 3.12
+        run: uv sync --locked --group dev --python 3.14
 
       - name: Check Python lint
         run: uv run --no-sync ruff check .
