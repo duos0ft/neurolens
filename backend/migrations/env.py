@@ -12,6 +12,7 @@ from app.core.settings import settings
 from app.models.auth_flow import AuthFlow  # noqa: F401
 from app.models.base import Base
 from app.models.employee import Employee  # noqa: F401
+from app.models.employee_invitation import EmployeeInvitation  # noqa: F401
 from app.models.employee_profile import EmployeeProfile  # noqa: F401
 from app.models.employee_session import EmployeeSession  # noqa: F401
 
@@ -22,6 +23,7 @@ MANAGED_TABLES = {
     "employees",
     "employee_profiles",
     "employee_sessions",
+    "employee_invitations",
     "auth_flows",
 }
 

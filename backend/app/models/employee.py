@@ -20,6 +20,10 @@ class Employee(Base):
             "status IN ('invited', 'active', 'suspended')",
             name="employees_status_check",
         ),
+        CheckConstraint(
+            "provisioning_status IN ('pending', 'completed', 'failed')",
+            name="employees_provisioning_status_check",
+        ),
         Index(
             "employees_email_lower_idx",
             text("lower(email)"),
@@ -67,4 +71,10 @@ class Employee(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+    provisioning_status: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default="pending",
     )

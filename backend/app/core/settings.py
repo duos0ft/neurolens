@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     auth0_client_id: str
     auth0_client_secret: str
     auth0_redirect_uri: str
+    auth0_management_client_id: str
+    auth0_management_client_secret: str
 
     # Frontend
     frontend_url: str = "http://localhost:3000"
@@ -30,6 +32,8 @@ class Settings(BaseSettings):
 
     # OAuth
     oauth_state_lifetime_seconds: int = 600  # 10 minutes
+    invitation_lifetime_days: int = 7
+    invitation_provisioning_lease_seconds: int = 300
 
     model_config = SettingsConfigDict(
         env_file=".env",
