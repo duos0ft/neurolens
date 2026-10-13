@@ -50,22 +50,22 @@ export function SidebarAccount() {
         <div ref={containerRef} className={styles.root}>
             {open && (
                 <div className={styles.menu} aria-label="Account options">
-                    <button type="button" className={styles.menuItem} onClick={() => navigateTo("/profile")}>
+                    <Button variant="ghost" className={styles.menuItem} onClick={() => navigateTo("/app/profile")}>
                         <UserRound className={styles.menuIcon} />
                         My profile
-                    </button>
+                    </Button>
 
-                    <button type="button" className={styles.menuItem} onClick={() => navigateTo("/preferences")}>
+                    <Button variant="ghost" className={styles.menuItem} onClick={() => navigateTo("/app/preferences")}>
                         <Settings className={styles.menuIcon} />
                         Preferences
-                    </button>
+                    </Button>
 
                     <div className={styles.separator} />
 
-                    <button type="button" className={styles.menuItem} onClick={() => navigateTo("/auth/logout")}>
+                    <Button variant="ghost" className={styles.menuItem} onClick={() => navigateTo("/auth/logout")}>
                         <LogOut className={styles.menuIcon} />
                         Log out
-                    </button>
+                    </Button>
                 </div>
             )}
 

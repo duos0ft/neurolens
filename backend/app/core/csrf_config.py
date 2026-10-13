@@ -16,6 +16,5 @@ class CsrfSettings(BaseModel):
     header_name: str = "X-CSRF-Token"
 
 
-@CsrfProtect.load_config
-def get_csrf_config() -> CsrfSettings:
-    return CsrfSettings()
+def configure_csrf() -> None:
+    CsrfProtect.load_config(lambda: CsrfSettings())
