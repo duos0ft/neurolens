@@ -1,10 +1,9 @@
 import asyncio
-import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation

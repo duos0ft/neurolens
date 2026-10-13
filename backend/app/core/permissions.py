@@ -5,7 +5,6 @@ from fastapi import Depends, HTTPException, status
 from app.core.auth import get_current_employee
 from app.models.employee import Employee
 
-
 CurrentEmployee = Annotated[
     Employee,
     Depends(get_current_employee),

@@ -10,15 +10,13 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "28a00b9078f3"
 down_revision: Union[str, Sequence[str], None] = "d103831facdf"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
-
-
-from sqlalchemy.dialects import postgresql
 
 
 def upgrade() -> None:

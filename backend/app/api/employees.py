@@ -9,7 +9,6 @@ from app.core.permissions import require_admin
 from app.models.employee import Employee
 from app.schemas.employee import EmployeeListResponse
 
-
 router = APIRouter(
     prefix="/employees",
     tags=["Employees"],

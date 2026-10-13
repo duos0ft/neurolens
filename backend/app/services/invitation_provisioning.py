@@ -2,7 +2,7 @@ import uuid
 from enum import StrEnum
 
 from pydantic import BaseModel, model_validator
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.employee_invitation import EmployeeInvitation
 from app.schemas.auth0 import Auth0User

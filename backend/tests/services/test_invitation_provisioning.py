@@ -119,8 +119,6 @@ async def test_auth0_recovery_keeps_unresolved_invitation(
     invitation_id = test_invitation.id
     employee_id = test_invitation.employee_id
 
-    email = f"test-{employee_id.hex}@example.com"
-
     auth0 = AsyncMock()
     auth0.get_access_token.return_value = "test-access-token"
     auth0.reconcile_invitation.return_value = None

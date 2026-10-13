@@ -16,7 +16,7 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
-from joserfc.errors import JoseError, InvalidClaimError
+from joserfc.errors import InvalidClaimError, JoseError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 

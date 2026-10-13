@@ -37,7 +37,6 @@ from app.services.invitation_provisioning import (
 )
 from app.services.resend import ResendService
 
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
