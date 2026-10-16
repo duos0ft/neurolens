@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
-import { Outlet } from "react-router";
+import { Link, Outlet, useMatches } from "react-router";
 
 import { Sidebar } from "../components/sidebar/Sidebar";
-import { appLayoutStyles as styles } from "./AppLayout.styles";
 import { useAuth } from "../providers/AuthProvider";
+import { appLayoutStyles as styles } from "./AppLayout.styles";
+
+const breadcrumbLabels: Record<string, string> = {
+    "/app": "Dashboard",
+    "/app/profile": "My profile",
+    "/app/admin/employees": "Employees",
+    "/app/admin/invitations": "Invitations",
+};
 
 export function AppLayout() {
     const { employee } = useAuth();
+    const matches = useMatches();
     const [ mobileOpen, setMobileOpen ] = useState(false);
 
     const isAdmin = employee?.role === "admin";
+
+    const currentPath = matches[matches.length - 1]?.pathname ?? "/app";
+    const currentPage = breadcrumbLabels[currentPath] ?? "NeuroLens";
+    const isAdminPage = currentPath.startsWith("/app/admin/");
 
     useEffect(() => {
         if (!mobileOpen) return;
@@ -37,7 +49,11 @@ export function AppLayout() {
                 />
             )}
 
-            <Sidebar isAdmin={isAdmin} mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
+            <Sidebar
+                isAdmin={isAdmin}
+                mobileOpen={mobileOpen}
+                onNavigate={() => setMobileOpen(false)}
+            />
 
             <div className={styles.content}>
                 <header className={styles.header}>
@@ -48,12 +64,36 @@ export function AppLayout() {
                         aria-expanded={mobileOpen}
                         onClick={() => setMobileOpen(true)}
                     >
-                        <Menu className={styles.toggleIcon} />
+                        <Menu className={styles.toggleIcon}/>
                     </button>
+
+                    <nav aria-label="Breadcrumb" className={styles.breadcrumbs}>
+                        {isAdminPage ? (
+                            <>
+                                <span className={styles.breadcrumbParent}>
+                                    Organisation
+                                </span>
+                                <span className={styles.breadcrumbSeparator}>/</span>
+                            </>
+                        ) : currentPath !== "/app" ? (
+                            <>
+                                <Link to="/app" className={styles.breadcrumbLink}>
+                                    Home
+                                </Link>
+                                <span className={styles.breadcrumbSeparator}>/</span>
+                            </>
+                        ) : null}
+
+                        <span className={styles.breadcrumbCurrent} aria-current="page">
+                            {currentPage}
+                        </span>
+                    </nav>
                 </header>
 
                 <main className={styles.main}>
-                    <Outlet />
+                    <div className={styles.mainInner}>
+                        <Outlet/>
+                    </div>
                 </main>
             </div>
         </div>

@@ -26,9 +26,9 @@ const navigation = [
 ];
 
 const adminNavigation = [
-    { label: "Employees", path: "/admin/employees", icon: Users },
-    { label: "Invitations", path: "/admin/invitations", icon: Mail },
-    { label: "Settings", path: "/admin/settings", icon: Settings },
+    { label: "Employees", path: "/app/admin/employees", icon: Users },
+    { label: "Invitations", path: "/app/admin/invitations", icon: Mail },
+    { label: "Settings", path: "/app/admin/settings", icon: Settings },
 ];
 
 type SidebarProps = {
@@ -59,14 +59,14 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
             aria-label="Application navigation"
         >
             <div className={styles.header}>
-                <div className={cn(styles.logo, "bg-gradient-to-br from-sky-300 via-blue-500 to-blue-700")} />
+                <div className={cn(styles.logo, "bg-gradient-to-br from-sky-300 via-blue-500 to-blue-700")}/>
                 <span className={styles.brand}>NeuroLens</span>
             </div>
 
             <div className={styles.content}>
                 <nav className={styles.nav} aria-label="Main navigation">
                     {navigation.map(({ label, path, icon }) => (
-                        <SidebarItem key={path} label={label} to={path} icon={icon} onNavigate={onNavigate} />
+                        <SidebarItem key={path} label={label} to={path} icon={icon} onNavigate={onNavigate}/>
                     ))}
                 </nav>
 
@@ -85,7 +85,7 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
                             aria-controls="sidebar-admin-navigation"
                         >
                             <span className={styles.adminToggleContent}>
-                                <Shield className={styles.navIcon} />
+                                <Shield className={styles.navIcon}/>
                                 <span>Admin</span>
                             </span>
 
@@ -114,7 +114,7 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
                     </div>
                 )}
             </div>
-            <SidebarAccount />
+            <SidebarAccount/>
         </aside>
     );
 }

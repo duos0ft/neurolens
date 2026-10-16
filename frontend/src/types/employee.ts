@@ -1,0 +1,31 @@
+export type EmployeeRole = "admin" | "employee";
+
+export type EmployeeStatus = "invited" | "active" | "suspended";
+
+export interface Employee {
+    id: string;
+    email: string | null;
+    displayName: string | null;
+    role: EmployeeRole;
+    status: EmployeeStatus;
+    createdAt: string;
+}
+
+export interface PageResponse<T> {
+    items: T[];
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+}
+
+export interface PageParams {
+    page?: number;
+    pageSize?: number;
+}
+
+export interface EmployeeFilters extends PageParams {
+    search?: string;
+    role?: EmployeeRole;
+    status?: EmployeeStatus;
+}

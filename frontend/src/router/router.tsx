@@ -2,12 +2,13 @@ import { createBrowserRouter, Navigate } from "react-router";
 
 import { AuthLayout } from "../layouts/AuthLayout";
 import { AppLayout } from "../layouts/AppLayout";
+import { RequireAdmin } from "./RequireAdmin";
 import { RequireAuth } from "./RequireAuth";
 
 export const router = createBrowserRouter([
     {
         path: "/",
-        element: <Navigate to="/app" replace />,
+        element: <Navigate to="/app" replace/>,
     },
     {
         path: "/auth",
@@ -15,7 +16,7 @@ export const router = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <Navigate to="/auth/login" replace />,
+                element: <Navigate to="/auth/login" replace/>,
             },
             {
                 path: "login",
@@ -50,12 +51,21 @@ export const router = createBrowserRouter([
                         path: "profile",
                         lazy: () => import("../pages/profile/ProfilePage"),
                     },
+                    {
+                        Component: RequireAdmin,
+                        children: [
+                            {
+                                path: "admin/employees",
+                                lazy: () => import("../pages/admin/employees/EmployeesPage"),
+                            },
+                        ],
+                    },
                 ],
             },
         ],
     },
     {
         path: "*",
-        element: <Navigate to="/app" replace />,
+        element: <Navigate to="/app" replace/>,
     },
 ]);
