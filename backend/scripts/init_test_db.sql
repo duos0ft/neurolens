@@ -1,4 +1,3 @@
-
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -8,13 +7,16 @@ BEGIN
     ) THEN
 CREATE ROLE neurolens_admin
     LOGIN
-            PASSWORD 'postgres';
+            NOBYPASSRLS;
 END IF;
 END
 $$;
 
+ALTER ROLE neurolens_admin
+    WITH LOGIN NOBYPASSRLS PASSWORD 'postgres';
+
 GRANT CONNECT ON DATABASE neurolens_test
-TO neurolens_admin;
+    TO neurolens_admin;
 
 GRANT USAGE ON SCHEMA public
-TO neurolens_admin;
+    TO neurolens_admin;
