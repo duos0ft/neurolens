@@ -5,6 +5,17 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
+class EmployeeStatus(StrEnum):
+    INVITED = "invited"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+
+
+class EmployeeRole(StrEnum):
+    ADMIN = "admin"
+    EMPLOYEE = "employee"
+
+
 class AuthenticatedEmployeeResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr | None
@@ -14,17 +25,6 @@ class AuthenticatedEmployeeResponse(BaseModel):
     job_title: str | None = None
     department: str | None = None
     team: str | None = None
-
-
-class EmployeeRole(StrEnum):
-    ADMIN = "admin"
-    EMPLOYEE = "employee"
-
-
-class EmployeeStatus(StrEnum):
-    INVITED = "invited"
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
 
 
 class EmployeeResponse(BaseModel):

@@ -17,7 +17,6 @@ from app.schemas.employee import (
     UpdateEmployeeProfileRequest,
 )
 
-
 router = APIRouter(
     prefix="/profile",
     tags=["Profile"],

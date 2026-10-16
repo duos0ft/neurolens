@@ -6,12 +6,14 @@ import { Avatar } from "../../components/avatar";
 import { Button } from "../../components/button";
 import { Card } from "../../components/card";
 import { Input } from "../../components/input";
+import { toast } from "../../components/toast";
+import { updateProfile } from "../../lib/profile";
 import { useAuth } from "../../providers/AuthProvider";
-import { profileSchema, type ProfileFormValues } from "./ProfilePage.schema";
+import { type ProfileFormValues, profileSchema } from "./ProfilePage.schema";
 import { profilePageStyles as styles } from "./ProfilePage.styles";
 
 export function Component() {
-    const { employee } = useAuth();
+    const { employee, updateEmployee } = useAuth();
 
     const {
         register,
@@ -36,15 +38,32 @@ export function Component() {
             department: employee?.department ?? "",
             team: employee?.team ?? "",
         });
-    }, [employee, reset]);
+    }, [ employee, reset ]);
 
     const name = employee?.display_name || employee?.email || "My profile";
     const subtitle = employee?.job_title || "NeuroLens employee";
 
-    function onSubmit(values: ProfileFormValues) {
-        // PATCH /api/profile will be connected next.
-        // Do not treat this as a successful save yet.
-        console.log("Validated profile fields", Object.keys(values));
+    async function onSubmit(values: ProfileFormValues) {
+        try {
+            const updatedEmployee = await updateProfile(values);
+
+            updateEmployee(updatedEmployee);
+
+            reset({
+                display_name: updatedEmployee.display_name ?? "",
+                job_title: updatedEmployee.job_title ?? "",
+                department: updatedEmployee.department ?? "",
+                team: updatedEmployee.team ?? "",
+            });
+
+            toast.success("Profile updated", {
+                description: "Your changes have been saved successfully.",
+            });
+        } catch (error) {
+            toast.error("Unable to save profile", {
+                description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+            });
+        }
     }
 
     return (
@@ -56,7 +75,7 @@ export function Component() {
 
             <Card variant="flat" padding="lg" className={styles.profileCard}>
                 <div className={styles.profileHeader}>
-                    <Avatar name={name} size="xl" />
+                    <Avatar name={name} size="xl"/>
 
                     <div className={styles.profileInfo}>
                         <h2 className={styles.profileName}>{name}</h2>
@@ -64,7 +83,7 @@ export function Component() {
                     </div>
                 </div>
 
-                <div className={styles.divider} />
+                <div className={styles.divider}/>
 
                 <div className={styles.sectionHeader}>
                     <h2 className={styles.sectionTitle}>Personal information</h2>
@@ -82,6 +101,7 @@ export function Component() {
                             <Input
                                 id="profile-display-name"
                                 placeholder="Your full name"
+                                maxLength={100}
                                 aria-invalid={Boolean(errors.display_name)}
                                 aria-describedby={errors.display_name ? "display-name-error" : undefined}
                                 {...register("display_name")}
@@ -97,7 +117,7 @@ export function Component() {
                             <label className={styles.label} htmlFor="profile-email">
                                 Email address
                             </label>
-                            <Input id="profile-email" value={employee?.email ?? ""} disabled readOnly />
+                            <Input id="profile-email" value={employee?.email ?? ""} disabled readOnly/>
                             <p className={styles.hint}>Managed through your NeuroLens account.</p>
                         </div>
 
@@ -108,6 +128,7 @@ export function Component() {
                             <Input
                                 id="profile-job-title"
                                 placeholder="e.g. Software Engineer"
+                                maxLength={150}
                                 aria-invalid={Boolean(errors.job_title)}
                                 aria-describedby={errors.job_title ? "job-title-error" : undefined}
                                 {...register("job_title")}
@@ -126,6 +147,7 @@ export function Component() {
                             <Input
                                 id="profile-department"
                                 placeholder="e.g. Engineering"
+                                maxLength={150}
                                 aria-invalid={Boolean(errors.department)}
                                 aria-describedby={errors.department ? "department-error" : undefined}
                                 {...register("department")}
@@ -144,6 +166,7 @@ export function Component() {
                             <Input
                                 id="profile-team"
                                 placeholder="e.g. Platform"
+                                maxLength={150}
                                 aria-invalid={Boolean(errors.team)}
                                 aria-describedby={errors.team ? "team-error" : undefined}
                                 {...register("team")}
@@ -158,7 +181,7 @@ export function Component() {
 
                     <div className={styles.actions}>
                         <Button variant="primary" type="submit" disabled={!isDirty || isSubmitting}>
-                            Save changes
+                            {isSubmitting ? "Saving..." : "Save changes"}
                         </Button>
                     </div>
                 </form>

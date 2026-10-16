@@ -85,6 +85,9 @@ jobs:
       AUTH0_MANAGEMENT_CLIENT_SECRET: test-management-client-secret
 
       CSRF_SECRET_KEY: test-only-csrf-secret-key
+      RESEND_API_KEY: re_test_placeholder
+      RESEND_FROM_EMAIL: onboarding@example.com
+      INVITATION_ENCRYPTION_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
       PGHOST: localhost
       PGPORT: "5432"
