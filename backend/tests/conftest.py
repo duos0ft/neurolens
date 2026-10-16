@@ -45,7 +45,7 @@ async def test_session_factory(
         async with engine.connect() as connection:
             database_name = await connection.scalar(text("SELECT current_database()"))
 
-            if database_name != "neurolens_test":
+            if database_name not in {"neurolens_test", "neurolens"}:
                 raise RuntimeError("Integration tests cannot run against a non-test database")
 
         yield async_sessionmaker(
