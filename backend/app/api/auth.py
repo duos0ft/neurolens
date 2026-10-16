@@ -39,7 +39,6 @@ from app.services.oauth import (
 )
 from app.services.session import create_employee_session
 
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(

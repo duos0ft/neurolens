@@ -2,6 +2,7 @@
 
 import sqlalchemy as sa
 from alembic import op
+
 from migrations.runtime_access import RuntimeAccess, configure_runtime_access
 
 revision = "0001_initial_neurolens"
@@ -473,11 +474,11 @@ def downgrade() -> None:
 
     # Foreign-key dependencies require child tables first.
     for table in (
-            "email_outbox",
-            "employee_invitations",
-            "employee_sessions",
-            "auth_flows",
-            "employee_profiles",
-            "employees",
+        "email_outbox",
+        "employee_invitations",
+        "employee_sessions",
+        "auth_flows",
+        "employee_profiles",
+        "employees",
     ):
         op.drop_table(table, schema="public")
