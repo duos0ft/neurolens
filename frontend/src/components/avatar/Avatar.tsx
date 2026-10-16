@@ -25,7 +25,7 @@ function getInitials(name?: string | null): string {
 }
 
 export function Avatar({ name, src, size, className }: AvatarProps) {
-    const [failedSrc, setFailedSrc] = useState<string | null>(null);
+    const [ failedSrc, setFailedSrc ] = useState<string | null>(null);
     const showImage = Boolean(src && src !== failedSrc);
 
     return (
