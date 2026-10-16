@@ -1,6 +1,6 @@
 import { cva } from "class-variance-authority";
 
-export const cardVariants = cva("rounded-xl border border-border bg-bg text-fg", {
+export const cardVariants = cva("rounded-lg border border-border bg-surface text-fg", {
     variants: {
         variant: {
             default: "shadow-sm",

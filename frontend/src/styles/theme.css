@@ -66,13 +66,13 @@
 
     /* Orb */
     --orb-gradient: radial-gradient(
-        circle at 32% 28%,
-        #ffffff 0%,
-        #bfe0ff 14%,
-        #6fb4ff 36%,
-        #2c7bff 62%,
-        #0a5cff 80%,
-        #0626b8 100%
+            circle at 32% 28%,
+            #ffffff 0%,
+            #bfe0ff 14%,
+            #6fb4ff 36%,
+            #2c7bff 62%,
+            #0a5cff 80%,
+            #0626b8 100%
     );
 
     /* Comfort */
@@ -283,14 +283,14 @@
     /* -------------------------------------------------------
        Border Radii
        ------------------------------------------------------- */
-    --radius-xs: 8px;
-    --radius-sm: 10px;
-    --radius-seg: 11px;
-    --radius-md: 14px;
-    --radius-lg: 16px;
-    --radius-xl: 18px;
-    --radius-bubble: 20px;
-    --radius-composer: 24px;
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-seg: 8px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-bubble: 18px;
+    --radius-composer: 18px;
     --radius-full: 9999px;
 
     /* -------------------------------------------------------

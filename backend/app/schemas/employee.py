@@ -74,3 +74,11 @@ class InviteEmployeeResponse(BaseModel):
     status: EmployeeStatus
     invitation_status: InvitationStatus
     delivery_status: InvitationDeliveryStatus
+
+
+class UpdateEmployeeProfileRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=100)
+    job_title: str | None = Field(default=None, max_length=150)
+    department: str | None = Field(default=None, max_length=150)
+    team: str | None = Field(default=None, max_length=150)
+    timezone: str | None = Field(default=None, max_length=100)

@@ -13,7 +13,7 @@ from fastapi import (
     Response,
     status,
 )
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
 from joserfc.errors import InvalidClaimError, JoseError
@@ -38,6 +38,7 @@ from app.services.oauth import (
     hash_token,
 )
 from app.services.session import create_employee_session
+
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,6 @@ async def callback(
             "Auth0 authentication failed: %s",
             type(exc).__name__,
         )
-
         return reject_authentication("authentication_failed")
 
     employee = await db.scalar(
@@ -238,7 +238,10 @@ async def callback(
     return response
 
 
-@router.get("/me", response_model=AuthenticatedEmployeeResponse)
+@router.get(
+    "/me",
+    response_model=AuthenticatedEmployeeResponse,
+)
 async def get_me(
     employee: Annotated[Employee, Depends(get_current_employee)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -320,9 +323,10 @@ async def logout(
 
         await db.commit()
 
-    response = RedirectResponse(
-        url=get_auth0_logout_url(),
-        status_code=status.HTTP_303_SEE_OTHER,
+    response = JSONResponse(
+        content={
+            "logout_url": get_auth0_logout_url(),
+        }
     )
 
     response.delete_cookie(

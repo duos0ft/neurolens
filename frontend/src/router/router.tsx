@@ -46,6 +46,10 @@ export const router = createBrowserRouter([
                         index: true,
                         lazy: () => import("../pages/dashboard/DashboardPage"),
                     },
+                    {
+                        path: "profile",
+                        lazy: () => import("../pages/profile/ProfilePage"),
+                    },
                 ],
             },
         ],

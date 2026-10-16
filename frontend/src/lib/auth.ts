@@ -1,21 +1,13 @@
-interface LogoutOptions {
-    csrfToken: string;
+import { apiFetch } from "./api";
+
+interface LogoutResponse {
+    logout_url: string;
 }
 
-export function logout({ csrfToken }: LogoutOptions): void {
-    const form = document.createElement("form");
+export async function logout(): Promise<void> {
+    const response = await apiFetch<LogoutResponse>("/api/auth/logout", {
+        method: "POST",
+    });
 
-    form.method = "POST";
-    form.action = "/api/auth/logout";
-    form.style.display = "none";
-
-    const csrfInput = document.createElement("input");
-    csrfInput.type = "hidden";
-    csrfInput.name = "csrf_token";
-    csrfInput.value = csrfToken;
-
-    form.appendChild(csrfInput);
-    document.body.appendChild(form);
-
-    form.submit();
+    window.location.replace(response.logout_url);
 }

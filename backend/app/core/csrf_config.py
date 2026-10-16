@@ -12,7 +12,7 @@ class CsrfSettings(BaseModel):
     cookie_secure: bool = settings.session_cookie_secure
     cookie_httponly: bool = True
     token_key: str = "csrf_token"
-    token_location: str = "body"
+    token_location: str = "header"
     header_name: str = "X-CSRF-Token"
 
 

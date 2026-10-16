@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
 
 import { AuthProvider } from "./providers/AuthProvider";
-import { router } from "./router";
+import { router } from "./router/router";
 
 import "./styles/global.css";
 

@@ -6,6 +6,7 @@ interface AuthContextValue {
     employee: AuthenticatedEmployee | null;
     authenticated: boolean;
     loading: boolean;
+    updateEmployee: (employee: AuthenticatedEmployee) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -13,6 +14,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: PropsWithChildren) {
     const [ employee, setEmployee ] = useState<AuthenticatedEmployee | null>(null);
     const [ loading, setLoading ] = useState(true);
+
+    function updateEmployee(updatedEmployee: AuthenticatedEmployee) {
+        setEmployee(updatedEmployee);
+    }
 
     useEffect(() => {
         const controller = new AbortController();
@@ -49,7 +54,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ employee, authenticated: employee !== null, loading }}>
+        <AuthContext.Provider value={{ employee, authenticated: employee !== null, loading, updateEmployee }}>
             {children}
         </AuthContext.Provider>
     );

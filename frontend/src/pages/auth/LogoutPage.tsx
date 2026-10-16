@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router";
 
+import { Loading } from "../../components/loading";
 import { logout } from "../../lib/auth";
 import { useAuth } from "../../providers/AuthProvider";
-import { Loading } from "../../components/loading";
 
 export function Component() {
     const { authenticated, loading } = useAuth();
@@ -19,20 +19,10 @@ export function Component() {
 
         async function startLogout() {
             try {
-                const response = await fetch("/api/auth/csrf", {
-                    credentials: "same-origin",
-                    cache: "no-store",
-                });
-
-                if (!response.ok) {
-                    throw new Error("Unable to retrieve CSRF token");
-                }
-
-                const { csrf_token } = await response.json();
-
-                logout({ csrfToken: csrf_token });
+                await logout();
             } catch {
                 setError(true);
+                logoutStarted.current = false;
             }
         }
 
@@ -40,11 +30,11 @@ export function Component() {
     }, [ loading, authenticated ]);
 
     if (loading) {
-        return <Loading title="Checking your session..." />;
+        return <Loading title="Checking your session..."/>;
     }
 
     if (!authenticated) {
-        return <Navigate to="/auth/logged-out" replace />;
+        return <Navigate to="/auth/logged-out" replace/>;
     }
 
     if (error) {
@@ -56,5 +46,5 @@ export function Component() {
         );
     }
 
-    return <Loading size="xl" title="Signing you out" description="Ending your secure session..." />;
+    return <Loading size="xl" title="Signing you out" description="Ending your secure session..."/>;
 }
