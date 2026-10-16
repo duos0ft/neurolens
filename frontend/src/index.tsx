@@ -5,6 +5,7 @@ import { AuthProvider } from "./providers/AuthProvider";
 import { router } from "./router/router";
 
 import "./styles/global.css";
+import { Toast } from "./components/toast";
 
 const root = document.getElementById("root");
 
@@ -14,6 +15,7 @@ if (!root) {
 
 createRoot(root).render(
     <AuthProvider>
-        <RouterProvider router={router} />
+        <RouterProvider router={router}/>
+        <Toast/>
     </AuthProvider>,
 );

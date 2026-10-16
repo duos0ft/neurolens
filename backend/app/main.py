@@ -4,6 +4,7 @@ from app.api.auth import router as auth_router
 from app.api.employee_invitations import router as employee_invitations_router
 from app.api.employees import router as employees_router
 from app.core.csrf_config import configure_csrf
+from app.api.profile import router as profile_router
 
 
 def create_app() -> FastAPI:
@@ -17,6 +18,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api")
     app.include_router(employees_router, prefix="/api")
     app.include_router(employee_invitations_router, prefix="/api")
+    app.include_router(profile_router, prefix="/api")
 
     return app
 
