@@ -4,6 +4,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas.pagination import PageResponse
+
 
 class EmployeeStatus(StrEnum):
     INVITED = "invited"
@@ -34,13 +36,15 @@ class EmployeeResponse(BaseModel):
     )
 
     id: uuid.UUID = Field(validation_alias="user_id")
+    email: EmailStr | None
+    display_name: str | None = None
     role: EmployeeRole
     status: EmployeeStatus
     created_at: datetime
 
 
-class EmployeeListResponse(BaseModel):
-    employees: list[EmployeeResponse]
+class EmployeeListResponse(PageResponse[EmployeeResponse]):
+    pass
 
 
 class InviteEmployeeRequest(BaseModel):
