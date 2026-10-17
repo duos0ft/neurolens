@@ -26,6 +26,6 @@ async def create_employee_session(
     )
 
     db.add(session)
-    await db.commit()
+    await db.flush()
 
     return session_token

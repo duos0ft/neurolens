@@ -86,3 +86,9 @@ class UpdateEmployeeProfileRequest(BaseModel):
     department: str | None = Field(default=None, max_length=150)
     team: str | None = Field(default=None, max_length=150)
     timezone: str | None = Field(default=None, max_length=100)
+
+
+class InvitationValidationResponse(BaseModel):
+    email: EmailStr
+    role: EmployeeRole
+    expires_at: datetime

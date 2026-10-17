@@ -19,6 +19,7 @@ EXPECTED_ACCESS = {
 EXPECTED_EMPLOYEE_UPDATE_COLUMNS = {
     "auth0_user_id",
     "provisioning_status",
+    "status",
 }
 
 # RLS policies include UPDATE for employees even though

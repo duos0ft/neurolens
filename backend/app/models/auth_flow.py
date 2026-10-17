@@ -8,6 +8,7 @@ from sqlalchemy import (
     Text,
     func,
     text,
+    ForeignKey,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -34,6 +35,15 @@ class AuthFlow(Base):
         UUID(as_uuid=True),
         primary_key=True,
         server_default=text("gen_random_uuid()"),
+    )
+
+    invitation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "public.employee_invitations.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
     )
 
     state_hash: Mapped[str] = mapped_column(
