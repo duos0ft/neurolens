@@ -7,6 +7,10 @@ import { Table, type TableColumn } from "../../../components/table/Table";
 import { getEmployees } from "../../../lib/employees";
 import type { Employee, EmployeeRole, EmployeeStatus, PageResponse } from "../../../types/employee";
 import { employeesPageStyles as styles } from "./EmployeesPage.styles";
+import { Button } from "../../../components/button";
+import { Plus } from "lucide-react";
+import { PageHeader } from "../../../components/page-header/PageHeader";
+import { InviteEmployeeDialog } from "./InviteEmployeeDialog";
 
 const PAGE_SIZE = 20;
 
@@ -118,6 +122,9 @@ export function Component() {
         role: null,
     });
 
+    const [ inviteOpen, setInviteOpen ] = useState(false);
+    const [ refreshKey, setRefreshKey ] = useState(0);
+
     const [ page, setPage ] = useState(1);
     const [ loading, setLoading ] = useState(true);
     const [ error, setError ] = useState<string | null>(null);
@@ -161,7 +168,7 @@ export function Component() {
         return () => {
             cancelled = true;
         };
-    }, [ page, search, status, role ]);
+    }, [ page, search, status, role, refreshKey ]);
 
     function updateFilters(nextFilters: FilterValues) {
         setFilters(nextFilters);
@@ -170,14 +177,16 @@ export function Component() {
 
     return (
         <div className={styles.root}>
-            <header className={styles.pageHeader}>
-                <div>
-                    <h1 className={styles.title}>Employees</h1>
-                    <p className={styles.description}>
-                        View and manage employees in your organization.
-                    </p>
-                </div>
-            </header>
+            <PageHeader
+                title="Employees"
+                description="View and manage employees in your organization."
+                actions={
+                    <Button variant="primary" onClick={() => setInviteOpen(true)}>
+                        <Plus aria-hidden="true"/>
+                        Invite employee
+                    </Button>
+                }
+            />
 
             <section className={styles.directory} aria-label="Employee directory">
                 <div className={styles.toolbar}>
@@ -213,6 +222,15 @@ export function Component() {
                     />
                 )}
             </section>
+
+            <InviteEmployeeDialog
+                open={inviteOpen}
+                onClose={() => setInviteOpen(false)}
+                onInvited={() => {
+                    setPage(1);
+                    setRefreshKey((current) => current + 1);
+                }}
+            />
         </div>
     );
 }

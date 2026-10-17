@@ -18,6 +18,32 @@ interface PageApiResponse<T> {
     total_pages: number;
 }
 
+export interface InviteEmployeeResponse {
+    id: string;
+    email: string;
+    role: EmployeeRole;
+    status: EmployeeStatus;
+    invitationStatus:
+        | "pending"
+        | "provisioning"
+        | "reconciliation_required"
+        | "ready"
+        | "accepted"
+        | "failed"
+        | "expired"
+        | "cancelled";
+    deliveryStatus: "pending" | "sending" | "sent" | "failed" | "reconciliation_required";
+}
+
+interface InviteEmployeeApiResponse {
+    id: string;
+    email: string;
+    role: EmployeeRole;
+    status: EmployeeStatus;
+    invitation_status: InviteEmployeeResponse["invitationStatus"];
+    delivery_status: InviteEmployeeResponse["deliveryStatus"];
+}
+
 export async function getEmployees(
     filters: EmployeeFilters = {},
 ): Promise<PageResponse<Employee>> {
@@ -62,5 +88,27 @@ export async function getEmployees(
         pageSize: response.page_size,
         totalItems: response.total_items,
         totalPages: response.total_pages,
+    };
+}
+
+export async function inviteEmployee(
+    email: string,
+    role: EmployeeRole,
+): Promise<InviteEmployeeResponse> {
+    const response = await apiFetch<InviteEmployeeApiResponse>(
+        "/api/employees/invitations",
+        {
+            method: "POST",
+            body: { email, role },
+        },
+    );
+
+    return {
+        id: response.id,
+        email: response.email,
+        role: response.role,
+        status: response.status,
+        invitationStatus: response.invitation_status,
+        deliveryStatus: response.delivery_status,
     };
 }

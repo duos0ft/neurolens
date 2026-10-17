@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "../../lib/cn";
@@ -14,9 +14,18 @@ export function Select<T>({
     className,
 }: SelectProps<T>) {
     const [ open, setOpen ] = useState(false);
+    const [ position, setPosition ] = useState({
+        top: 0,
+        left: 0,
+        width: 0,
+        maxHeight: 240,
+    });
+
     const containerRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const listboxId = useId();
 
     const selectedIndex = options.findIndex((option) =>
         Object.is(option.value, value),
@@ -24,71 +33,128 @@ export function Select<T>({
 
     const selectedOption = options[selectedIndex];
 
-    useEffect(() => {
-        if (!open) return;
+    function updatePosition() {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
 
-        function handlePointerDown(event: PointerEvent) {
-            if (!containerRef.current?.contains(event.target as Node)) {
-                setOpen(false);
-            }
+        const rect = trigger.getBoundingClientRect();
+        const gap = 4;
+        const availableBelow = window.innerHeight - rect.bottom - gap - 8;
+        const availableAbove = rect.top - gap - 8;
+        const openAbove = availableBelow < 180 && availableAbove > availableBelow;
+        const maxHeight = Math.max(60, Math.min(240, openAbove ? availableAbove : availableBelow));
+
+        setPosition({
+            top: openAbove ? rect.top - gap : rect.bottom + gap,
+            left: rect.left,
+            width: rect.width,
+            maxHeight,
+        });
+    }
+
+    function closeDropdown() {
+        dropdownRef.current?.hidePopover();
+        setOpen(false);
+    }
+
+    function openDropdown(focusIndex?: number) {
+        if (disabled) return;
+
+        updatePosition();
+        dropdownRef.current?.showPopover();
+        setOpen(true);
+
+        if (focusIndex !== undefined) {
+            requestAnimationFrame(() => {
+                optionRefs.current[focusIndex]?.focus();
+            });
         }
-
-        function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === "Escape") {
-                setOpen(false);
-                triggerRef.current?.focus();
-            }
-        }
-
-        document.addEventListener("pointerdown", handlePointerDown);
-        document.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            document.removeEventListener("pointerdown", handlePointerDown);
-            document.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [ open ]);
+    }
 
     function selectOption(index: number) {
         onChange(index === -1 ? null : options[index].value);
-        setOpen(false);
+        closeDropdown();
         triggerRef.current?.focus();
     }
 
-    function handleTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    useEffect(() => {
+        if (!open) return;
+
+        function handleScroll() {
+            updatePosition();
+        }
+
+        function handleResize() {
+            updatePosition();
+        }
+
+        window.addEventListener("scroll", handleScroll, true);
+        window.addEventListener("resize", handleResize);
+
+        return () => {
+            window.removeEventListener("scroll", handleScroll, true);
+            window.removeEventListener("resize", handleResize);
+        };
+    }, [ open ]);
+
+    useEffect(() => {
+        if (disabled && open) {
+            closeDropdown();
+        }
+    }, [ disabled, open ]);
+
+    function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
         if (disabled) return;
 
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            setOpen(true);
 
             const enabledIndices = options
                 .map((option, index) => (!option.disabled ? index : -1))
                 .filter((index) => index !== -1);
 
-            const targetIndex =
-                event.key === "ArrowDown"
-                    ? enabledIndices[0]
-                    : enabledIndices[enabledIndices.length - 1];
+            const targetIndex = event.key === "ArrowDown"
+                ? enabledIndices[0]
+                : enabledIndices[enabledIndices.length - 1];
 
-            if (targetIndex !== undefined) {
-                requestAnimationFrame(() => {
-                    optionRefs.current[targetIndex]?.focus();
-                });
-            }
+            openDropdown(targetIndex);
         }
     }
 
     function handleOptionKeyDown(
-        event: React.KeyboardEvent<HTMLButtonElement>,
+        event: KeyboardEvent<HTMLButtonElement>,
         index: number,
     ) {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeDropdown();
+            triggerRef.current?.focus();
+            return;
+        }
+
+        if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+
+            const enabledIndices = options
+                .map((option, optionIndex) => (!option.disabled ? optionIndex : -1))
+                .filter((optionIndex) => optionIndex !== -1);
+
+            const nextIndex = event.key === "Home"
+                ? enabledIndices[0]
+                : enabledIndices[enabledIndices.length - 1];
+
+            if (nextIndex !== undefined) {
+                optionRefs.current[nextIndex]?.focus();
+            }
+
+            return;
+        }
+
         if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 
         event.preventDefault();
 
         const direction = event.key === "ArrowDown" ? 1 : -1;
-
         let nextIndex = index + direction;
 
         while (nextIndex >= 0 && nextIndex < options.length) {
@@ -108,9 +174,16 @@ export function Select<T>({
                 type="button"
                 disabled={disabled}
                 aria-haspopup="listbox"
+                aria-controls={listboxId}
                 aria-expanded={open}
                 className={cn(styles.trigger, open && styles.triggerOpen)}
-                onClick={() => setOpen((current) => !current)}
+                onClick={() => {
+                    if (open) {
+                        closeDropdown();
+                    } else {
+                        openDropdown();
+                    }
+                }}
                 onKeyDown={handleTriggerKeyDown}
             >
                 <span className={cn(styles.value, !selectedOption && styles.placeholder)}>
@@ -120,52 +193,58 @@ export function Select<T>({
                 <ChevronDown className={styles.chevron} aria-hidden="true"/>
             </button>
 
-            {open && (
-                <div className={styles.dropdown}>
-                    <div role="listbox" aria-label={placeholder} className={styles.listbox}>
+            <div
+                ref={dropdownRef}
+                popover="auto"
+                className={styles.dropdown}
+                style={{
+                    position: "fixed",
+                    top: position.top,
+                    left: position.left,
+                    width: position.width,
+                    maxHeight: position.maxHeight,
+                    transform: position.top < (triggerRef.current?.getBoundingClientRect().top ?? 0)
+                        ? "translateY(-100%)"
+                        : undefined,
+                }}
+                onToggle={(event) => {
+                    if (event.newState === "closed") {
+                        setOpen(false);
+                    }
+                }}
+            >
+                <div
+                    id={listboxId}
+                    role="listbox"
+                    aria-label={placeholder}
+                    className={styles.listbox}
+                >
+
+                    {options.map((option, index) => (
                         <button
+                            key={index}
+                            ref={(element) => {
+                                optionRefs.current[index] = element;
+                            }}
                             type="button"
                             role="option"
-                            aria-selected={value === null}
+                            aria-selected={selectedIndex === index}
+                            disabled={option.disabled}
                             className={cn(
                                 styles.option,
-                                selectedIndex === -1 && styles.optionSelected,
+                                selectedIndex === index && styles.optionSelected,
                             )}
-                            onClick={() => selectOption(-1)}
+                            onClick={() => selectOption(index)}
+                            onKeyDown={(event) => handleOptionKeyDown(event, index)}
                         >
-                            <span>{placeholder}</span>
-                            {selectedIndex === -1 && (
+                            <span>{option.label}</span>
+                            {selectedIndex === index && (
                                 <Check className={styles.check} aria-hidden="true"/>
                             )}
                         </button>
-
-                        {options.map((option, index) => (
-                            <button
-                                key={index}
-                                ref={(element) => {
-                                    optionRefs.current[index] = element;
-                                }}
-                                type="button"
-                                role="option"
-                                aria-selected={selectedIndex === index}
-                                disabled={option.disabled}
-                                className={cn(
-                                    styles.option,
-                                    selectedIndex === index && styles.optionSelected,
-                                )}
-                                onClick={() => selectOption(index)}
-                                onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                            >
-                                <span>{option.label}</span>
-
-                                {selectedIndex === index && (
-                                    <Check className={styles.check} aria-hidden="true"/>
-                                )}
-                            </button>
-                        ))}
-                    </div>
+                    ))}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

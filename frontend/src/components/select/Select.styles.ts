@@ -18,13 +18,12 @@ export const selectStyles = {
     chevron: "size-4 shrink-0 text-fg-muted",
 
     dropdown: [
-        "absolute top-full left-0 z-50 mt-1 w-full min-w-max",
-        "rounded-md border border-border bg-surface",
-        "p-1 shadow-lg",
+        "m-0 overflow-hidden rounded-md border border-border",
+        "bg-surface p-1 text-fg shadow-lg",
     ].join(" "),
 
-    listbox: "max-h-60 overflow-y-auto",
-
+    listbox: "flex max-h-full flex-col gap-1 overflow-y-auto",
+    
     option: [
         "flex w-full items-center justify-between gap-3",
         "rounded-sm px-3 py-2 text-left text-sm text-fg",
