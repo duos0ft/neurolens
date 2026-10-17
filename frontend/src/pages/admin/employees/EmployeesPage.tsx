@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 
 import { Avatar } from "../../../components/avatar";
+import { Button } from "../../../components/button";
 import { Filters } from "../../../components/filters/Filters";
 import type { FilterDefinition, FilterValues } from "../../../components/filters/Filters.types";
+import { PageHeader } from "../../../components/page-header/PageHeader";
 import { Table, type TableColumn } from "../../../components/table/Table";
 import { getEmployees } from "../../../lib/employees";
 import type { Employee, EmployeeRole, EmployeeStatus, PageResponse } from "../../../types/employee";
-import { employeesPageStyles as styles } from "./EmployeesPage.styles";
-import { Button } from "../../../components/button";
-import { Plus } from "lucide-react";
-import { PageHeader } from "../../../components/page-header/PageHeader";
 import { InviteEmployeeDialog } from "./InviteEmployeeDialog";
+import { employeesPageStyles as styles } from "./EmployeesPage.styles";
 
 const PAGE_SIZE = 20;
 
@@ -33,9 +33,9 @@ const employeeFilters: FilterDefinition[] = [
         ],
     },
     {
-        key: "role",
-        type: "select",
-        placeholder: "All roles",
+        key: "roles",
+        type: "checkboxGroup",
+        label: "Role",
         options: [
             { label: "Admin", value: "admin" },
             { label: "Employee", value: "employee" },
@@ -84,9 +84,7 @@ const columns: TableColumn<Employee>[] = [
         key: "role",
         title: "Role",
         render: (employee) => (
-            <span className={styles.role}>
-                {employee.role}
-            </span>
+            <span className={styles.role}>{employee.role}</span>
         ),
     },
     {
@@ -115,23 +113,21 @@ const columns: TableColumn<Employee>[] = [
 
 export function Component() {
     const [ employees, setEmployees ] = useState<PageResponse<Employee> | null>(null);
-
     const [ filters, setFilters ] = useState<FilterValues>({
         search: "",
         status: null,
-        role: null,
+        roles: [],
     });
 
     const [ inviteOpen, setInviteOpen ] = useState(false);
     const [ refreshKey, setRefreshKey ] = useState(0);
-
     const [ page, setPage ] = useState(1);
     const [ loading, setLoading ] = useState(true);
     const [ error, setError ] = useState<string | null>(null);
 
     const search = typeof filters.search === "string" ? filters.search : "";
     const status = filters.status as EmployeeStatus | null;
-    const role = filters.role as EmployeeRole | null;
+    const roles = filters.roles;
 
     useEffect(() => {
         let cancelled = false;
@@ -146,7 +142,7 @@ export function Component() {
                     pageSize: PAGE_SIZE,
                     search,
                     status: status ?? undefined,
-                    role: role ?? undefined,
+                    roles: Array.isArray(roles) ? roles as EmployeeRole[] : [],
                 });
 
                 if (!cancelled) {
@@ -168,7 +164,7 @@ export function Component() {
         return () => {
             cancelled = true;
         };
-    }, [ page, search, status, role, refreshKey ]);
+    }, [ page, search, status, roles, refreshKey ]);
 
     function updateFilters(nextFilters: FilterValues) {
         setFilters(nextFilters);

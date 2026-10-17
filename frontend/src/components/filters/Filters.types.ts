@@ -19,6 +19,7 @@ export interface SelectFilterDefinition<T extends FilterValue = FilterValue> {
 export interface MultiSelectFilterDefinition<T extends FilterValue = FilterValue> {
     key: string;
     type: "multiSelect";
+    label: string;
     placeholder?: string;
     options: SelectOption<T>[];
 }
@@ -30,10 +31,18 @@ export interface SegmentedControlFilterDefinition {
     options: SelectOption<FilterValue | null>[];
 }
 
+export interface CheckboxGroupFilterDefinition<T extends FilterValue = FilterValue> {
+    key: string;
+    type: "checkboxGroup";
+    label: string;
+    options: SelectOption<T>[];
+}
+
 export type FilterDefinition =
     | SearchFilterDefinition
     | SelectFilterDefinition
     | MultiSelectFilterDefinition
-    | SegmentedControlFilterDefinition;
+    | SegmentedControlFilterDefinition
+    | CheckboxGroupFilterDefinition;
 
 export type FilterValues = Record<string, FilterValue | FilterValue[] | null>;

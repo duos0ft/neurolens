@@ -1,8 +1,10 @@
+import { Button } from "../button";
 import { SegmentedControl } from "../segmented-control/SegmentedControl";
 import { MultiSelect } from "../select/MultiSelect";
 import { Select } from "../select/Select";
+import { FilterDropdown } from "./FilterDropdown";
 import { FilterSearch } from "./FilterSearch";
-import type { FilterDefinition, FilterValue, FilterValues } from "./Filters.types";
+import type { CheckboxGroupFilterDefinition, FilterDefinition, FilterValue, FilterValues } from "./Filters.types";
 import { filtersStyles as styles } from "./Filters.styles";
 
 interface FiltersProps {
@@ -12,11 +14,50 @@ interface FiltersProps {
 }
 
 export function Filters({ definitions, values, onChange }: FiltersProps) {
+    const checkboxGroups = definitions.filter(
+        (definition): definition is CheckboxGroupFilterDefinition =>
+            definition.type === "checkboxGroup",
+    );
+
+    const hasActiveFilters = definitions.some((definition) => {
+        const value = values[definition.key];
+
+        if (Array.isArray(value)) {
+            return value.length > 0;
+        }
+
+        return value !== null && value !== undefined && value !== "";
+    });
+
     function updateValue(key: string, value: FilterValue | FilterValue[] | null) {
         onChange({
             ...values,
             [key]: value,
         });
+    }
+
+    function clearFilters() {
+        const cleared: FilterValues = { ...values };
+
+        for (const definition of definitions) {
+            switch (definition.type) {
+                case "search":
+                    cleared[definition.key] = "";
+                    break;
+
+                case "multiSelect":
+                case "checkboxGroup":
+                    cleared[definition.key] = [];
+                    break;
+
+                case "select":
+                case "segmentedControl":
+                    cleared[definition.key] = null;
+                    break;
+            }
+        }
+
+        onChange(cleared);
     }
 
     return (
@@ -78,8 +119,28 @@ export function Filters({ definitions, values, onChange }: FiltersProps) {
                                 />
                             </div>
                         );
+
+                    case "checkboxGroup":
+                        return null;
                 }
             })}
+
+            {checkboxGroups.length > 0 && (
+                <FilterDropdown
+                    definitions={checkboxGroups}
+                    values={values}
+                    onChange={onChange}
+                />
+            )}
+
+            <Button
+                variant="ghost"
+                size="md"
+                disabled={!hasActiveFilters}
+                onClick={clearFilters}
+            >
+                Clear filters
+            </Button>
         </div>
     );
 }

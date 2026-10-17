@@ -29,7 +29,7 @@ async def list_employees(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     search: Annotated[str | None, Query(max_length=100)] = None,
-    role: EmployeeRole | None = None,
+    roles: Annotated[list[EmployeeRole] | None, Query(alias="role")] = None,
     status: EmployeeStatus | None = None,
 ) -> EmployeeListResponse:
     query = select(Employee, EmployeeProfile.display_name).outerjoin(
@@ -47,8 +47,8 @@ async def list_employees(
             )
         )
 
-    if role is not None:
-        query = query.where(Employee.role == role.value)
+    if roles:
+        query = query.where(Employee.role.in_([role.value for role in roles]))
 
     if status is not None:
         query = query.where(Employee.status == status.value)

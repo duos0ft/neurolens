@@ -26,6 +26,6 @@ export interface PageParams {
 
 export interface EmployeeFilters extends PageParams {
     search?: string;
-    role?: EmployeeRole;
+    roles?: EmployeeRole[];
     status?: EmployeeStatus;
 }

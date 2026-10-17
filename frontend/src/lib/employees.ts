@@ -61,9 +61,9 @@ export async function getEmployees(
         params.set("search", filters.search.trim());
     }
 
-    if (filters.role) {
-        params.set("role", filters.role);
-    }
+    filters.roles?.forEach((role) => {
+        params.append("role", role);
+    });
 
     if (filters.status) {
         params.set("status", filters.status);
