@@ -12,6 +12,7 @@ interface AuthContextValue {
     status: AuthStatus;
     updateEmployee: (employee: AuthenticatedEmployee) => void;
     revalidateSession: () => Promise<void>;
+    invalidateSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -21,16 +22,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const [ status, setStatus ] = useState<AuthStatus>("loading");
 
     const queryClient = useQueryClient();
+
     const requestVersion = useRef(0);
     const sessionInvalidated = useRef(false);
+    const sessionChannel = useRef<BroadcastChannel | null>(null);
 
     const invalidateSession = useCallback(() => {
+        if (sessionInvalidated.current) {
+            return;
+        }
+
         sessionInvalidated.current = true;
         requestVersion.current += 1;
 
         setEmployee(null);
         setStatus("unauthenticated");
         queryClient.clear();
+
+        sessionChannel.current?.postMessage({
+            type: "SESSION_INVALIDATED",
+        });
     }, [ queryClient ]);
 
     const revalidateSession = useCallback(async (signal?: AbortSignal) => {
@@ -80,6 +91,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
     }, [ invalidateSession ]);
 
+    function updateEmployee(updatedEmployee: AuthenticatedEmployee) {
+        setEmployee(updatedEmployee);
+        setStatus("authenticated");
+    }
+
     useEffect(() => {
         const controller = new AbortController();
 
@@ -110,10 +126,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
         };
     }, [ invalidateSession ]);
 
-    function updateEmployee(updatedEmployee: AuthenticatedEmployee) {
-        setEmployee(updatedEmployee);
-        setStatus("authenticated");
-    }
+    useEffect(() => {
+        const channel = new BroadcastChannel("neurolens-session");
+
+        sessionChannel.current = channel;
+
+        channel.onmessage = (event: MessageEvent) => {
+            if (event.data?.type === "SESSION_INVALIDATED") {
+                invalidateSession();
+            }
+        };
+
+        return () => {
+            sessionChannel.current = null;
+            channel.close();
+        };
+    }, [ invalidateSession ]);
 
     return (
         <AuthContext.Provider
@@ -124,6 +152,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                 status,
                 updateEmployee,
                 revalidateSession: async () => revalidateSession(),
+                invalidateSession,
             }}
         >
             {children}
