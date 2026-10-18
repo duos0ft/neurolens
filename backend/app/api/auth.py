@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_employee
+from app.core.auth import get_current_employee, get_current_employee_read_only
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db
 from app.core.oauth import create_auth0_client, get_auth0_token_url
@@ -434,7 +434,7 @@ async def callback(
     response_model=AuthenticatedEmployeeResponse,
 )
 async def get_me(
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[Employee, Depends(get_current_employee_read_only)],
     db: Annotated[AsyncSession, Depends(get_db)],
     response: Response,
 ) -> AuthenticatedEmployeeResponse:

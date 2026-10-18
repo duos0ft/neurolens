@@ -1,60 +1,131 @@
-import { createContext, type PropsWithChildren, useContext, useEffect, useState } from "react";
-
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { AuthenticatedEmployee } from "../types/auth";
+import { setUnauthorizedHandler } from "../lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+
+type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "connection-error";
 
 interface AuthContextValue {
     employee: AuthenticatedEmployee | null;
     authenticated: boolean;
     loading: boolean;
+    status: AuthStatus;
     updateEmployee: (employee: AuthenticatedEmployee) => void;
+    revalidateSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
     const [ employee, setEmployee ] = useState<AuthenticatedEmployee | null>(null);
-    const [ loading, setLoading ] = useState(true);
+    const [ status, setStatus ] = useState<AuthStatus>("loading");
 
-    function updateEmployee(updatedEmployee: AuthenticatedEmployee) {
-        setEmployee(updatedEmployee);
-    }
+    const queryClient = useQueryClient();
+    const requestVersion = useRef(0);
+    const sessionInvalidated = useRef(false);
+
+    const invalidateSession = useCallback(() => {
+        sessionInvalidated.current = true;
+        requestVersion.current += 1;
+
+        setEmployee(null);
+        setStatus("unauthenticated");
+        queryClient.clear();
+    }, [ queryClient ]);
+
+    const revalidateSession = useCallback(async (signal?: AbortSignal) => {
+        const version = ++requestVersion.current;
+
+        try {
+            const response = await fetch("/api/auth/me", {
+                credentials: "same-origin",
+                cache: "no-store",
+                signal,
+            });
+
+            if (signal?.aborted || version !== requestVersion.current) {
+                return;
+            }
+
+            if (response.status === 401) {
+                invalidateSession();
+                return;
+            }
+
+            if (!response.ok) {
+                setStatus("connection-error");
+                return;
+            }
+
+            const data: AuthenticatedEmployee = await response.json();
+
+            if (
+                signal?.aborted
+                || version !== requestVersion.current
+                || sessionInvalidated.current
+            ) {
+                return;
+            }
+
+            setEmployee(data);
+            setStatus("authenticated");
+        } catch {
+            if (
+                !signal?.aborted
+                && version === requestVersion.current
+                && !sessionInvalidated.current
+            ) {
+                setStatus("connection-error");
+            }
+        }
+    }, [ invalidateSession ]);
 
     useEffect(() => {
         const controller = new AbortController();
 
-        async function restoreSession() {
-            try {
-                const response = await fetch("/api/auth/me", {
-                    credentials: "same-origin",
-                    signal: controller.signal,
-                    cache: "no-store",
-                });
+        void revalidateSession(controller.signal);
 
-                if (!response.ok) {
-                    throw new Error("Session unavailable");
-                }
+        return () => controller.abort();
+    }, [ revalidateSession ]);
 
-                const data: AuthenticatedEmployee = await response.json();
-
-                setEmployee(data);
-            } catch {
-                if (!controller.signal.aborted) {
-                    setEmployee(null);
-                }
-            } finally {
-                if (!controller.signal.aborted) {
-                    setLoading(false);
-                }
+    useEffect(() => {
+        function handleVisibilityChange() {
+            if (document.visibilityState === "visible") {
+                void revalidateSession();
             }
         }
 
-        void restoreSession();
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
-        return () => controller.abort();
-    }, []);
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, [ revalidateSession ]);
+
+    useEffect(() => {
+        setUnauthorizedHandler(invalidateSession);
+
+        return () => {
+            setUnauthorizedHandler(null);
+        };
+    }, [ invalidateSession ]);
+
+    function updateEmployee(updatedEmployee: AuthenticatedEmployee) {
+        setEmployee(updatedEmployee);
+        setStatus("authenticated");
+    }
 
     return (
-        <AuthContext.Provider value={{ employee, authenticated: employee !== null, loading, updateEmployee }}>
+        <AuthContext.Provider
+            value={{
+                employee,
+                authenticated: status === "authenticated",
+                loading: status === "loading",
+                status,
+                updateEmployee,
+                revalidateSession: async () => revalidateSession(),
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );

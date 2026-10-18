@@ -23,6 +23,10 @@ export const router = createBrowserRouter([
                 lazy: () => import("../pages/auth/LoginPage"),
             },
             {
+                path: "accept-invite",
+                lazy: () => import("../pages/auth/AcceptInvitePage"),
+            },
+            {
                 path: "logout",
                 lazy: () => import("../pages/auth/LogoutPage"),
             },

@@ -2,6 +2,16 @@ interface CsrfResponse {
     csrf_token: string;
 }
 
+type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(
+    handler: UnauthorizedHandler | null,
+): void {
+    unauthorizedHandler = handler;
+}
+
 export class ApiError extends Error {
     constructor(
         public readonly status: number,
@@ -12,6 +22,17 @@ export class ApiError extends Error {
     }
 }
 
+function handleApiError(
+    response: Response,
+    message: string,
+): never {
+    if (response.status === 401) {
+        unauthorizedHandler?.();
+    }
+
+    throw new ApiError(response.status, message);
+}
+
 async function getCsrfToken(): Promise<string> {
     const response = await fetch("/api/auth/csrf", {
         credentials: "same-origin",
@@ -19,10 +40,14 @@ async function getCsrfToken(): Promise<string> {
     });
 
     if (!response.ok) {
-        throw new ApiError(response.status, "Unable to retrieve CSRF token.");
+        return handleApiError(
+            response,
+            "Unable to retrieve CSRF token.",
+        );
     }
 
     const data: CsrfResponse = await response.json();
+
     return data.csrf_token;
 }
 
@@ -35,7 +60,6 @@ export async function apiFetch<T>(
     options: ApiOptions = {},
 ): Promise<T> {
     const method = (options.method ?? "GET").toUpperCase();
-
     const headers = new Headers(options.headers);
 
     if (![ "GET", "HEAD", "OPTIONS" ].includes(method)) {
@@ -60,7 +84,10 @@ export async function apiFetch<T>(
     });
 
     if (!response.ok) {
-        throw new ApiError(response.status, `Request failed (${response.status}).`);
+        return handleApiError(
+            response,
+            `Request failed (${response.status}).`,
+        );
     }
 
     if (response.status === 204) {
