@@ -426,6 +426,49 @@ class EmployeeInvitationService:
         await self.db.commit()
         return invitation
 
+    async def cancel_invitation(
+        self,
+        employee_id: uuid.UUID,
+    ) -> bool:
+        now = datetime.now(timezone.utc)
+
+        invitation = await self.db.scalar(
+            select(EmployeeInvitation)
+            .join(
+                Employee,
+                Employee.user_id == EmployeeInvitation.employee_id,
+            )
+            .where(
+                EmployeeInvitation.employee_id == employee_id,
+                Employee.status == "invited",
+            )
+            .with_for_update(of=EmployeeInvitation)
+        )
+
+        if invitation is None:
+            await self.db.rollback()
+            return False
+
+        if invitation.status in ("accepted", "cancelled"):
+            await self.db.rollback()
+            return False
+
+        # Do not cancel while an external Auth0 creation
+        # operation may still be in progress.
+        if invitation.status in (
+            "provisioning",
+            "reconciliation_required",
+        ):
+            await self.db.rollback()
+            return False
+
+        invitation.status = "cancelled"
+        invitation.cancelled_at = now
+
+        await self.db.commit()
+
+        return True
+
     @staticmethod
     def is_provisioning_lease_expired(
         invitation: EmployeeInvitation,

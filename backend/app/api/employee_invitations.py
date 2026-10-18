@@ -1,5 +1,6 @@
 import logging
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import (
     APIRouter,
@@ -183,3 +184,35 @@ async def invite_employee(
         invitation_status=invitation_status,
         delivery_status=InvitationDeliveryStatus(delivery_status),
     )
+
+
+@router.post(
+    "/{employee_id}/cancel",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def cancel_employee_invitation(
+    employee_id: UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    csrf_protect: Annotated[CsrfProtect, Depends()],
+) -> None:
+    try:
+        await csrf_protect.validate_csrf(request)
+
+    except CsrfProtectError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing CSRF token",
+        ) from exc
+
+    invitation_service = EmployeeInvitationService(db)
+
+    cancelled = await invitation_service.cancel_invitation(
+        employee_id=employee_id,
+    )
+
+    if not cancelled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This invitation cannot be cancelled in its current state",
+        )

@@ -11,7 +11,9 @@ from app.core.database import get_db
 from app.core.permissions import require_admin
 from app.main import create_app
 from app.models.employee import Employee
+from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_session import EmployeeSession
+from app.services.employee_invitation import EmployeeInvitationService
 from app.services.oauth import generate_token, hash_token
 
 
@@ -315,6 +317,118 @@ async def test_cannot_suspend_last_active_administrator(
 
             assert employee is not None
             assert employee.status == "active"
+
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_invitation_cannot_be_accepted(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation: EmployeeInvitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    invitation_id = test_invitation.id
+
+    async with test_session_factory() as db:
+        employee = await db.get(Employee, employee_id)
+        invitation = await db.get(EmployeeInvitation, invitation_id)
+
+        assert employee is not None
+        assert invitation is not None
+
+        employee.auth0_user_id = f"email|{employee_id.hex}"
+        employee.provisioning_status = "completed"
+        invitation.status = "ready"
+
+        await db.commit()
+
+    async with test_session_factory() as db:
+        service = EmployeeInvitationService(db)
+
+        cancelled = await service.cancel_invitation(employee_id)
+
+        assert cancelled is True
+
+    async with test_session_factory() as db:
+        employee = await db.get(Employee, employee_id)
+        invitation = await db.get(EmployeeInvitation, invitation_id)
+
+        assert employee is not None
+        assert employee.status == "invited"
+
+        assert invitation is not None
+        assert invitation.status == "cancelled"
+        assert invitation.cancelled_at is not None
+
+    # Repeated cancellation must not succeed.
+    async with test_session_factory() as db:
+        service = EmployeeInvitationService(db)
+
+        cancelled_again = await service.cancel_invitation(employee_id)
+
+        assert cancelled_again is False
+
+
+@pytest.mark.asyncio
+async def test_cancelled_invitation_fails_public_validation(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation: EmployeeInvitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    invitation_token = generate_token()
+
+    async with test_session_factory() as db:
+        employee = await db.get(Employee, employee_id)
+        invitation = await db.get(EmployeeInvitation, test_invitation.id)
+
+        assert employee is not None
+        assert invitation is not None
+
+        employee.auth0_user_id = f"email|{employee_id.hex}"
+        employee.provisioning_status = "completed"
+
+        invitation.token_hash = hash_token(invitation_token)
+        invitation.status = "ready"
+
+        await db.commit()
+
+    async with test_session_factory() as db:
+        service = EmployeeInvitationService(db)
+        assert await service.cancel_invitation(employee_id) is True
+
+    app = create_app()
+
+    async def override_get_db():
+        async with test_session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            response = await client.post(
+                "/api/auth/invitations/validate",
+                json={"token": invitation_token},
+                headers={"Origin": "http://localhost:3000"},
+            )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == ("This invitation is invalid or no longer available.")
+
+        async with test_session_factory() as db:
+            invitation = await db.get(
+                EmployeeInvitation,
+                test_invitation.id,
+            )
+
+            assert invitation is not None
+            assert invitation.status == "cancelled"
 
     finally:
         app.dependency_overrides.clear()

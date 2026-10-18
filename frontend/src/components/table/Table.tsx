@@ -1,6 +1,7 @@
 import type { Key, ReactNode } from "react";
 
 import { Button } from "../button";
+import { DropdownMenu } from "../dropdown-menu/DropdownMenu";
 import { cn } from "../../lib/cn";
 import { tableStyles as styles } from "./Table.styles";
 
@@ -9,6 +10,14 @@ export interface TableColumn<T> {
     title: string;
     render: (row: T) => ReactNode;
     className?: string;
+}
+
+export interface TableRowAction<T> {
+    label: string;
+    onSelect: (row: T) => void;
+    hidden?: (row: T) => boolean;
+    disabled?: (row: T) => boolean;
+    destructive?: boolean;
 }
 
 export interface TablePagination {
@@ -23,6 +32,7 @@ export interface TableProps<T> {
     columns: TableColumn<T>[];
     rows: T[];
     rowKey: (row: T) => Key;
+    rowActions?: TableRowAction<T>[];
     loading?: boolean;
     emptyMessage?: string;
     pagination?: TablePagination;
@@ -32,11 +42,16 @@ export function Table<T>({
     columns,
     rows,
     rowKey,
+    rowActions = [],
     loading = false,
     emptyMessage = "No records found.",
     pagination,
 }: TableProps<T>) {
-    const showPaginationControls = pagination && pagination.totalPages > 1;
+    const hasRowActions = rowActions.length > 0;
+    const columnCount = columns.length + (hasRowActions ? 1 : 0);
+    const showPaginationControls = Boolean(
+        pagination && pagination.totalPages > 1,
+    );
 
     return (
         <div className={styles.root}>
@@ -48,40 +63,98 @@ export function Table<T>({
                                 <th
                                     key={column.key}
                                     scope="col"
-                                    className={cn(styles.headCell, column.className)}
+                                    className={cn(
+                                        styles.headCell,
+                                        column.className,
+                                    )}
                                 >
                                     {column.title}
                                 </th>
                             ))}
+
+                            {hasRowActions && (
+                                <th
+                                    scope="col"
+                                    className={cn(
+                                        styles.headCell,
+                                        "w-14 text-right",
+                                    )}
+                                >
+                                    <span className="sr-only">
+                                        Actions
+                                    </span>
+                                </th>
+                            )}
                         </tr>
                     </thead>
 
                     <tbody aria-busy={loading}>
                         {loading ? (
                             <tr>
-                                <td colSpan={columns.length} className={styles.empty}>
+                                <td
+                                    colSpan={columnCount}
+                                    className={styles.empty}
+                                >
                                     Loading...
                                 </td>
                             </tr>
                         ) : rows.length === 0 ? (
                             <tr>
-                                <td colSpan={columns.length} className={styles.empty}>
+                                <td
+                                    colSpan={columnCount}
+                                    className={styles.empty}
+                                >
                                     {emptyMessage}
                                 </td>
                             </tr>
                         ) : (
-                            rows.map((row) => (
-                                <tr key={rowKey(row)} className={styles.row}>
-                                    {columns.map((column) => (
-                                        <td
-                                            key={column.key}
-                                            className={cn(styles.cell, column.className)}
-                                        >
-                                            {column.render(row)}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))
+                            rows.map((row) => {
+                                const availableActions = rowActions.filter(
+                                    (action) => !action.hidden?.(row),
+                                );
+
+                                return (
+                                    <tr
+                                        key={rowKey(row)}
+                                        className={styles.row}
+                                    >
+                                        {columns.map((column) => (
+                                            <td
+                                                key={column.key}
+                                                className={cn(
+                                                    styles.cell,
+                                                    column.className,
+                                                )}
+                                            >
+                                                {column.render(row)}
+                                            </td>
+                                        ))}
+
+                                        {hasRowActions && (
+                                            <td
+                                                className={cn(
+                                                    styles.cell,
+                                                    "w-14 text-right",
+                                                )}
+                                            >
+                                                {availableActions.length > 0 && (
+                                                    <DropdownMenu
+                                                        label="Row actions"
+                                                        items={availableActions.map(
+                                                            (action) => ({
+                                                                label: action.label,
+                                                                destructive: action.destructive,
+                                                                disabled: action.disabled?.(row),
+                                                                onSelect: () => action.onSelect(row),
+                                                            }),
+                                                        )}
+                                                    />
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
@@ -104,7 +177,9 @@ export function Table<T>({
                                 variant="secondary"
                                 size="sm"
                                 disabled={loading || pagination.page <= 1}
-                                onClick={() => pagination.onPageChange(pagination.page - 1)}
+                                onClick={() => pagination.onPageChange(
+                                    pagination.page - 1,
+                                )}
                             >
                                 Previous
                             </Button>
@@ -112,8 +187,13 @@ export function Table<T>({
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                disabled={loading || pagination.page >= pagination.totalPages}
-                                onClick={() => pagination.onPageChange(pagination.page + 1)}
+                                disabled={
+                                    loading
+                                    || pagination.page >= pagination.totalPages
+                                }
+                                onClick={() => pagination.onPageChange(
+                                    pagination.page + 1,
+                                )}
                             >
                                 Next
                             </Button>

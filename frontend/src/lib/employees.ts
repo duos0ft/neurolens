@@ -1,5 +1,12 @@
 import { apiFetch } from "./api";
-import type { Employee, EmployeeFilters, EmployeeRole, EmployeeStatus, PageResponse } from "../types/employee";
+import type {
+    Employee,
+    EmployeeFilters,
+    EmployeeRole,
+    EmployeeStatus,
+    InvitationStatus,
+    PageResponse,
+} from "../types/employee";
 
 interface EmployeeApiResponse {
     id: string;
@@ -7,6 +14,7 @@ interface EmployeeApiResponse {
     display_name: string | null;
     role: EmployeeRole;
     status: EmployeeStatus;
+    invitation_status: InvitationStatus | null;
     created_at: string;
 }
 
@@ -82,6 +90,7 @@ export async function getEmployees(
             displayName: employee.display_name,
             role: employee.role,
             status: employee.status,
+            invitationStatus: employee.invitation_status,
             createdAt: employee.created_at,
         })),
         page: response.page,
@@ -111,4 +120,16 @@ export async function inviteEmployee(
         invitationStatus: response.invitation_status,
         deliveryStatus: response.delivery_status,
     };
+}
+
+export async function suspendEmployee(employeeId: string): Promise<void> {
+    await apiFetch<void>(`/api/employees/${employeeId}/suspend`, {
+        method: "POST",
+    });
+}
+
+export async function reactivateEmployee(employeeId: string): Promise<void> {
+    await apiFetch<void>(`/api/employees/${employeeId}/reactivate`, {
+        method: "POST",
+    });
 }

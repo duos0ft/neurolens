@@ -40,6 +40,7 @@ class EmployeeResponse(BaseModel):
     display_name: str | None = None
     role: EmployeeRole
     status: EmployeeStatus
+    invitation_status: InvitationStatus | None = None
     created_at: datetime
 
 

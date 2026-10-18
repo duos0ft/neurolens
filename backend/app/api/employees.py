@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.core.pagination import paginate
 from app.core.permissions import require_admin
 from app.models.employee import Employee
+from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_profile import EmployeeProfile
 from app.models.employee_session import EmployeeSession
 from app.schemas.employee import (
@@ -48,12 +49,20 @@ async def list_employees(
     roles: Annotated[list[EmployeeRole] | None, Query(alias="role")] = None,
     status: EmployeeStatus | None = None,
 ) -> EmployeeListResponse:
-    query = select(
-        Employee,
-        EmployeeProfile.display_name,
-    ).outerjoin(
-        EmployeeProfile,
-        EmployeeProfile.user_id == Employee.user_id,
+    query = (
+        select(
+            Employee,
+            EmployeeProfile.display_name,
+            EmployeeInvitation.status.label("invitation_status"),
+        )
+        .outerjoin(
+            EmployeeProfile,
+            EmployeeProfile.user_id == Employee.user_id,
+        )
+        .outerjoin(
+            EmployeeInvitation,
+            EmployeeInvitation.employee_id == Employee.user_id,
+        )
     )
 
     if search and search.strip():
@@ -88,6 +97,7 @@ async def list_employees(
             "email": row.Employee.email,
             "role": row.Employee.role,
             "status": row.Employee.status,
+            "invitation_status": row.invitation_status,
             "created_at": row.Employee.created_at,
             "display_name": row.display_name,
         },
