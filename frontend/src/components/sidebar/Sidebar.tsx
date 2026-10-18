@@ -1,22 +1,12 @@
 import { useState } from "react";
-import {
-    BookOpen,
-    CalendarDays,
-    ChevronDown,
-    ListTodo,
-    Mail,
-    MessageSquare,
-    Settings,
-    Shield,
-    Users,
-} from "lucide-react";
+import { BookOpen, CalendarDays, ChevronDown, ListTodo, MessageSquare, Settings, Shield, Users } from "lucide-react";
 import { useLocation } from "react-router";
 
 import { cn } from "../../lib/cn";
-import { SidebarItem } from "./SidebarItem";
-import { sidebarStyles as styles } from "./Sidebar.styles";
 import { Button } from "../button";
 import { SidebarAccount } from "./SidebarAccount";
+import { SidebarItem } from "./SidebarItem";
+import { sidebarStyles as styles } from "./Sidebar.styles";
 
 const navigation = [
     { label: "Assistant", path: "/assistant", icon: MessageSquare },
@@ -27,7 +17,6 @@ const navigation = [
 
 const adminNavigation = [
     { label: "Employees", path: "/app/admin/employees", icon: Users },
-    { label: "Invitations", path: "/app/admin/invitations", icon: Mail },
     { label: "Settings", path: "/app/admin/settings", icon: Settings },
 ];
 
@@ -37,16 +26,33 @@ type SidebarProps = {
     onNavigate: () => void;
 };
 
-export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
-    const location = useLocation();
-    const isAdminRoute = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
+export function Sidebar({
+    isAdmin,
+    mobileOpen,
+    onNavigate,
+}: SidebarProps) {
+    const { pathname } = useLocation();
+
+    const isAdminRoute =
+        pathname === "/app/admin"
+        || pathname.startsWith("/app/admin/");
 
     const [ adminOverride, setAdminOverride ] = useState<{
         pathname: string;
         expanded: boolean;
     } | null>(null);
 
-    const showAdminNavigation = adminOverride?.pathname === location.pathname ? adminOverride.expanded : isAdminRoute;
+    const showAdminNavigation =
+        adminOverride?.pathname === pathname
+            ? adminOverride.expanded
+            : isAdminRoute;
+
+    function toggleAdminNavigation() {
+        setAdminOverride({
+            pathname,
+            expanded: !showAdminNavigation,
+        });
+    }
 
     return (
         <aside
@@ -59,14 +65,25 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
             aria-label="Application navigation"
         >
             <div className={styles.header}>
-                <div className={cn(styles.logo, "bg-gradient-to-br from-sky-300 via-blue-500 to-blue-700")}/>
+                <div
+                    className={cn(
+                        styles.logo,
+                        "bg-gradient-to-br from-sky-300 via-blue-500 to-blue-700",
+                    )}
+                />
                 <span className={styles.brand}>NeuroLens</span>
             </div>
 
             <div className={styles.content}>
                 <nav className={styles.nav} aria-label="Main navigation">
                     {navigation.map(({ label, path, icon }) => (
-                        <SidebarItem key={path} label={label} to={path} icon={icon} onNavigate={onNavigate}/>
+                        <SidebarItem
+                            key={path}
+                            label={label}
+                            to={path}
+                            icon={icon}
+                            onNavigate={onNavigate}
+                        />
                     ))}
                 </nav>
 
@@ -74,13 +91,11 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
                     <div className={styles.section}>
                         <Button
                             variant="ghost"
-                            className={cn(styles.adminToggle, isAdminRoute && styles.navLinkActive)}
-                            onClick={() =>
-                                setAdminOverride({
-                                    pathname: location.pathname,
-                                    expanded: !showAdminNavigation,
-                                })
-                            }
+                            className={cn(
+                                styles.adminToggle,
+                                isAdminRoute && styles.navLinkActive,
+                            )}
+                            onClick={toggleAdminNavigation}
                             aria-expanded={showAdminNavigation}
                             aria-controls="sidebar-admin-navigation"
                         >
@@ -90,7 +105,10 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
                             </span>
 
                             <ChevronDown
-                                className={cn(styles.adminChevron, showAdminNavigation && styles.adminChevronOpen)}
+                                className={cn(
+                                    styles.adminChevron,
+                                    showAdminNavigation && styles.adminChevronOpen,
+                                )}
                             />
                         </Button>
 
@@ -114,6 +132,7 @@ export function Sidebar({ isAdmin, mobileOpen, onNavigate }: SidebarProps) {
                     </div>
                 )}
             </div>
+
             <SidebarAccount/>
         </aside>
     );

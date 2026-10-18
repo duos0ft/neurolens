@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Avatar } from "../../../components/avatar";
@@ -8,7 +9,8 @@ import type { FilterDefinition, FilterValues } from "../../../components/filters
 import { PageHeader } from "../../../components/page-header/PageHeader";
 import { Table, type TableColumn } from "../../../components/table/Table";
 import { getEmployees } from "../../../lib/employees";
-import type { Employee, EmployeeRole, EmployeeStatus, PageResponse } from "../../../types/employee";
+import type { Employee, EmployeeRole, EmployeeStatus } from "../../../types/employee";
+
 import { InviteEmployeeDialog } from "./InviteEmployeeDialog";
 import { employeesPageStyles as styles } from "./EmployeesPage.styles";
 
@@ -84,7 +86,9 @@ const columns: TableColumn<Employee>[] = [
         key: "role",
         title: "Role",
         render: (employee) => (
-            <span className={styles.role}>{employee.role}</span>
+            <span className={styles.role}>
+                {employee.role}
+            </span>
         ),
     },
     {
@@ -112,7 +116,8 @@ const columns: TableColumn<Employee>[] = [
 ];
 
 export function Component() {
-    const [ employees, setEmployees ] = useState<PageResponse<Employee> | null>(null);
+    const queryClient = useQueryClient();
+
     const [ filters, setFilters ] = useState<FilterValues>({
         search: "",
         status: null,
@@ -120,55 +125,56 @@ export function Component() {
     });
 
     const [ inviteOpen, setInviteOpen ] = useState(false);
-    const [ refreshKey, setRefreshKey ] = useState(0);
     const [ page, setPage ] = useState(1);
-    const [ loading, setLoading ] = useState(true);
-    const [ error, setError ] = useState<string | null>(null);
 
-    const search = typeof filters.search === "string" ? filters.search : "";
+    const search = typeof filters.search === "string"
+        ? filters.search
+        : "";
+
     const status = filters.status as EmployeeStatus | null;
-    const roles = filters.roles;
 
-    useEffect(() => {
-        let cancelled = false;
+    const selectedRoles: EmployeeRole[] = Array.isArray(filters.roles)
+        ? filters.roles as EmployeeRole[]
+        : [];
 
-        async function loadEmployees() {
-            setLoading(true);
-            setError(null);
+    const employeesQuery = useQuery({
+        queryKey: [
+            "employees",
+            {
+                page,
+                pageSize: PAGE_SIZE,
+                search,
+                status,
+                roles: [ ...selectedRoles ].sort(),
+            },
+        ],
+        queryFn: () => getEmployees({
+            page,
+            pageSize: PAGE_SIZE,
+            search,
+            status: status ?? undefined,
+            roles: selectedRoles,
+        }),
+        placeholderData: keepPreviousData,
+    });
 
-            try {
-                const result = await getEmployees({
-                    page,
-                    pageSize: PAGE_SIZE,
-                    search,
-                    status: status ?? undefined,
-                    roles: Array.isArray(roles) ? roles as EmployeeRole[] : [],
-                });
-
-                if (!cancelled) {
-                    setEmployees(result);
-                }
-            } catch {
-                if (!cancelled) {
-                    setError("Unable to load employees. Please try again.");
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        void loadEmployees();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [ page, search, status, roles, refreshKey ]);
+    const employees = employeesQuery.data;
+    const loading = employeesQuery.isPending || employeesQuery.isFetching;
+    const error = employeesQuery.isError
+        ? "Unable to load employees. Please try again."
+        : null;
 
     function updateFilters(nextFilters: FilterValues) {
         setFilters(nextFilters);
         setPage(1);
+    }
+
+    function handleInvitationCreated() {
+        setPage(1);
+
+        void queryClient.invalidateQueries({
+            queryKey: [ "employees" ],
+        });
     }
 
     return (
@@ -177,14 +183,20 @@ export function Component() {
                 title="Employees"
                 description="View and manage employees in your organization."
                 actions={
-                    <Button variant="primary" onClick={() => setInviteOpen(true)}>
+                    <Button
+                        variant="primary"
+                        onClick={() => setInviteOpen(true)}
+                    >
                         <Plus aria-hidden="true"/>
                         Invite employee
                     </Button>
                 }
             />
 
-            <section className={styles.directory} aria-label="Employee directory">
+            <section
+                className={styles.directory}
+                aria-label="Employee directory"
+            >
                 <div className={styles.toolbar}>
                     <Filters
                         definitions={employeeFilters}
@@ -222,10 +234,7 @@ export function Component() {
             <InviteEmployeeDialog
                 open={inviteOpen}
                 onClose={() => setInviteOpen(false)}
-                onInvited={() => {
-                    setPage(1);
-                    setRefreshKey((current) => current + 1);
-                }}
+                onInvited={handleInvitationCreated}
             />
         </div>
     );
