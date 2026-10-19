@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 from fastapi_csrf_protect import CsrfProtect
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.database import get_db

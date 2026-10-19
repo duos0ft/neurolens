@@ -16,7 +16,6 @@ from app.schemas.preferences import (
     UpdateEmployeePreferencesRequest,
 )
 
-
 router = APIRouter(
     prefix="/preferences",
     tags=["Preferences"],

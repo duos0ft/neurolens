@@ -14,7 +14,6 @@ from app.schemas.application_settings import (
     UpdateApplicationSettingsRequest,
 )
 
-
 router = APIRouter(
     prefix="/admin/settings",
     tags=["Application Settings"],
