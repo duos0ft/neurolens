@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.base import Base
 
+
 # Expected SQL privileges for the trusted backend database role.
 # New tables must declare an explicit access profile here.
 EXPECTED_ACCESS = {
@@ -13,19 +14,30 @@ EXPECTED_ACCESS = {
     "email_outbox": ("SELECT", "INSERT", "UPDATE"),
     "auth_flows": ("SELECT", "INSERT", "UPDATE", "DELETE"),
     "employee_sessions": ("SELECT", "INSERT", "UPDATE", "DELETE"),
+    "application_settings": ("SELECT", "INSERT"),
 }
 
-# Employees intentionally use column-level UPDATE permissions.
-EXPECTED_EMPLOYEE_UPDATE_COLUMNS = {
-    "auth0_user_id",
-    "provisioning_status",
-    "status",
+
+# Tables with intentionally restricted column-level UPDATE permissions.
+EXPECTED_UPDATE_COLUMNS = {
+    "employees": {
+        "auth0_user_id",
+        "provisioning_status",
+        "status",
+    },
+    "application_settings": {
+        "organization_name",
+        "enable_task_assistance",
+        "enable_policy_assistance",
+        "enable_sentiment_analysis",
+    },
 }
 
-# RLS policies include UPDATE for employees even though
-# full-table UPDATE permission is intentionally denied.
+
+# Column-level UPDATE permissions still require UPDATE RLS policies,
+# even when full-table UPDATE permission is intentionally denied.
 EXPECTED_POLICY_OPERATIONS = {
-    table: set(operations) | ({"UPDATE"} if table == "employees" else set())
+    table: set(operations) | ({"UPDATE"} if table in EXPECTED_UPDATE_COLUMNS else set())
     for table, operations in EXPECTED_ACCESS.items()
 }
 
@@ -190,30 +202,40 @@ async def test_runtime_policy_definitions(
 
 
 @pytest.mark.asyncio
-async def test_employee_update_permissions(
+async def test_column_update_permissions(
     test_admin_session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     async with test_admin_session_factory() as session:
-        result = await session.execute(
-            text(
-                """
-                SELECT
-                    column_name,
-                    has_column_privilege(
-                            'neurolens_admin',
-                            'public.employees',
-                            column_name,
-                            'UPDATE'
-                    ) AS can_update
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                  AND table_name = 'employees'
-                """
+        for table_name, expected_columns in EXPECTED_UPDATE_COLUMNS.items():
+            result = await session.execute(
+                text(
+                    """
+                    SELECT
+                        column_name,
+                        has_column_privilege(
+                                'neurolens_admin',
+                                :table_name,
+                                column_name,
+                                'UPDATE'
+                        ) AS can_update
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = :table
+                    """
+                ),
+                {
+                    "table_name": f"public.{table_name}",
+                    "table": table_name,
+                },
             )
-        )
 
-        permissions = dict(result.all())
+            permissions = dict(result.all())
 
-    allowed_columns = {column for column, allowed in permissions.items() if allowed}
+            assert permissions, f"No columns found for {table_name}"
 
-    assert allowed_columns == EXPECTED_EMPLOYEE_UPDATE_COLUMNS
+            allowed_columns = {column for column, allowed in permissions.items() if allowed}
+
+            assert allowed_columns == expected_columns, (
+                f"Incorrect UPDATE columns on {table_name}: "
+                f"expected {expected_columns}, got {allowed_columns}"
+            )
