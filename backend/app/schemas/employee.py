@@ -18,6 +18,25 @@ class EmployeeRole(StrEnum):
     EMPLOYEE = "employee"
 
 
+class InvitationStatus(StrEnum):
+    PENDING = "pending"
+    PROVISIONING = "provisioning"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
+    READY = "ready"
+    ACCEPTED = "accepted"
+    FAILED = "failed"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class InvitationDeliveryStatus(StrEnum):
+    PENDING = "pending"
+    SENDING = "sending"
+    SENT = "sent"
+    FAILED = "failed"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
+
+
 class AuthenticatedEmployeeResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr | None
@@ -51,25 +70,6 @@ class EmployeeListResponse(PageResponse[EmployeeResponse]):
 class InviteEmployeeRequest(BaseModel):
     email: EmailStr
     role: EmployeeRole = EmployeeRole.EMPLOYEE
-
-
-class InvitationStatus(StrEnum):
-    PENDING = "pending"
-    PROVISIONING = "provisioning"
-    RECONCILIATION_REQUIRED = "reconciliation_required"
-    READY = "ready"
-    ACCEPTED = "accepted"
-    FAILED = "failed"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
-
-
-class InvitationDeliveryStatus(StrEnum):
-    PENDING = "pending"
-    SENDING = "sending"
-    SENT = "sent"
-    FAILED = "failed"
-    RECONCILIATION_REQUIRED = "reconciliation_required"
 
 
 class InviteEmployeeResponse(BaseModel):

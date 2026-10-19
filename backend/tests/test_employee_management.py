@@ -1,11 +1,10 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.permissions import require_admin
