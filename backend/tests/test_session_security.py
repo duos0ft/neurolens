@@ -82,7 +82,7 @@ async def test_inactive_session_is_rejected(
 
 
 @pytest.mark.asyncio
-async def test_active_session_updates_last_activity(
+async def test_auth_me_does_not_update_last_activity(
     test_session_factory: async_sessionmaker[AsyncSession],
     test_invitation,
     monkeypatch: pytest.MonkeyPatch,
@@ -113,8 +113,7 @@ async def test_active_session_updates_last_activity(
 
         session_id = session.id
 
-    # Redirect the independent activity-update session
-    # to the same PostgreSQL test database.
+    # Ensure any unexpected activity update uses the test database.
     monkeypatch.setattr(
         "app.core.auth.async_session_factory",
         test_session_factory,
@@ -149,9 +148,11 @@ async def test_active_session_updates_last_activity(
             stored_session = await db.get(EmployeeSession, session_id)
 
             assert stored_session is not None
-            assert stored_session.last_active_at > original_activity
 
-            # Activity must never extend the absolute lifetime.
+            # Reading the current employee must not refresh activity.
+            assert stored_session.last_active_at == original_activity
+
+            # The absolute session lifetime must remain unchanged.
             assert stored_session.expires_at == absolute_expiration
 
             assert stored_session.revoked_at is None
