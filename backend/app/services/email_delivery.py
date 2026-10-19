@@ -13,6 +13,10 @@ from app.services.invitation_email import InvitationEmailService
 from app.services.resend import ResendAPIError, ResendService
 
 
+class EmailDeliveryNotReadyError(Exception):
+    pass
+
+
 class EmailDeliveryCoordinator:
     def __init__(
         self,
@@ -57,7 +61,7 @@ class EmailDeliveryCoordinator:
             row = result.one_or_none()
 
             if row is None:
-                raise ValueError("Email delivery is not ready")
+                raise EmailDeliveryNotReadyError("Email delivery is not ready")
 
             recipient, encrypted_token, invitation_id = row
 
@@ -95,6 +99,14 @@ class EmailDeliveryCoordinator:
                 recipient=recipient,
                 token=token,
             )
+
+        except EmailDeliveryNotReadyError:
+            await self.outbox.fail_delivery(
+                outbox_id=outbox_id,
+                attempt_id=attempt_id,
+                error_code="invitation_not_ready",
+            )
+            return False
 
         except Exception:
             # No Resend request was attempted.

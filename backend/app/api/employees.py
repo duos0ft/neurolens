@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import (
@@ -48,6 +48,7 @@ async def list_employees(
     search: Annotated[str | None, Query(max_length=100)] = None,
     roles: Annotated[list[EmployeeRole] | None, Query(alias="role")] = None,
     status: EmployeeStatus | None = None,
+    directory: Literal["current", "archived"] = "current",
 ) -> EmployeeListResponse:
     query = (
         select(
@@ -64,6 +65,24 @@ async def list_employees(
             EmployeeInvitation.employee_id == Employee.user_id,
         )
     )
+
+    # Archived records are invited employees whose
+    # invitations have been cancelled.
+    if directory == "archived":
+        query = query.where(
+            Employee.status == "invited",
+            EmployeeInvitation.status == "cancelled",
+        )
+    else:
+        # Keep active and suspended employees visible.
+        # Exclude only cancelled, unaccepted invitations.
+        query = query.where(
+            or_(
+                Employee.status != "invited",
+                EmployeeInvitation.status != "cancelled",
+                EmployeeInvitation.id.is_(None),
+            )
+        )
 
     if search and search.strip():
         pattern = f"%{search.strip()}%"
@@ -131,8 +150,9 @@ async def suspend_employee(
             detail="You cannot suspend your own account",
         )
 
-    # Serialize administrator availability checks across
-    # administrative status-changing operations.
+    # Serialize administrator availability checks.
+    # Other operations that reduce active administrators
+    # must use the same advisory lock.
     await db.execute(select(func.pg_advisory_xact_lock(73421)))
 
     employee = await db.scalar(
@@ -175,8 +195,7 @@ async def suspend_employee(
 
     employee.status = "suspended"
 
-    # Invalidate every existing session belonging
-    # to the suspended employee.
+    # Revoke all sessions belonging to the employee.
     await db.execute(
         update(EmployeeSession)
         .where(
@@ -188,7 +207,7 @@ async def suspend_employee(
         )
     )
 
-    # Persist suspension and session revocations atomically.
+    # Commit suspension and session revocations together.
     await db.commit()
 
 
@@ -213,7 +232,11 @@ async def reactivate_employee(
         ) from exc
 
     employee = await db.scalar(
-        select(Employee).where(Employee.user_id == employee_id).with_for_update()
+        select(Employee)
+        .where(
+            Employee.user_id == employee_id,
+        )
+        .with_for_update()
     )
 
     if employee is None:
@@ -236,4 +259,5 @@ async def reactivate_employee(
 
     employee.status = "active"
 
+    # Previously revoked sessions remain revoked.
     await db.commit()

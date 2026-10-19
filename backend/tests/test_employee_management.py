@@ -10,9 +10,11 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.permissions import require_admin
 from app.main import create_app
+from app.models.email_outbox import EmailOutbox
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_session import EmployeeSession
+from app.services.email_outbox import EmailOutboxService
 from app.services.employee_invitation import EmployeeInvitationService
 from app.services.oauth import generate_token, hash_token
 
@@ -432,3 +434,46 @@ async def test_cancelled_invitation_fails_public_validation(
 
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_invitation_cannot_claim_email_delivery(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation: EmployeeInvitation,
+) -> None:
+    invitation_id = test_invitation.id
+
+    async with test_session_factory() as db:
+        invitation = await db.get(EmployeeInvitation, invitation_id)
+
+        assert invitation is not None
+
+        invitation.status = "cancelled"
+        invitation.cancelled_at = datetime.now(timezone.utc)
+
+        outbox = EmailOutbox(
+            invitation_id=invitation_id,
+            encrypted_token="test-encrypted-token",
+            status="pending",
+        )
+
+        db.add(outbox)
+        await db.commit()
+
+        outbox_id = outbox.id
+
+    async with test_session_factory() as db:
+        service = EmailOutboxService(db)
+
+        claimed = await service.claim_delivery(outbox_id)
+
+        assert claimed is None
+
+    async with test_session_factory() as db:
+        outbox = await db.get(EmailOutbox, outbox_id)
+
+        assert outbox is not None
+        assert outbox.status == "pending"
+        assert outbox.delivery_attempt_id is None
+        assert outbox.delivery_started_at is None
+        assert outbox.attempt_count == 0
