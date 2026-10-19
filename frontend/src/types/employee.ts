@@ -2,6 +2,8 @@ export type EmployeeRole = "admin" | "employee";
 
 export type EmployeeStatus = "invited" | "active" | "suspended";
 
+export type EmployeeDirectory = "current" | "archived";
+
 export type InvitationStatus =
     | "pending"
     | "provisioning"
@@ -39,4 +41,5 @@ export interface EmployeeFilters extends PageParams {
     search?: string;
     roles?: EmployeeRole[];
     status?: EmployeeStatus;
+    directory?: EmployeeDirectory;
 }

@@ -1,11 +1,11 @@
 export const profilePageStyles = {
-    root: "mx-auto flex w-full max-w-4xl flex-col gap-8 px-5 py-8 sm:px-8 lg:py-10",
+    root: "mx-auto flex w-full max-w-5xl flex-col gap-6",
 
     header: "flex flex-col gap-1",
     title: "text-2xl font-semibold tracking-tight text-fg",
     description: "text-sm text-fg-body",
 
-    profileCard: "flex flex-col gap-6",
+    profileCard: "flex w-full flex-col gap-6",
     profileHeader: "flex items-center gap-4",
     profileInfo: "flex min-w-0 flex-col gap-1",
     profileName: "truncate text-lg font-semibold text-fg",

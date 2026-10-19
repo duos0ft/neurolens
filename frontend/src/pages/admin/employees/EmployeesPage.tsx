@@ -1,16 +1,15 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar } from "../../../components/avatar";
 import { Button } from "../../../components/button";
-import { ConfirmationDialog } from "../../../components/dialog/ConfirmationDialog";
 import { Filters } from "../../../components/filters/Filters";
 import type { FilterDefinition, FilterValues } from "../../../components/filters/Filters.types";
 import { PageHeader } from "../../../components/page-header/PageHeader";
 import { Table, type TableColumn, type TableRowAction } from "../../../components/table/Table";
-import { getEmployees, reactivateEmployee, suspendEmployee } from "../../../lib/employees";
+import { getEmployees, reactivateEmployee, revokeEmployeeInvitation, suspendEmployee } from "../../../lib/employees";
 import { useAuth } from "../../../providers/AuthProvider";
 import type { Employee, EmployeeRole, EmployeeStatus } from "../../../types/employee";
 
@@ -18,13 +17,6 @@ import { employeesPageStyles as styles } from "./EmployeesPage.styles";
 import { InviteEmployeeDialog } from "./InviteEmployeeDialog";
 
 const PAGE_SIZE = 20;
-
-type EmployeeAction = "suspend" | "reactivate";
-
-interface SelectedEmployeeAction {
-    employee: Employee;
-    type: EmployeeAction;
-}
 
 const employeeFilters: FilterDefinition[] = [
     {
@@ -42,6 +34,7 @@ const employeeFilters: FilterDefinition[] = [
             { label: "Active", value: "active" },
             { label: "Invited", value: "invited" },
             { label: "Suspended", value: "suspended" },
+            { label: "Archived", value: "archived" },
         ],
     },
     {
@@ -102,17 +95,31 @@ const columns: TableColumn<Employee>[] = [
             </span>
         ),
     },
+
     {
         key: "status",
         title: "Status",
-        render: (employee) => (
-            <span
-                className={`${styles.status} ${statusStyles[employee.status]}`}
-            >
-                {statusLabels[employee.status]}
-            </span>
-        ),
+        render: (employee) => {
+            const invitationRevoked =
+                employee.status === "invited"
+                && employee.invitationStatus === "cancelled";
+
+            const label = invitationRevoked
+                ? "Invitation revoked"
+                : statusLabels[employee.status];
+
+            const className = invitationRevoked
+                ? "bg-muted text-fg-muted"
+                : statusStyles[employee.status];
+
+            return (
+                <span className={`${styles.status} ${className}`}>
+                    {label}
+                </span>
+            );
+        },
     },
+
     {
         key: "createdAt",
         title: "Joined",
@@ -141,14 +148,19 @@ export function Component() {
     const [ page, setPage ] = useState(1);
     const [ inviteOpen, setInviteOpen ] = useState(false);
 
-    const [ selectedAction, setSelectedAction ] =
-        useState<SelectedEmployeeAction | null>(null);
-
     const search = typeof filters.search === "string"
         ? filters.search
         : "";
 
-    const status = filters.status as EmployeeStatus | null;
+    const selectedStatus = filters.status;
+
+    const directory = selectedStatus === "archived"
+        ? "archived"
+        : "current";
+
+    const status = selectedStatus === "archived"
+        ? undefined
+        : selectedStatus as EmployeeStatus | null;
 
     const selectedRoles: EmployeeRole[] = Array.isArray(filters.roles)
         ? filters.roles as EmployeeRole[]
@@ -162,6 +174,7 @@ export function Component() {
                 pageSize: PAGE_SIZE,
                 search,
                 status,
+                directory,
                 roles: [ ...selectedRoles ].sort(),
             },
         ],
@@ -170,6 +183,7 @@ export function Component() {
             pageSize: PAGE_SIZE,
             search,
             status: status ?? undefined,
+            directory,
             roles: selectedRoles,
         }),
         placeholderData: keepPreviousData,
@@ -182,60 +196,50 @@ export function Component() {
         ? "Unable to load employees. Please try again."
         : null;
 
-    const statusMutation = useMutation({
-        mutationFn: async (action: SelectedEmployeeAction) => {
-            if (action.type === "suspend") {
-                await suspendEmployee(action.employee.id);
-            } else {
-                await reactivateEmployee(action.employee.id);
-            }
-        },
-        onSuccess: async (_, action) => {
-            setSelectedAction(null);
-
-            await queryClient.invalidateQueries({
-                queryKey: [ "employees" ],
-            });
-
-            toast.success(
-                action.type === "suspend"
-                    ? "Employee suspended successfully."
-                    : "Employee reactivated successfully.",
-            );
-        },
-        onError: () => {
-            toast.error(
-                "Unable to update employee status. Please try again.",
-            );
-        },
-    });
-
     const rowActions: TableRowAction<Employee>[] = [
         {
             label: "Suspend employee",
             destructive: true,
             hidden: (employee) => employee.status !== "active",
-            disabled: (employee) => (
-                employee.id === currentEmployee?.id
-                || statusMutation.isPending
-            ),
-            onSelect: (employee) => {
-                setSelectedAction({
-                    employee,
-                    type: "suspend",
-                });
+            disabled: (employee) => employee.id === currentEmployee?.id,
+            confirmation: {
+                title: "Suspend employee",
+                description: (employee) =>
+                    `Suspend ${employee.displayName || employee.email || "this employee"}? Their access will be blocked and all active sessions revoked.`,
+                confirmLabel: "Suspend employee",
             },
+            onSelect: (employee) => suspendEmployee(employee.id),
         },
         {
             label: "Reactivate employee",
             hidden: (employee) => employee.status !== "suspended",
-            disabled: () => statusMutation.isPending,
-            onSelect: (employee) => {
-                setSelectedAction({
-                    employee,
-                    type: "reactivate",
-                });
+            confirmation: {
+                title: "Reactivate employee",
+                description: (employee) =>
+                    `Reactivate ${employee.displayName || employee.email || "this employee"}? They will regain access to NeuroLens but must sign in again.`,
+                confirmLabel: "Reactivate employee",
             },
+            onSelect: (employee) => reactivateEmployee(employee.id),
+        },
+        {
+            label: "Revoke invitation",
+            destructive: true,
+            hidden: (employee) => (
+                employee.status !== "invited"
+                || ![
+                    "ready",
+                    "pending",
+                    "failed",
+                    "expired",
+                ].includes(employee.invitationStatus ?? "")
+            ),
+            confirmation: {
+                title: "Revoke invitation",
+                description: (employee) =>
+                    `Revoke the invitation for ${employee.displayName || employee.email || "this employee"}? Their invitation link will become invalid and they won't be able to complete onboarding.`,
+                confirmLabel: "Revoke invitation",
+            },
+            onSelect: (employee) => revokeEmployeeInvitation(employee.id),
         },
     ];
 
@@ -252,26 +256,24 @@ export function Component() {
         });
     }
 
-    function closeConfirmation() {
-        if (!statusMutation.isPending) {
-            setSelectedAction(null);
-        }
+    async function handleRowActionSuccess(
+        _employee: Employee,
+        action: TableRowAction<Employee>,
+    ) {
+        await queryClient.invalidateQueries({
+            queryKey: [ "employees" ],
+        });
+
+        const messages: Record<string, string> = {
+            "Suspend employee": "Employee suspended successfully.",
+            "Reactivate employee": "Employee reactivated successfully.",
+            "Revoke invitation": "Invitation revoked successfully.",
+        };
+
+        toast.success(
+            messages[action.label] ?? "Action completed successfully.",
+        );
     }
-
-    function confirmAction() {
-        if (!selectedAction || statusMutation.isPending) {
-            return;
-        }
-
-        statusMutation.mutate(selectedAction);
-    }
-
-    const isSuspending = selectedAction?.type === "suspend";
-
-    const selectedEmployeeName =
-        selectedAction?.employee.displayName
-        || selectedAction?.employee.email
-        || "this employee";
 
     return (
         <div className={styles.root}>
@@ -311,6 +313,7 @@ export function Component() {
                         rows={employees?.items ?? []}
                         rowKey={(employee) => employee.id}
                         rowActions={rowActions}
+                        onRowActionSuccess={handleRowActionSuccess}
                         loading={loading}
                         emptyMessage="No employees found. Try adjusting your search or filters."
                         pagination={
@@ -332,29 +335,6 @@ export function Component() {
                 open={inviteOpen}
                 onClose={() => setInviteOpen(false)}
                 onInvited={handleInvitationCreated}
-            />
-
-            <ConfirmationDialog
-                open={selectedAction !== null}
-                onClose={closeConfirmation}
-                onConfirm={confirmAction}
-                loading={statusMutation.isPending}
-                destructive={isSuspending}
-                title={
-                    isSuspending
-                        ? "Suspend employee"
-                        : "Reactivate employee"
-                }
-                confirmLabel={
-                    isSuspending
-                        ? "Suspend employee"
-                        : "Reactivate employee"
-                }
-                description={
-                    isSuspending
-                        ? `Are you sure you want to suspend ${selectedEmployeeName}? They will immediately lose access to NeuroLens, and all active sessions will be revoked.`
-                        : `Are you sure you want to reactivate ${selectedEmployeeName}? They will regain access to NeuroLens and must sign in again.`
-                }
             />
         </div>
     );

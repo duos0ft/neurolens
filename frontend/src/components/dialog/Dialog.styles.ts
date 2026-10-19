@@ -13,14 +13,14 @@ export const dialogStyles = {
         lg: "max-w-2xl",
     },
 
-    content: "flex flex-col",
+    content: "flex flex-col text-left",
 
-    header: "flex items-start justify-between gap-4 px-6 pt-6 pb-4",
+    header: "flex items-start justify-between gap-4 px-6 pt-6 pb-4 text-left",
     heading: "flex min-w-0 flex-col gap-1",
     title: "text-lg font-semibold tracking-tight text-fg",
     description: "text-sm text-fg-muted",
 
-    body: "px-6 py-4",
+    body: "px-6 py-4 text-left",
 
     footer: [
         "flex flex-wrap items-center justify-end gap-2",

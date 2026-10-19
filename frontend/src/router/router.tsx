@@ -56,6 +56,10 @@ export const router = createBrowserRouter([
                         lazy: () => import("../pages/profile/ProfilePage"),
                     },
                     {
+                        path: "preferences",
+                        lazy: () => import("../pages/preferences/PreferencesPage"),
+                    },
+                    {
                         Component: RequireAdmin,
                         children: [
                             {

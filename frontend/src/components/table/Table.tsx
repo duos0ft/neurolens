@@ -1,8 +1,9 @@
 import type { Key, ReactNode } from "react";
 
 import { Button } from "../button";
-import { DropdownMenu } from "../dropdown-menu/DropdownMenu";
 import { cn } from "../../lib/cn";
+
+import { TableRowActions } from "./TableRowActions";
 import { tableStyles as styles } from "./Table.styles";
 
 export interface TableColumn<T> {
@@ -12,12 +13,19 @@ export interface TableColumn<T> {
     className?: string;
 }
 
+export interface TableRowActionConfirmation<T> {
+    title: string;
+    description: string | ((row: T) => string);
+    confirmLabel: string;
+}
+
 export interface TableRowAction<T> {
     label: string;
-    onSelect: (row: T) => void;
+    onSelect: (row: T) => void | Promise<void>;
     hidden?: (row: T) => boolean;
     disabled?: (row: T) => boolean;
     destructive?: boolean;
+    confirmation?: TableRowActionConfirmation<T>;
 }
 
 export interface TablePagination {
@@ -33,6 +41,15 @@ export interface TableProps<T> {
     rows: T[];
     rowKey: (row: T) => Key;
     rowActions?: TableRowAction<T>[];
+    onRowActionSuccess?: (
+        row: T,
+        action: TableRowAction<T>,
+    ) => void | Promise<void>;
+    onRowActionError?: (
+        error: unknown,
+        row: T,
+        action: TableRowAction<T>,
+    ) => void;
     loading?: boolean;
     emptyMessage?: string;
     pagination?: TablePagination;
@@ -43,12 +60,15 @@ export function Table<T>({
     rows,
     rowKey,
     rowActions = [],
+    onRowActionSuccess,
+    onRowActionError,
     loading = false,
     emptyMessage = "No records found.",
     pagination,
 }: TableProps<T>) {
     const hasRowActions = rowActions.length > 0;
     const columnCount = columns.length + (hasRowActions ? 1 : 0);
+
     const showPaginationControls = Boolean(
         pagination && pagination.totalPages > 1,
     );
@@ -108,53 +128,40 @@ export function Table<T>({
                                 </td>
                             </tr>
                         ) : (
-                            rows.map((row) => {
-                                const availableActions = rowActions.filter(
-                                    (action) => !action.hidden?.(row),
-                                );
+                            rows.map((row) => (
+                                <tr
+                                    key={rowKey(row)}
+                                    className={styles.row}
+                                >
+                                    {columns.map((column) => (
+                                        <td
+                                            key={column.key}
+                                            className={cn(
+                                                styles.cell,
+                                                column.className,
+                                            )}
+                                        >
+                                            {column.render(row)}
+                                        </td>
+                                    ))}
 
-                                return (
-                                    <tr
-                                        key={rowKey(row)}
-                                        className={styles.row}
-                                    >
-                                        {columns.map((column) => (
-                                            <td
-                                                key={column.key}
-                                                className={cn(
-                                                    styles.cell,
-                                                    column.className,
-                                                )}
-                                            >
-                                                {column.render(row)}
-                                            </td>
-                                        ))}
-
-                                        {hasRowActions && (
-                                            <td
-                                                className={cn(
-                                                    styles.cell,
-                                                    "w-14 text-right",
-                                                )}
-                                            >
-                                                {availableActions.length > 0 && (
-                                                    <DropdownMenu
-                                                        label="Row actions"
-                                                        items={availableActions.map(
-                                                            (action) => ({
-                                                                label: action.label,
-                                                                destructive: action.destructive,
-                                                                disabled: action.disabled?.(row),
-                                                                onSelect: () => action.onSelect(row),
-                                                            }),
-                                                        )}
-                                                    />
-                                                )}
-                                            </td>
-                                        )}
-                                    </tr>
-                                );
-                            })
+                                    {hasRowActions && (
+                                        <td
+                                            className={cn(
+                                                styles.cell,
+                                                "w-14 text-right",
+                                            )}
+                                        >
+                                            <TableRowActions
+                                                row={row}
+                                                actions={rowActions}
+                                                onSuccess={onRowActionSuccess}
+                                                onError={onRowActionError}
+                                            />
+                                        </td>
+                                    )}
+                                </tr>
+                            ))
                         )}
                     </tbody>
                 </table>

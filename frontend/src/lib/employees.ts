@@ -57,6 +57,8 @@ export async function getEmployees(
 ): Promise<PageResponse<Employee>> {
     const params = new URLSearchParams();
 
+    params.set("directory", filters.directory ?? "current");
+
     if (filters.page !== undefined) {
         params.set("page", String(filters.page));
     }
@@ -132,4 +134,13 @@ export async function reactivateEmployee(employeeId: string): Promise<void> {
     await apiFetch<void>(`/api/employees/${employeeId}/reactivate`, {
         method: "POST",
     });
+}
+
+export function revokeEmployeeInvitation(employeeId: string): Promise<void> {
+    return apiFetch<void>(
+        `/api/employees/invitations/${employeeId}/cancel`,
+        {
+            method: "POST",
+        },
+    );
 }
