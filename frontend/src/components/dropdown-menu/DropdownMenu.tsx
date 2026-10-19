@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
 import { cn } from "../../lib/cn";
@@ -49,7 +49,7 @@ export function DropdownMenu({
         openAbove: false,
     });
 
-    function updatePosition() {
+    const updatePosition = useCallback(() => {
         const trigger = triggerRef.current;
 
         if (!trigger) {
@@ -101,7 +101,7 @@ export function DropdownMenu({
             ),
             openAbove,
         });
-    }
+    }, [ items.length ]);
 
     function closeMenu(restoreFocus = true) {
         if (popoverRef.current?.matches(":popover-open")) {
@@ -219,7 +219,7 @@ export function DropdownMenu({
             window.removeEventListener("scroll", handlePositionChange, true);
             window.removeEventListener("resize", handlePositionChange);
         };
-    }, [ open ]);
+    }, [ open, updatePosition ]);
 
     useEffect(() => {
         if (disabled && open) {

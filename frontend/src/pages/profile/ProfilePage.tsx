@@ -11,6 +11,7 @@ import { updateProfile } from "../../lib/profile";
 import { useAuth } from "../../providers/AuthProvider";
 import { type ProfileFormValues, profileSchema } from "./ProfilePage.schema";
 import { profilePageStyles as styles } from "./ProfilePage.styles";
+import { PageHeader } from "../../components/page-header/PageHeader";
 
 export function Component() {
     const { employee, updateEmployee } = useAuth();
@@ -68,10 +69,10 @@ export function Component() {
 
     return (
         <div className={styles.root}>
-            <header className={styles.header}>
-                <h1 className={styles.title}>My profile</h1>
-                <p className={styles.description}>Manage your personal information and workplace details.</p>
-            </header>
+            <PageHeader
+                title="My profile"
+                description="Manage your personal information and workplace details."
+            />
 
             <Card variant="flat" padding="lg" className={styles.profileCard}>
                 <div className={styles.profileHeader}>
