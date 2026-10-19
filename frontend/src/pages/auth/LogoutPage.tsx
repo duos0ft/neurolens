@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router";
 
+import { Button } from "../../components/button";
+import { Loading } from "../../components/loading";
 import { logout } from "../../lib/auth";
 import { useAuth } from "../../providers/AuthProvider";
-import { Loading } from "../../components/loading";
 
 export function Component() {
-    const { authenticated, loading } = useAuth();
+    const {
+        authenticated,
+        loading,
+        invalidateSession,
+    } = useAuth();
+
     const logoutStarted = useRef(false);
     const [ error, setError ] = useState(false);
 
@@ -19,42 +25,59 @@ export function Component() {
 
         async function startLogout() {
             try {
-                const response = await fetch("/api/auth/csrf", {
-                    credentials: "same-origin",
-                    cache: "no-store",
-                });
 
-                if (!response.ok) {
-                    throw new Error("Unable to retrieve CSRF token");
-                }
+                const response = await logout();
 
-                const { csrf_token } = await response.json();
+                invalidateSession();
 
-                logout({ csrfToken: csrf_token });
+                window.location.replace(response.logout_url);
             } catch {
                 setError(true);
+                logoutStarted.current = false;
             }
         }
 
         void startLogout();
-    }, [ loading, authenticated ]);
+    }, [ loading, authenticated, invalidateSession ]);
 
     if (loading) {
-        return <Loading title="Checking your session..." />;
+        return <Loading title="Checking your session..."/>;
     }
 
-    if (!authenticated) {
-        return <Navigate to="/auth/logged-out" replace />;
+    if (!authenticated && !logoutStarted.current && !error) {
+        return <Navigate to="/auth/logged-out" replace/>;
     }
 
     if (error) {
         return (
-            <div className="text-center">
-                <h1 className="text-title font-semibold text-fg">Unable to sign out</h1>
-                <p className="mt-2 text-sm text-fg-muted">Please try again.</p>
+            <div className="flex flex-col items-center gap-4 text-center">
+                <h1 className="text-title font-semibold text-fg">
+                    Unable to sign out
+                </h1>
+
+                <p className="text-sm text-fg-muted">
+                    We couldn't complete sign-out. Please try again.
+                </p>
+
+                <Button
+                    variant="primary"
+                    onClick={() => {
+                        setError(false);
+                        logoutStarted.current = false;
+                        window.location.reload();
+                    }}
+                >
+                    Try again
+                </Button>
             </div>
         );
     }
 
-    return <Loading size="xl" title="Signing you out" description="Ending your secure session..." />;
+    return (
+        <Loading
+            size="xl"
+            title="Signing you out"
+            description="Ending your secure session..."
+        />
+    );
 }

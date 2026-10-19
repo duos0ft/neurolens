@@ -29,6 +29,7 @@ async def verify_id_token(
     claims = token.claims
 
     registry = JWTClaimsRegistry(
+        leeway=30,
         iss={
             "essential": True,
             "value": get_auth0_issuer(),
@@ -49,9 +50,6 @@ async def verify_id_token(
 
     if claims["exp"] <= now:
         raise ValueError("ID token has expired")
-
-    if claims["iat"] > now + 60:
-        raise ValueError("Invalid ID token issued-at time")
 
     if not isinstance(claims["sub"], str) or not claims["sub"]:
         raise ValueError("Invalid subject")

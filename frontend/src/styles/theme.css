@@ -64,15 +64,20 @@
     --neg-bg: #fffbeb;
     --neg-fg: #b45309;
 
+    /* Destructive actions */
+    --destructive: #dc2626;
+    --destructive-hover: #b91c1c;
+    --on-destructive: #ffffff;
+
     /* Orb */
     --orb-gradient: radial-gradient(
-        circle at 32% 28%,
-        #ffffff 0%,
-        #bfe0ff 14%,
-        #6fb4ff 36%,
-        #2c7bff 62%,
-        #0a5cff 80%,
-        #0626b8 100%
+            circle at 32% 28%,
+            #ffffff 0%,
+            #bfe0ff 14%,
+            #6fb4ff 36%,
+            #2c7bff 62%,
+            #0a5cff 80%,
+            #0626b8 100%
     );
 
     /* Comfort */
@@ -130,6 +135,11 @@
     /* Negative feedback */
     --neg-bg: rgb(245 158 11 / 14%);
     --neg-fg: #fbbf24;
+
+    /* Destructive actions */
+    --destructive: #dc2626;
+    --destructive-hover: #b91c1c;
+    --on-destructive: #ffffff;
 
     color-scheme: dark;
 }
@@ -218,6 +228,11 @@
 
     /* Dynamic reading font */
     --font-body: var(--font-reading);
+
+    /* Destructive actions */
+    --color-destructive: var(--destructive);
+    --color-destructive-hover: var(--destructive-hover);
+    --color-on-destructive: var(--on-destructive);
 }
 
 /* =========================================================
@@ -283,14 +298,14 @@
     /* -------------------------------------------------------
        Border Radii
        ------------------------------------------------------- */
-    --radius-xs: 8px;
-    --radius-sm: 10px;
-    --radius-seg: 11px;
-    --radius-md: 14px;
-    --radius-lg: 16px;
-    --radius-xl: 18px;
-    --radius-bubble: 20px;
-    --radius-composer: 24px;
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-seg: 8px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-bubble: 18px;
+    --radius-composer: 18px;
     --radius-full: 9999px;
 
     /* -------------------------------------------------------

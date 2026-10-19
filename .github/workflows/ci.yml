@@ -48,6 +48,21 @@ jobs:
     name: Backend - Tests, Lint & Format
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neurolens_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d neurolens_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       APP_ENV: testing
 
@@ -55,14 +70,30 @@ jobs:
       SUPABASE_PUBLISHABLE_KEY: test-publishable-key
       SUPABASE_SECRET_KEY: test-secret-key
 
-      DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+      DATABASE_URL: postgresql+asyncpg://neurolens_admin:postgres@localhost:5432/neurolens_test
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/neurolens_test
+
+      TEST_DATABASE_URL: postgresql+asyncpg://neurolens_admin:postgres@localhost:5432/neurolens_test
+      TEST_MIGRATION_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/neurolens_test
 
       AUTH0_DOMAIN: example.auth0.com
       AUTH0_CLIENT_ID: test-client-id
       AUTH0_CLIENT_SECRET: test-client-secret
       AUTH0_REDIRECT_URI: http://localhost:3000/api/auth/callback
 
+      AUTH0_MANAGEMENT_CLIENT_ID: test-management-client-id
+      AUTH0_MANAGEMENT_CLIENT_SECRET: test-management-client-secret
+
       CSRF_SECRET_KEY: test-only-csrf-secret-key
+      RESEND_API_KEY: re_test_placeholder
+      RESEND_FROM_EMAIL: onboarding@example.com
+      INVITATION_ENCRYPTION_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: neurolens_test
 
     defaults:
       run:
@@ -79,16 +110,34 @@ jobs:
           cache-dependency-glob: backend/uv.lock
 
       - name: Install Python
-        run: uv python install 3.12
+        run: uv python install 3.14
 
       - name: Install dependencies
-        run: uv sync --locked
+        run: uv sync --locked --group dev --python 3.14
 
       - name: Check Python lint
         run: uv run --no-sync ruff check .
 
       - name: Check Python formatting
         run: uv run --no-sync ruff format --check .
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Initialize test database role
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/init_test_db.sql
+
+      - name: Apply database migrations
+        run: uv run --no-sync python -m scripts.migrate_test_db
+
+      - name: Verify database setup
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "SELECT current_database();"
+          psql -v ON_ERROR_STOP=1 -c "\dt public.*"
+          psql -v ON_ERROR_STOP=1 -c "SELECT rolname FROM pg_roles WHERE rolname = 'neurolens_admin';"
 
       - name: Run backend tests
         run: uv run --no-sync pytest tests/ -v

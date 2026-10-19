@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,12 +12,15 @@ class Settings(BaseSettings):
 
     # PostgreSQL
     database_url: str
+    migration_database_url: str | None = None
 
     # Auth0
     auth0_domain: str
     auth0_client_id: str
     auth0_client_secret: str
     auth0_redirect_uri: str
+    auth0_management_client_id: str
+    auth0_management_client_secret: str
 
     # Frontend
     frontend_url: str = "http://localhost:3000"
@@ -29,6 +33,13 @@ class Settings(BaseSettings):
 
     # OAuth
     oauth_state_lifetime_seconds: int = 600  # 10 minutes
+    invitation_lifetime_days: int = 7
+    invitation_provisioning_lease_seconds: int = 300
+
+    # Email
+    resend_api_key: str
+    resend_from_email: EmailStr = "onboarding@resend.dev"
+    invitation_encryption_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

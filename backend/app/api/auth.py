@@ -13,21 +13,28 @@ from fastapi import (
     Response,
     status,
 )
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
-from joserfc.errors import JoseError
+from joserfc.errors import InvalidClaimError, JoseError
+from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_employee
+from app.core.auth import get_current_employee, get_current_employee_read_only
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db
 from app.core.oauth import create_auth0_client, get_auth0_token_url
 from app.core.settings import settings
 from app.models.auth_flow import AuthFlow
 from app.models.employee import Employee
+from app.models.employee_invitation import EmployeeInvitation
+from app.models.employee_profile import EmployeeProfile
 from app.models.employee_session import EmployeeSession
+from app.schemas.employee import (
+    AuthenticatedEmployeeResponse,
+    InvitationValidationResponse,
+)
 from app.services.auth0 import verify_id_token
 from app.services.auth_flow import consume_auth_flow
 from app.services.oauth import (
@@ -45,6 +52,10 @@ router = APIRouter(
 )
 
 OAUTH_COOKIE_NAME = "neurolens_oauth"
+
+
+class ValidateInvitationRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=512)
 
 
 def reject_authentication(reason: str) -> RedirectResponse:
@@ -74,6 +85,142 @@ def get_auth0_logout_url() -> str:
     return f"https://{settings.auth0_domain}/oidc/logout?{parameters}"
 
 
+def invitation_is_available(
+    invitation: EmployeeInvitation,
+    employee: Employee,
+) -> bool:
+    return (
+        invitation.status == "ready"
+        and invitation.expires_at > datetime.now(timezone.utc)
+        and employee.status == "invited"
+        and employee.provisioning_status == "completed"
+        and bool(employee.auth0_user_id)
+        and bool(employee.email)
+    )
+
+
+@router.post(
+    "/invitations/validate",
+    response_model=InvitationValidationResponse,
+    dependencies=[Depends(validate_request_origin)],
+)
+async def validate_invitation(
+    payload: ValidateInvitationRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    response: Response,
+) -> InvitationValidationResponse:
+    response.headers["Cache-Control"] = "no-store"
+
+    result = await db.execute(
+        select(EmployeeInvitation, Employee)
+        .join(
+            Employee,
+            Employee.user_id == EmployeeInvitation.employee_id,
+        )
+        .where(
+            EmployeeInvitation.token_hash == hash_token(payload.token),
+        )
+    )
+
+    record = result.one_or_none()
+
+    if record is None or not invitation_is_available(*record):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation is invalid or no longer available.",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    invitation, employee = record
+
+    return InvitationValidationResponse(
+        email=employee.email,
+        role=employee.role,
+        expires_at=invitation.expires_at,
+    )
+
+
+@router.post(
+    "/invitations/login",
+    dependencies=[Depends(validate_request_origin)],
+)
+async def login_with_invitation(
+    payload: ValidateInvitationRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> JSONResponse:
+    result = await db.execute(
+        select(EmployeeInvitation, Employee)
+        .join(
+            Employee,
+            Employee.user_id == EmployeeInvitation.employee_id,
+        )
+        .where(
+            EmployeeInvitation.token_hash == hash_token(payload.token),
+        )
+    )
+
+    record = result.one_or_none()
+
+    if record is None or not invitation_is_available(*record):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This invitation is invalid or no longer available.",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    invitation, employee = record
+
+    state = generate_token()
+    browser_nonce = generate_token()
+    oidc_nonce = generate_token()
+    code_verifier = generate_token()
+
+    async with create_auth0_client() as client:
+        authorization_url, _ = client.create_authorization_url(
+            f"https://{settings.auth0_domain}/authorize",
+            state=state,
+            nonce=oidc_nonce,
+            code_challenge=generate_code_challenge(code_verifier),
+            code_challenge_method="S256",
+            connection="email",
+            login_hint=employee.email,
+        )
+
+    db.add(
+        AuthFlow(
+            state_hash=hash_token(state),
+            browser_nonce_hash=hash_token(browser_nonce),
+            oidc_nonce=oidc_nonce,
+            code_verifier=code_verifier,
+            invitation_id=invitation.id,
+            expires_at=(
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.oauth_state_lifetime_seconds)
+            ),
+        )
+    )
+
+    await db.commit()
+
+    response = JSONResponse(
+        content={"authorization_url": authorization_url},
+    )
+
+    response.set_cookie(
+        key=OAUTH_COOKIE_NAME,
+        value=browser_nonce,
+        max_age=settings.oauth_state_lifetime_seconds,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite="lax",
+        path="/api/auth",
+    )
+
+    response.headers["Cache-Control"] = "no-store"
+
+    return response
+
+
 @router.get("/login")
 async def login(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -99,10 +246,7 @@ async def login(
         oidc_nonce=oidc_nonce,
         code_verifier=code_verifier,
         expires_at=(
-            datetime.now(timezone.utc)
-            + timedelta(
-                seconds=settings.oauth_state_lifetime_seconds,
-            )
+            datetime.now(timezone.utc) + timedelta(seconds=settings.oauth_state_lifetime_seconds)
         ),
     )
 
@@ -176,6 +320,13 @@ async def callback(
             flow.oidc_nonce,
         )
 
+    except InvalidClaimError as exc:
+        logger.warning(
+            "Auth0 ID token rejected: %s",
+            exc,
+        )
+        return reject_authentication("authentication_failed")
+
     except (
         OAuthError,
         httpx.HTTPError,
@@ -186,23 +337,72 @@ async def callback(
             "Auth0 authentication failed: %s",
             type(exc).__name__,
         )
-
         return reject_authentication("authentication_failed")
 
-    employee = await db.scalar(
-        select(Employee).where(
-            Employee.auth0_user_id == claims["sub"],
-            Employee.status == "active",
+    if flow.invitation_id is not None:
+        invitation = await db.scalar(
+            select(EmployeeInvitation)
+            .where(
+                EmployeeInvitation.id == flow.invitation_id,
+            )
+            .with_for_update()
         )
-    )
 
-    if employee is None:
-        return reject_authentication("access_denied")
+        if invitation is None:
+            await db.rollback()
+            return reject_authentication("access_denied")
 
-    session_token = await create_employee_session(
-        db,
-        employee.user_id,
-    )
+        employee = await db.scalar(
+            select(Employee)
+            .where(
+                Employee.user_id == invitation.employee_id,
+            )
+            .with_for_update()
+        )
+
+        authenticated_email = claims.get("email")
+
+        if (
+            employee is None
+            or not invitation_is_available(invitation, employee)
+            or employee.auth0_user_id != claims.get("sub")
+            or claims.get("email_verified") is not True
+            or not isinstance(authenticated_email, str)
+            or authenticated_email.casefold() != employee.email.casefold()
+        ):
+            await db.rollback()
+            return reject_authentication("access_denied")
+
+        employee.status = "active"
+        invitation.status = "accepted"
+        invitation.accepted_at = datetime.now(timezone.utc)
+
+    else:
+        employee = await db.scalar(
+            select(Employee).where(
+                Employee.auth0_user_id == claims["sub"],
+                Employee.status == "active",
+            )
+        )
+
+        if employee is None:
+            await db.rollback()
+            return reject_authentication("access_denied")
+
+    try:
+        session_token = await create_employee_session(
+            db,
+            employee.user_id,
+        )
+
+        await db.commit()
+
+    except Exception:
+        await db.rollback()
+
+        logger.exception("Failed to complete employee authentication")
+
+        raise
 
     response = RedirectResponse(
         url=f"{settings.frontend_url}{flow.return_path}",
@@ -229,18 +429,33 @@ async def callback(
     return response
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    response_model=AuthenticatedEmployeeResponse,
+)
 async def get_me(
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[Employee, Depends(get_current_employee_read_only)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     response: Response,
-):
+) -> AuthenticatedEmployeeResponse:
+    profile = await db.scalar(
+        select(EmployeeProfile).where(
+            EmployeeProfile.user_id == employee.user_id,
+        )
+    )
+
     response.headers["Cache-Control"] = "no-store"
 
-    return {
-        "id": employee.user_id,
-        "role": employee.role,
-        "status": employee.status,
-    }
+    return AuthenticatedEmployeeResponse(
+        id=employee.user_id,
+        email=employee.email,
+        role=employee.role,
+        status=employee.status,
+        display_name=profile.display_name if profile else None,
+        job_title=profile.job_title if profile else None,
+        department=profile.department if profile else None,
+        team=profile.team if profile else None,
+    )
 
 
 @router.get("/csrf")
@@ -299,9 +514,10 @@ async def logout(
 
         await db.commit()
 
-    response = RedirectResponse(
-        url=get_auth0_logout_url(),
-        status_code=status.HTTP_303_SEE_OTHER,
+    response = JSONResponse(
+        content={
+            "logout_url": get_auth0_logout_url(),
+        }
     )
 
     response.delete_cookie(

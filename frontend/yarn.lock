@@ -303,6 +303,90 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hookform/resolvers@npm:^5.9.1":
+  version: 5.9.1
+  resolution: "@hookform/resolvers@npm:5.9.1"
+  dependencies:
+    "@standard-schema/utils": "npm:^0.3.0"
+  peerDependencies:
+    "@sinclair/typebox": ">=0.25.24"
+    "@standard-schema/spec": ^1.0.0
+    "@typeschema/main": ">=0.13.7"
+    "@vinejs/vine": ^2.0.0 || ^3.0.0 || ^4.0.0
+    ajv: ^8.12.0
+    ajv-errors: ^3.0.0
+    ajv-formats: ^2.1.1
+    arktype: ^2.0.0
+    ata-validator: ^1.2.0
+    class-transformer: ">=0.4.0"
+    class-validator: ">=0.12.0"
+    computed-types: ^1.0.0
+    effect: ^3.10.3
+    fluentvalidation-ts: ^3.0.0
+    fp-ts: ^2.7.0
+    io-ts: ^2.0.0
+    joi: ^17.0.0 || ^18.0.0
+    nope-validator: ">=0.12.0"
+    react-hook-form: ^7.55.0
+    superstruct: ">=0.12.0"
+    typanion: ^3.3.2
+    valibot: ">=0.31.0 || ^1.0.0-beta.4 || ^1.0.0-rc"
+    vest: ">=6.0.0"
+    yup: ^1.0.0
+    zod: ^3.25.0 || ^4.0.0
+  peerDependenciesMeta:
+    "@sinclair/typebox":
+      optional: true
+    "@standard-schema/spec":
+      optional: true
+    "@typeschema/main":
+      optional: true
+    "@vinejs/vine":
+      optional: true
+    ajv:
+      optional: true
+    ajv-errors:
+      optional: true
+    ajv-formats:
+      optional: true
+    arktype:
+      optional: true
+    ata-validator:
+      optional: true
+    class-transformer:
+      optional: true
+    class-validator:
+      optional: true
+    computed-types:
+      optional: true
+    effect:
+      optional: true
+    fluentvalidation-ts:
+      optional: true
+    fp-ts:
+      optional: true
+    io-ts:
+      optional: true
+    joi:
+      optional: true
+    nope-validator:
+      optional: true
+    superstruct:
+      optional: true
+    typanion:
+      optional: true
+    valibot:
+      optional: true
+    vest:
+      optional: true
+    yup:
+      optional: true
+    zod:
+      optional: true
+  checksum: 10c0/08d4e1455a072bea182468d878527e2e99c6d079fe56ffc5297e03a8219fe7544db092afcdf7a950e5421390d4dae3a21398c8ccd0b2c8639d0e0ff9e21410c2
+  languageName: node
+  linkType: hard
+
 "@humanfs/core@npm:^0.19.2":
   version: 0.19.2
   resolution: "@humanfs/core@npm:0.19.2"
@@ -655,6 +739,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@standard-schema/utils@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@standard-schema/utils@npm:0.3.0"
+  checksum: 10c0/6eb74cd13e52d5fc74054df51e37d947ef53f3ab9e02c085665dcca3c38c60ece8d735cebbdf18fbb13c775fbcb9becb3f53109b0e092a63f0f7389ce0993fd0
+  languageName: node
+  linkType: hard
+
 "@stylistic/eslint-plugin@npm:^5.10.0":
   version: 5.10.0
   resolution: "@stylistic/eslint-plugin@npm:5.10.0"
@@ -848,6 +939,24 @@ __metadata:
     webpack:
       optional: true
   checksum: 10c0/0c399ebfb86d27871ed4d8b22628838e1f9ce3aff97b2a1b1a0ef3724b6a639e50b37f2fe3a2e7172f4475b93b20e9903fbb82b9ff6f7cd760f0f990988149a2
+  languageName: node
+  linkType: hard
+
+"@tanstack/query-core@npm:5.104.3":
+  version: 5.104.3
+  resolution: "@tanstack/query-core@npm:5.104.3"
+  checksum: 10c0/2d21f625818069d907d5d7a09555a0687a445bdf929891214a804636987dd8c4fb7b35468cecb0d9c353c9012fca431a105314bd0ada726537c1188711376e83
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-query@npm:^5.104.3":
+  version: 5.104.3
+  resolution: "@tanstack/react-query@npm:5.104.3"
+  dependencies:
+    "@tanstack/query-core": "npm:5.104.3"
+  peerDependencies:
+    react: ^18 || ^19
+  checksum: 10c0/ff797cfb3d4c6cbe49c3bfae9475df50985fbe2064e470325c287d3b86d019d8be7f25291a9c02ccc319fcf8df968181088278472cf72b9cb68a4f6786263721
   languageName: node
   linkType: hard
 
@@ -1541,10 +1650,12 @@ __metadata:
   resolution: "frontend@workspace:."
   dependencies:
     "@eslint/js": "npm:9"
+    "@hookform/resolvers": "npm:^5.9.1"
     "@rsbuild/core": "npm:^2.2.12"
     "@rsbuild/plugin-react": "npm:^2.1.1"
     "@rsbuild/plugin-tailwindcss": "npm:^2.0.3"
     "@stylistic/eslint-plugin": "npm:^5.10.0"
+    "@tanstack/react-query": "npm:^5.104.3"
     "@types/node": "npm:^24.19.1"
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
@@ -1555,15 +1666,18 @@ __metadata:
     eslint-plugin-prettier: "npm:^5.5.6"
     eslint-plugin-react-hooks: "npm:^7.1.1"
     globals: "npm:^17.13.0"
-    lucide-react: "npm:^1.54.0"
+    lucide-react: "npm:^1.55.0"
     prettier: "npm:^3.9.9"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
+    react-hook-form: "npm:^7.90.0"
     react-router: "npm:^8.4.0"
+    sonner: "npm:^2.0.8"
     tailwind-merge: "npm:^3.7.0"
     tailwindcss: "npm:4"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.71.1"
+    zod: "npm:^4.6.7"
   languageName: unknown
   linkType: soft
 
@@ -1911,16 +2025,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lucide-react@npm:^1.54.0":
-  version: 1.54.0
-  resolution: "lucide-react@npm:1.54.0"
+"lucide-react@npm:^1.55.0":
+  version: 1.55.0
+  resolution: "lucide-react@npm:1.55.0"
   peerDependencies:
     "@types/react": "*"
     react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/28c80675dfd7daf76cc50fd737245c108b1d65c56c065babc3fd23d8f626cbec76aff9115a5f83e5124f80c7342b2042c64160aea6e5cb63021906b643bb2e99
+  checksum: 10c0/0618af0eb06e0ea71a7c66b39b89158ff357093714fff5f4bfc1b4851af890ffc49092956b08daf89f38c7ff48f783bb14e7b52756aae4f6bed06da4cf297821
   languageName: node
   linkType: hard
 
@@ -2084,6 +2198,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-hook-form@npm:^7.90.0":
+  version: 7.90.0
+  resolution: "react-hook-form@npm:7.90.0"
+  peerDependencies:
+    "@types/react": "*"
+    react: ^16.8.0 || ^17 || ^18 || ^19
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/4278859ea6d1ed9288eade929255a21129a726e097121a9b6b290fc33e296d539e3cb290e3d07de37f3f5cc9b84722c1acf23d8657570729a6264230318b792a
+  languageName: node
+  linkType: hard
+
 "react-refresh@npm:^0.19.0":
   version: 0.19.0
   resolution: "react-refresh@npm:0.19.0"
@@ -2159,6 +2286,20 @@ __metadata:
   version: 3.0.0
   resolution: "shebang-regex@npm:3.0.0"
   checksum: 10c0/1dbed0726dd0e1152a92696c76c7f06084eb32a90f0528d11acd764043aacf76994b2fb30aa1291a21bd019d6699164d048286309a278855ee7bec06cf6fb690
+  languageName: node
+  linkType: hard
+
+"sonner@npm:^2.0.8":
+  version: 2.0.8
+  resolution: "sonner@npm:2.0.8"
+  peerDependencies:
+    "@types/react": ^18.0.0 || ^19.0.0
+    react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+    react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/cc271f78dca7e7d7ce34a724883f3292ba671b5ed3d41732430df28c38a8f6a47e8e59da5fdd0b258ac07136db0cdaf02f8cda9afb9cc9f12d81b6c319b427f7
   languageName: node
   linkType: hard
 
@@ -2360,5 +2501,12 @@ __metadata:
   version: 4.6.5
   resolution: "zod@npm:4.6.5"
   checksum: 10c0/32eb6c5e98becbe045675b2141c3611451c16ba567f9779231d79af41c4d651ca1c22f154aef7e6c6e77b929f23e43f1154ca05b82e119e922353725d6776af5
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.6.7":
+  version: 4.6.7
+  resolution: "zod@npm:4.6.7"
+  checksum: 10c0/4ce2eb14034317b7254e347ca37b5ad591cf8333147030cf05b9b5d31692d45073f7f2747aa50cf8c6b29012194d2b22978cecc89969cf34a0d18e89d0ee7d7b
   languageName: node
   linkType: hard

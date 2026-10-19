@@ -7,19 +7,24 @@
         "build": "rsbuild build",
         "dev": "rsbuild",
         "preview": "rsbuild preview",
-        "format": "prettier --write . && eslint . --fix",
-        "format:check": "prettier --check .",
+        "format": "eslint . --fix",
+        "format:check": "eslint .",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix"
     },
     "dependencies": {
+        "@hookform/resolvers": "^5.9.1",
+        "@tanstack/react-query": "^5.104.3",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
-        "lucide-react": "^1.54.0",
+        "lucide-react": "^1.55.0",
         "react": "^19.3.0",
         "react-dom": "^19.3.0",
+        "react-hook-form": "^7.90.0",
         "react-router": "^8.4.0",
-        "tailwind-merge": "^3.7.0"
+        "sonner": "^2.0.8",
+        "tailwind-merge": "^3.7.0",
+        "zod": "^4.6.7"
     },
     "devDependencies": {
         "@eslint/js": "9",
