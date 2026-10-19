@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.base import Base
 
-
 # Expected SQL privileges for the trusted backend database role.
 # New tables must declare an explicit access profile here.
 EXPECTED_ACCESS = {
