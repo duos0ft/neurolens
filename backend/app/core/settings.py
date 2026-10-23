@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     resend_from_email: EmailStr = "onboarding@resend.dev"
     invitation_encryption_key: str
 
+    # OpenAI
+    ai_text_generation_provider: str = "openai"
+    openai_api_key: str | None = None
+    openai_text_generation_model: str = "gpt-4.1-mini"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
