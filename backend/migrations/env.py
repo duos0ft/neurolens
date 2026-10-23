@@ -16,6 +16,9 @@ from app.models.employee import Employee  # noqa: F401
 from app.models.employee_invitation import EmployeeInvitation  # noqa: F401
 from app.models.employee_profile import EmployeeProfile  # noqa: F401
 from app.models.employee_session import EmployeeSession  # noqa: F401
+from app.models.application_settings import ApplicationSettings  # noqa: F401
+from app.models.conversation import Conversation  # noqa: F401
+from app.models.conversation_message import ConversationMessage  # noqa: F401
 
 config = context.config
 migration_url = settings.migration_database_url or settings.database_url
@@ -27,6 +30,9 @@ MANAGED_TABLES = {
     "employee_invitations",
     "auth_flows",
     "email_outbox",
+    "application_settings",
+    "conversations",
+    "conversation_messages",
 }
 
 if config.config_file_name is not None:
