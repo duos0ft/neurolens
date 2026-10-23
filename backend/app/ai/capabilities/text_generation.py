@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 
 @dataclass(frozen=True)
 class GenerationMessage:
-    role: str
+    role: Literal["user", "assistant"]
     content: str
 
 
@@ -18,6 +18,10 @@ class TextGenerationRequest:
 class TextGenerationResponse:
     content: str
     model: str
+
+
+class TextGenerationError(Exception):
+    """Raised when a text generation provider cannot complete a request."""
 
 
 class TextGenerationProvider(Protocol):

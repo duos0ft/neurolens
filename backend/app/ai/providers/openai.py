@@ -1,6 +1,7 @@
-from openai import AsyncOpenAI
+from openai import APIError, APITimeoutError, AsyncOpenAI
 
 from app.ai.capabilities.text_generation import (
+    TextGenerationError,
     TextGenerationRequest,
     TextGenerationResponse,
 )
@@ -27,19 +28,18 @@ class OpenAITextGenerationProvider:
             for message in request.messages
         ]
 
-        if request.system_instructions:
-            messages.insert(
-                0,
-                {
-                    "role": "developer",
-                    "content": request.system_instructions,
-                },
+        try:
+            response = await self.client.responses.create(
+                model=self.model,
+                instructions=request.system_instructions,
+                input=messages,
             )
 
-        response = await self.client.responses.create(
-            model=self.model,
-            input=messages,
-        )
+        except (APIError, APITimeoutError) as error:
+            raise TextGenerationError("Text generation provider unavailable") from error
+
+        if not response.output_text:
+            raise TextGenerationError("Text generation provider returned an empty response")
 
         return TextGenerationResponse(
             content=response.output_text,
