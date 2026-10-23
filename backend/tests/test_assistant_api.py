@@ -6,12 +6,12 @@ import pytest
 from fastapi_csrf_protect import CsrfProtect
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.assistant import get_assistant_service
 from app.ai.capabilities.text_generation import (
+    TextGenerationError,
     TextGenerationRequest,
     TextGenerationResponse,
-    TextGenerationError,
 )
+from app.api.assistant import get_assistant_service
 from app.core.database import get_db
 from app.core.settings import settings
 from app.main import create_app

@@ -18,7 +18,6 @@ from app.schemas.assistant import (
 )
 from app.services.assistant import AssistantService
 
-
 router = APIRouter(
     prefix="/assistant",
     tags=["Assistant"],

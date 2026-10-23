@@ -28,5 +28,4 @@ class TextGenerationProvider(Protocol):
     async def generate(
         self,
         request: TextGenerationRequest,
-    ) -> TextGenerationResponse:
-        ...
+    ) -> TextGenerationResponse: ...
