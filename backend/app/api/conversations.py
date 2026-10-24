@@ -4,13 +4,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.capabilities.text_generation import TextGenerationError
 from app.api.assistant import get_assistant_service
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
-from app.core.database import get_db
+from app.core.database import get_db, get_session_factory
 from app.models.employee import Employee
 from app.schemas.conversation import (
     ConversationDetailResponse,
@@ -31,8 +31,15 @@ router = APIRouter(
 
 def get_conversation_service(
     db: Annotated[AsyncSession, Depends(get_db)],
+    session_factory: Annotated[
+        async_sessionmaker[AsyncSession],
+        Depends(get_session_factory),
+    ],
 ) -> ConversationService:
-    return ConversationService(db)
+    return ConversationService(
+        db=db,
+        session_factory=session_factory,
+    )
 
 
 async def validate_mutation_csrf(

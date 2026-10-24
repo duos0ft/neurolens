@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 import pytest
@@ -13,6 +14,44 @@ from app.services.assistant import AssistantService
 from app.services.conversation import ConversationService
 
 
+class MockTextGenerationProvider:
+    def __init__(self) -> None:
+        self.assistant_requests: list[TextGenerationRequest] = []
+        self.title_requests: list[TextGenerationRequest] = []
+        self.fail_title = False
+        self.timeout_title = False
+
+    async def generate(
+        self,
+        request: TextGenerationRequest,
+    ) -> TextGenerationResponse:
+        is_title_request = (
+            request.system_instructions is not None
+            and "Generate a short, descriptive title" in request.system_instructions
+        )
+
+        if is_title_request:
+            self.title_requests.append(request)
+
+            if self.fail_title:
+                raise TextGenerationError("Title provider unavailable")
+
+            if self.timeout_title:
+                raise TimeoutError("Title generation timed out")
+
+            return TextGenerationResponse(
+                content="Understanding Workplace Assignments",
+                model="mock-model",
+            )
+
+        self.assistant_requests.append(request)
+
+        return TextGenerationResponse(
+            content="Here are three steps to complete your assignment.",
+            model="mock-model",
+        )
+
+
 @pytest.mark.asyncio
 async def test_employee_can_create_conversation(
     test_session_factory: async_sessionmaker[AsyncSession],
@@ -21,7 +60,10 @@ async def test_employee_can_create_conversation(
     employee_id = test_invitation.employee_id
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
 
         conversation = await service.create(
             employee_id=employee_id,
@@ -46,7 +88,10 @@ async def test_employee_can_list_own_conversations(
     employee_id = test_invitation.employee_id
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
 
         first = await service.create(employee_id, "First conversation")
         second = await service.create(employee_id, "Second conversation")
@@ -68,7 +113,10 @@ async def test_employee_cannot_access_another_employees_conversation(
     another_employee_id = uuid.uuid4()
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
 
         conversation = await service.create(
             employee_id=owner_id,
@@ -109,7 +157,10 @@ async def test_employee_can_delete_own_conversation(
     employee_id = test_invitation.employee_id
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
 
         conversation = await service.create(
             employee_id=employee_id,
@@ -130,22 +181,6 @@ async def test_employee_can_delete_own_conversation(
         assert stored is None
 
 
-class MockTextGenerationProvider:
-    def __init__(self) -> None:
-        self.requests: list[TextGenerationRequest] = []
-
-    async def generate(
-        self,
-        request: TextGenerationRequest,
-    ) -> TextGenerationResponse:
-        self.requests.append(request)
-
-        return TextGenerationResponse(
-            content="Here are three steps to complete your assignment.",
-            model="mock-model",
-        )
-
-
 @pytest.mark.asyncio
 async def test_conversation_persists_message_exchange(
     test_session_factory: async_sessionmaker[AsyncSession],
@@ -156,12 +191,17 @@ async def test_conversation_persists_message_exchange(
     assistant = AssistantService(provider)
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
         conversation = await service.create(employee_id)
+        conversation_id = conversation.id
 
         result = await service.send_message(
             employee_id=employee_id,
-            conversation_id=conversation.id,
+            conversation_id=conversation_id,
             content="Help me understand this assignment.",
             assistant=assistant,
         )
@@ -179,7 +219,7 @@ async def test_conversation_persists_message_exchange(
 
         messages = await service.get_messages(
             employee_id=employee_id,
-            conversation_id=conversation.id,
+            conversation_id=conversation_id,
         )
 
         assert messages is not None
@@ -188,6 +228,9 @@ async def test_conversation_persists_message_exchange(
             "user",
             "assistant",
         ]
+
+        assert len(provider.assistant_requests) == 1
+        assert len(provider.title_requests) == 1
 
 
 @pytest.mark.asyncio
@@ -200,26 +243,32 @@ async def test_conversation_includes_previous_messages(
     assistant = AssistantService(provider)
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
         conversation = await service.create(employee_id)
+        conversation_id = conversation.id
 
         await service.send_message(
             employee_id,
-            conversation.id,
+            conversation_id,
             "Explain my assignment.",
             assistant,
         )
 
         await service.send_message(
             employee_id,
-            conversation.id,
+            conversation_id,
             "What should I do first?",
             assistant,
         )
 
-    assert len(provider.requests) == 2
+    assert len(provider.assistant_requests) == 2
+    assert len(provider.title_requests) == 1
 
-    second_request = provider.requests[1]
+    second_request = provider.assistant_requests[1]
 
     assert [message.role for message in second_request.messages] == [
         "user",
@@ -248,9 +297,12 @@ async def test_provider_failure_does_not_persist_messages(
     monkeypatch.setattr(provider, "generate", failing_generate)
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
-        conversation = await service.create(employee_id)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
 
+        conversation = await service.create(employee_id)
         conversation_id = conversation.id
 
         with pytest.raises(TextGenerationError):
@@ -277,7 +329,11 @@ async def test_employee_can_rename_conversation(
     employee_id = test_invitation.employee_id
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
         conversation = await service.create(employee_id)
 
         renamed = await service.rename(
@@ -304,7 +360,11 @@ async def test_employee_cannot_rename_another_conversation(
     another_employee_id = uuid.uuid4()
 
     async with test_session_factory() as db:
-        service = ConversationService(db)
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
         conversation = await service.create(employee_id)
 
         renamed = await service.rename(
@@ -319,3 +379,412 @@ async def test_employee_cannot_rename_another_conversation(
 
         assert stored is not None
         assert stored.title is None
+
+
+@pytest.mark.asyncio
+async def test_first_message_generates_conversation_title(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        assert conversation.title is None
+
+        result = await service.send_message(
+            employee_id=employee_id,
+            conversation_id=conversation_id,
+            content="Help me understand this assignment.",
+            assistant=assistant,
+        )
+
+        assert result is not None
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title == "Understanding Workplace Assignments"
+        assert len(provider.assistant_requests) == 1
+        assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_follow_up_message_does_not_regenerate_title(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        await service.send_message(
+            employee_id,
+            conversation_id,
+            "Help me understand my assignment.",
+            assistant,
+        )
+
+        await service.send_message(
+            employee_id,
+            conversation_id,
+            "What should I do next?",
+            assistant,
+        )
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title == "Understanding Workplace Assignments"
+
+    assert len(provider.assistant_requests) == 2
+    assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_manually_named_conversation_does_not_generate_title(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(
+            employee_id=employee_id,
+            title="My own conversation title",
+        )
+
+        conversation_id = conversation.id
+
+        result = await service.send_message(
+            employee_id,
+            conversation_id,
+            "Help me prepare for a meeting.",
+            assistant,
+        )
+
+        assert result is not None
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title == "My own conversation title"
+
+    assert len(provider.assistant_requests) == 1
+    assert len(provider.title_requests) == 0
+
+
+@pytest.mark.asyncio
+async def test_manual_rename_is_preserved_after_follow_up(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        await service.send_message(
+            employee_id,
+            conversation_id,
+            "Help me understand my assignment.",
+            assistant,
+        )
+
+        renamed = await service.rename(
+            employee_id=employee_id,
+            conversation_id=conversation_id,
+            title="My study plan",
+        )
+
+        assert renamed is not None
+        assert renamed.title == "My study plan"
+
+        await service.send_message(
+            employee_id,
+            conversation_id,
+            "What should I do tomorrow?",
+            assistant,
+        )
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title == "My study plan"
+
+    assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_title_generation_failure_preserves_messages(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    provider.fail_title = True
+
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        result = await service.send_message(
+            employee_id,
+            conversation_id,
+            "Help me organize my tasks.",
+            assistant,
+        )
+
+        assert result is not None
+
+        messages = await service.get_messages(
+            employee_id,
+            conversation_id,
+        )
+
+        assert messages is not None
+        assert len(messages) == 2
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title is None
+
+    assert len(provider.assistant_requests) == 1
+    assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_title_generation_timeout_preserves_messages(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    provider.timeout_title = True
+
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        result = await service.send_message(
+            employee_id,
+            conversation_id,
+            "Help me prepare for a meeting.",
+            assistant,
+        )
+
+        assert result is not None
+
+        messages = await service.get_messages(
+            employee_id,
+            conversation_id,
+        )
+
+        assert messages is not None
+        assert len(messages) == 2
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title is None
+
+    assert len(provider.assistant_requests) == 1
+    assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_title_failure_does_not_expire_main_session_objects(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    provider.fail_title = True
+
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        result = await service.send_message(
+            employee_id=employee_id,
+            conversation_id=conversation_id,
+            content="Help me organize my tasks.",
+            assistant=assistant,
+        )
+
+        assert result is not None
+
+        # A failed title-generation call must not roll back
+        # or expire ORM objects in the main session.
+        assert conversation.id == conversation_id
+
+        user_message, assistant_message = result
+
+        assert user_message.role == "user"
+        assert user_message.content == "Help me organize my tasks."
+        assert assistant_message.role == "assistant"
+        assert assistant_message.model == "mock-model"
+
+        messages = await service.get_messages(
+            employee_id=employee_id,
+            conversation_id=conversation_id,
+        )
+
+        assert messages is not None
+        assert len(messages) == 2
+
+        stored = await service.get(employee_id, conversation_id)
+
+        assert stored is not None
+        await db.refresh(stored)
+
+        assert stored.title is None
+
+    assert len(provider.assistant_requests) == 1
+    assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_manual_rename_wins_during_title_generation(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider)
+
+    title_started = asyncio.Event()
+    allow_title_to_finish = asyncio.Event()
+
+    original_generate = provider.generate
+
+    async def delayed_generate(
+        request: TextGenerationRequest,
+    ) -> TextGenerationResponse:
+        if (
+            request.system_instructions is not None
+            and "Generate a short, descriptive title" in request.system_instructions
+        ):
+            title_started.set()
+            await allow_title_to_finish.wait()
+
+        return await original_generate(request)
+
+    monkeypatch.setattr(provider, "generate", delayed_generate)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+        conversation_id = conversation.id
+
+        send_task = asyncio.create_task(
+            service.send_message(
+                employee_id=employee_id,
+                conversation_id=conversation_id,
+                content="Help me prepare for a meeting.",
+                assistant=assistant,
+            )
+        )
+
+        try:
+            await asyncio.wait_for(title_started.wait(), timeout=3)
+
+            # Rename using a separate database session,
+            # simulating another request from the frontend.
+            async with test_session_factory() as rename_db:
+                rename_service = ConversationService(
+                    db=rename_db,
+                    session_factory=test_session_factory,
+                )
+
+                renamed = await rename_service.rename(
+                    employee_id=employee_id,
+                    conversation_id=conversation_id,
+                    title="My meeting preparation",
+                )
+
+                assert renamed is not None
+                assert renamed.title == "My meeting preparation"
+
+        finally:
+            allow_title_to_finish.set()
+            await send_task
+
+        await db.refresh(conversation)
+
+        assert conversation.title == "My meeting preparation"
+
+    assert len(provider.assistant_requests) == 1
+    assert len(provider.title_requests) == 1

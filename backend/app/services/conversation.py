@@ -1,12 +1,17 @@
+import logging
 import uuid
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.capabilities.text_generation import GenerationMessage
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.services.assistant import AssistantService
+from app.services.conversation_title import ConversationTitleService
+
+
+logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 20
 
@@ -15,8 +20,10 @@ class ConversationService:
     def __init__(
         self,
         db: AsyncSession,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
     ) -> None:
         self.db = db
+        self.session_factory = session_factory
 
     async def create(
         self,
@@ -149,6 +156,8 @@ class ConversationService:
 
             next_sequence = (last_sequence or 0) + 1
 
+            should_generate_title = last_sequence is None and conversation.title is None
+
             user_message = ConversationMessage(
                 conversation_id=conversation_id,
                 sequence_number=next_sequence,
@@ -175,11 +184,78 @@ class ConversationService:
             await self.db.refresh(user_message)
             await self.db.refresh(assistant_message)
 
-            return user_message, assistant_message
-
         except Exception:
             await self.db.rollback()
             raise
+
+        if should_generate_title:
+            await self._generate_title(
+                employee_id=employee_id,
+                conversation_id=conversation_id,
+                user_message=content,
+                assistant_response=response.content,
+                assistant=assistant,
+            )
+
+        return user_message, assistant_message
+
+    async def _generate_title(
+        self,
+        employee_id: uuid.UUID,
+        conversation_id: uuid.UUID,
+        user_message: str,
+        assistant_response: str,
+        assistant: AssistantService,
+    ) -> None:
+        if self.session_factory is None:
+            logger.warning(
+                "Title generation skipped for conversation %s: session factory is not configured",
+                conversation_id,
+            )
+            return
+
+        try:
+            title_service = ConversationTitleService(
+                provider=assistant.provider,
+            )
+
+            title = await title_service.generate(
+                user_message=user_message,
+                assistant_response=assistant_response,
+            )
+
+            if not title:
+                return
+
+        except Exception:
+            logger.warning(
+                "Unable to generate title for conversation %s",
+                conversation_id,
+                exc_info=True,
+            )
+            return
+
+        try:
+            async with self.session_factory() as title_db:
+                async with title_db.begin():
+                    await title_db.execute(
+                        update(Conversation)
+                        .where(
+                            Conversation.id == conversation_id,
+                            Conversation.employee_id == employee_id,
+                            Conversation.title.is_(None),
+                        )
+                        .values(
+                            title=title,
+                        )
+                    )
+
+        except Exception:
+            logger.warning(
+                "Unable to save title for conversation %s",
+                conversation_id,
+                exc_info=True,
+            )
 
     async def rename(
         self,

@@ -14,7 +14,7 @@ from app.ai.capabilities.text_generation import (
     TextGenerationResponse,
 )
 from app.api.assistant import get_assistant_service
-from app.core.database import get_db
+from app.core.database import get_db, get_session_factory
 from app.core.settings import settings
 from app.main import create_app
 from app.models.employee import Employee
@@ -26,14 +26,32 @@ from app.services.oauth import generate_token, hash_token
 
 class MockTextGenerationProvider:
     def __init__(self) -> None:
-        self.requests: list[TextGenerationRequest] = []
+        self.assistant_requests: list[TextGenerationRequest] = []
+        self.title_requests: list[TextGenerationRequest] = []
         self.should_fail = False
+        self.should_fail_title = False
 
     async def generate(
         self,
         request: TextGenerationRequest,
     ) -> TextGenerationResponse:
-        self.requests.append(request)
+        is_title_request = (
+            request.system_instructions is not None
+            and "Generate a short, descriptive title" in request.system_instructions
+        )
+
+        if is_title_request:
+            self.title_requests.append(request)
+
+            if self.should_fail_title:
+                raise TextGenerationError("Title generation unavailable")
+
+            return TextGenerationResponse(
+                content="Understanding Workplace Assignments",
+                model="mock-model",
+            )
+
+        self.assistant_requests.append(request)
 
         if self.should_fail:
             raise TextGenerationError("Internal provider connection details")
@@ -84,8 +102,9 @@ async def authenticated_client(
             yield db
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: test_session_factory
     app.dependency_overrides[get_assistant_service] = lambda: AssistantService(
-        provider=mock_provider
+        provider=mock_provider,
     )
 
     try:
@@ -142,6 +161,21 @@ async def test_employee_can_create_conversation(
     assert data["title"] == "Workplace assistance"
     assert "created_at" in data
     assert "updated_at" in data
+
+
+@pytest.mark.asyncio
+async def test_employee_can_create_untitled_conversation(
+    authenticated_client,
+) -> None:
+    client, _ = authenticated_client
+
+    response = await client.post(
+        "/api/conversations",
+        json={},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["title"] is None
 
 
 @pytest.mark.asyncio
@@ -213,7 +247,10 @@ async def test_employee_cannot_access_another_conversation(
 
     try:
         async with test_session_factory() as db:
-            service = ConversationService(db)
+            service = ConversationService(
+                db=db,
+                session_factory=test_session_factory,
+            )
 
             conversation = await service.create(
                 employee_id=other_employee_id,
@@ -237,10 +274,14 @@ async def test_employee_cannot_access_another_conversation(
         assert delete_response.status_code == 404
         assert message_response.status_code == 404
 
-        assert mock_provider.requests == []
+        assert mock_provider.assistant_requests == []
+        assert mock_provider.title_requests == []
 
         async with test_session_factory() as db:
-            service = ConversationService(db)
+            service = ConversationService(
+                db=db,
+                session_factory=test_session_factory,
+            )
 
             stored = await service.get(
                 employee_id=other_employee_id,
@@ -377,12 +418,12 @@ async def test_employee_can_send_conversation_message(
 
     assert messages[0]["content"] == "What should I do first?"
     assert messages[1]["content"] == ("Start by reviewing the assignment requirements.")
-
     assert messages[1]["model"] == "mock-model"
 
-    assert len(mock_provider.requests) == 1
+    assert len(mock_provider.assistant_requests) == 1
+    assert len(mock_provider.title_requests) == 0
 
-    request = mock_provider.requests[0]
+    request = mock_provider.assistant_requests[0]
 
     assert len(request.messages) == 1
     assert request.messages[0].role == "user"
@@ -395,6 +436,7 @@ async def test_employee_can_send_conversation_message(
     stored_messages = detail.json()["messages"]
 
     assert len(stored_messages) == 2
+
     assert [message["role"] for message in stored_messages] == [
         "user",
         "assistant",
@@ -436,9 +478,11 @@ async def test_conversation_messages_include_previous_history(
     )
 
     assert second_response.status_code == 201
-    assert len(mock_provider.requests) == 2
 
-    second_request = mock_provider.requests[1]
+    assert len(mock_provider.assistant_requests) == 2
+    assert len(mock_provider.title_requests) == 0
+
+    second_request = mock_provider.assistant_requests[1]
 
     assert [message.role for message in second_request.messages] == [
         "user",
@@ -466,6 +510,42 @@ async def test_conversation_messages_include_previous_history(
         "user",
         "assistant",
     ]
+
+
+@pytest.mark.asyncio
+async def test_manually_named_conversation_preserves_title(
+    authenticated_client,
+    mock_provider: MockTextGenerationProvider,
+) -> None:
+    client, _ = authenticated_client
+
+    created = await client.post(
+        "/api/conversations",
+        json={
+            "title": "My project notes",
+        },
+    )
+
+    assert created.status_code == 201
+
+    conversation_id = created.json()["id"]
+
+    response = await client.post(
+        f"/api/conversations/{conversation_id}/messages",
+        json={
+            "content": "Help me organize this project.",
+        },
+    )
+
+    assert response.status_code == 201
+
+    detail = await client.get(f"/api/conversations/{conversation_id}")
+
+    assert detail.status_code == 200
+    assert detail.json()["title"] == "My project notes"
+
+    assert len(mock_provider.assistant_requests) == 1
+    assert len(mock_provider.title_requests) == 0
 
 
 @pytest.mark.asyncio
@@ -508,6 +588,9 @@ async def test_provider_failure_does_not_save_messages(
     assert detail.status_code == 200
     assert detail.json()["messages"] == []
 
+    assert len(mock_provider.assistant_requests) == 1
+    assert mock_provider.title_requests == []
+
 
 @pytest.mark.asyncio
 async def test_send_conversation_message_requires_csrf(
@@ -538,4 +621,44 @@ async def test_send_conversation_message_requires_csrf(
     )
 
     assert response.status_code == 403
-    assert mock_provider.requests == []
+
+    assert mock_provider.assistant_requests == []
+    assert mock_provider.title_requests == []
+
+
+@pytest.mark.asyncio
+async def test_first_message_generates_title_through_api(
+    authenticated_client,
+    mock_provider: MockTextGenerationProvider,
+) -> None:
+    client, _ = authenticated_client
+
+    created = await client.post(
+        "/api/conversations",
+        json={},
+    )
+
+    assert created.status_code == 201
+    assert created.json()["title"] is None
+
+    conversation_id = created.json()["id"]
+
+    response = await client.post(
+        f"/api/conversations/{conversation_id}/messages",
+        json={
+            "content": "Help me understand my assignment.",
+        },
+    )
+
+    assert response.status_code == 201
+    assert len(response.json()) == 2
+
+    detail = await client.get(
+        f"/api/conversations/{conversation_id}"
+    )
+
+    assert detail.status_code == 200
+    assert detail.json()["title"] == "Understanding Workplace Assignments"
+
+    assert len(mock_provider.assistant_requests) == 1
+    assert len(mock_provider.title_requests) == 1
