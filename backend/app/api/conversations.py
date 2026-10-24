@@ -18,10 +18,10 @@ from app.schemas.conversation import (
     ConversationResponse,
     CreateConversationRequest,
     SendConversationMessageRequest,
+    UpdateConversationRequest,
 )
 from app.services.assistant import AssistantService
 from app.services.conversation import ConversationService
-
 
 router = APIRouter(
     prefix="/conversations",
@@ -128,6 +128,36 @@ async def get_conversation(
             )
             for message in (messages or [])
         ],
+    )
+
+
+@router.patch(
+    "/{conversation_id}",
+    response_model=ConversationResponse,
+    dependencies=[Depends(validate_request_origin)],
+)
+async def rename_conversation(
+    conversation_id: uuid.UUID,
+    payload: UpdateConversationRequest,
+    employee: Annotated[Employee, Depends(get_current_employee)],
+    service: Annotated[ConversationService, Depends(get_conversation_service)],
+    _: Annotated[None, Depends(validate_mutation_csrf)],
+) -> ConversationResponse:
+    conversation = await service.rename(
+        employee_id=employee.user_id,
+        conversation_id=conversation_id,
+        title=payload.title,
+    )
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    return ConversationResponse.model_validate(
+        conversation,
+        from_attributes=True,
     )
 
 

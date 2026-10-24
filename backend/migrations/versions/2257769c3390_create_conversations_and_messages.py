@@ -8,10 +8,10 @@ Create Date: 2026-10-23 21:51:23.762208
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-from migrations.runtime_access import configure_runtime_access, RuntimeAccess
+from migrations.runtime_access import RuntimeAccess, configure_runtime_access
 
 # revision identifiers, used by Alembic.
 revision: str = "2257769c3390"
@@ -138,4 +138,3 @@ def downgrade() -> None:
         "conversations",
         schema="public",
     )
-

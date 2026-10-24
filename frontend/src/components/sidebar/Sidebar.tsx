@@ -9,7 +9,7 @@ import { SidebarItem } from "./SidebarItem";
 import { sidebarStyles as styles } from "./Sidebar.styles";
 
 const navigation = [
-    { label: "Assistant", path: "/assistant", icon: MessageSquare },
+    { label: "Assistant", path: "/app/chat", icon: MessageSquare },
     { label: "Tasks", path: "/tasks", icon: ListTodo },
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Policies", path: "/policies", icon: BookOpen },

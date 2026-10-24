@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import application_settings, assistant, preferences, conversations
+from app.api import application_settings, assistant, conversations, preferences
 from app.api.auth import router as auth_router
 from app.api.employee_invitations import router as employee_invitations_router
 from app.api.employees import router as employees_router

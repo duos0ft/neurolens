@@ -60,6 +60,10 @@ export const router = createBrowserRouter([
                         lazy: () => import("../pages/preferences/PreferencesPage"),
                     },
                     {
+                        path: "chat",
+                        lazy: () => import("../pages/chat/ChatPage"),
+                    },
+                    {
                         Component: RequireAdmin,
                         children: [
                             {

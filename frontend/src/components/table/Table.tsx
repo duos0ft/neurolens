@@ -5,6 +5,7 @@ import { cn } from "../../lib/cn";
 
 import { TableRowActions } from "./TableRowActions";
 import { tableStyles as styles } from "./Table.styles";
+import type { LucideIcon } from "lucide-react";
 
 export interface TableColumn<T> {
     key: string;
@@ -21,6 +22,7 @@ export interface TableRowActionConfirmation<T> {
 
 export interface TableRowAction<T> {
     label: string;
+    icon?: LucideIcon;
     onSelect: (row: T) => void | Promise<void>;
     hidden?: (row: T) => boolean;
     disabled?: (row: T) => boolean;

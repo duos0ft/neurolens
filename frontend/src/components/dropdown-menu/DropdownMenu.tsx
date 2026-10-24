@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
 import { cn } from "../../lib/cn";
@@ -7,6 +7,7 @@ import { dropdownMenuStyles as styles } from "./DropdownMenu.styles";
 export interface DropdownMenuItem {
     label: string;
     onSelect: () => void;
+    icon?: ReactNode;
     disabled?: boolean;
     destructive?: boolean;
 }
@@ -24,7 +25,7 @@ interface MenuPosition {
     openAbove: boolean;
 }
 
-const MENU_WIDTH = 192;
+const MENU_WIDTH = 156;
 const MENU_MAX_HEIGHT = 240;
 const VIEWPORT_PADDING = 8;
 const MENU_GAP = 4;
@@ -234,6 +235,7 @@ export function DropdownMenu({
                 type="button"
                 className={styles.trigger}
                 disabled={disabled || items.length === 0}
+                data-open={open}
                 aria-label={label}
                 aria-haspopup="menu"
                 aria-expanded={open}
@@ -263,6 +265,7 @@ export function DropdownMenu({
                 style={{
                     position: "fixed",
                     inset: "auto",
+                    zIndex: 60,
                     margin: 0,
                     width: Math.min(
                         MENU_WIDTH,
@@ -315,7 +318,19 @@ export function DropdownMenu({
                             handleItemKeyDown(event, index);
                         }}
                     >
-                        {item.label}
+                        {item.icon && (
+                            <span
+                                className={cn(
+                                    styles.itemIcon,
+                                    item.destructive && styles.destructiveIcon,
+                                )}
+                                aria-hidden="true"
+                            >
+                                {item.icon}
+                            </span>
+                        )}
+
+                        <span>{item.label}</span>
                     </button>
                 ))}
             </div>

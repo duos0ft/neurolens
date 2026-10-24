@@ -1,9 +1,9 @@
 import pytest
 
 from app.ai.capabilities.text_generation import (
+    GenerationMessage,
     TextGenerationRequest,
     TextGenerationResponse,
-    GenerationMessage,
 )
 from app.services.assistant import AssistantService
 

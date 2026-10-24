@@ -4,11 +4,12 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.capabilities.text_generation import (
-    TextGenerationResponse,
     TextGenerationError,
     TextGenerationRequest,
+    TextGenerationResponse,
 )
 from app.models.conversation import Conversation
+from app.services.assistant import AssistantService
 from app.services.conversation import ConversationService
 
 
@@ -127,9 +128,6 @@ async def test_employee_can_delete_own_conversation(
         stored = await db.get(Conversation, conversation_id)
 
         assert stored is None
-
-
-from app.services.assistant import AssistantService
 
 
 class MockTextGenerationProvider:
@@ -269,3 +267,55 @@ async def test_provider_failure_does_not_persist_messages(
         )
 
         assert messages == []
+
+
+@pytest.mark.asyncio
+async def test_employee_can_rename_conversation(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+
+    async with test_session_factory() as db:
+        service = ConversationService(db)
+        conversation = await service.create(employee_id)
+
+        renamed = await service.rename(
+            employee_id=employee_id,
+            conversation_id=conversation.id,
+            title="  Preparing   for a meeting  ",
+        )
+
+        assert renamed is not None
+        assert renamed.title == "Preparing for a meeting"
+
+        stored = await service.get(employee_id, conversation.id)
+
+        assert stored is not None
+        assert stored.title == "Preparing for a meeting"
+
+
+@pytest.mark.asyncio
+async def test_employee_cannot_rename_another_conversation(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    another_employee_id = uuid.uuid4()
+
+    async with test_session_factory() as db:
+        service = ConversationService(db)
+        conversation = await service.create(employee_id)
+
+        renamed = await service.rename(
+            employee_id=another_employee_id,
+            conversation_id=conversation.id,
+            title="Unauthorized rename",
+        )
+
+        assert renamed is None
+
+        stored = await service.get(employee_id, conversation.id)
+
+        assert stored is not None
+        assert stored.title is None

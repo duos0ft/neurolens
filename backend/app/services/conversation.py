@@ -8,7 +8,6 @@ from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.services.assistant import AssistantService
 
-
 MAX_HISTORY_MESSAGES = 20
 
 
@@ -181,6 +180,32 @@ class ConversationService:
         except Exception:
             await self.db.rollback()
             raise
+
+    async def rename(
+        self,
+        employee_id: uuid.UUID,
+        conversation_id: uuid.UUID,
+        title: str,
+    ) -> Conversation | None:
+        title = " ".join(title.split())
+
+        if not title or len(title) > 100:
+            raise ValueError("Conversation title must be between 1 and 100 characters")
+
+        conversation = await self.get(
+            employee_id=employee_id,
+            conversation_id=conversation_id,
+        )
+
+        if conversation is None:
+            return None
+
+        conversation.title = title
+
+        await self.db.commit()
+        await self.db.refresh(conversation)
+
+        return conversation
 
     async def delete(
         self,

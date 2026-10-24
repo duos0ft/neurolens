@@ -7,18 +7,18 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.settings import settings
+from app.models.application_settings import ApplicationSettings  # noqa: F401
 
 # Import models so Alembic can discover their tables.
 from app.models.auth_flow import AuthFlow  # noqa: F401
 from app.models.base import Base
+from app.models.conversation import Conversation  # noqa: F401
+from app.models.conversation_message import ConversationMessage  # noqa: F401
 from app.models.email_outbox import EmailOutbox  # noqa: F401
 from app.models.employee import Employee  # noqa: F401
 from app.models.employee_invitation import EmployeeInvitation  # noqa: F401
 from app.models.employee_profile import EmployeeProfile  # noqa: F401
 from app.models.employee_session import EmployeeSession  # noqa: F401
-from app.models.application_settings import ApplicationSettings  # noqa: F401
-from app.models.conversation import Conversation  # noqa: F401
-from app.models.conversation_message import ConversationMessage  # noqa: F401
 
 config = context.config
 migration_url = settings.migration_database_url or settings.database_url
