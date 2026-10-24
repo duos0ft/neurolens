@@ -653,9 +653,7 @@ async def test_first_message_generates_title_through_api(
     assert response.status_code == 201
     assert len(response.json()) == 2
 
-    detail = await client.get(
-        f"/api/conversations/{conversation_id}"
-    )
+    detail = await client.get(f"/api/conversations/{conversation_id}")
 
     assert detail.status_code == 200
     assert detail.json()["title"] == "Understanding Workplace Assignments"

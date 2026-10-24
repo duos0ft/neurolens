@@ -10,7 +10,6 @@ from app.models.conversation_message import ConversationMessage
 from app.services.assistant import AssistantService
 from app.services.conversation_title import ConversationTitleService
 
-
 logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 20

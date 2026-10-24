@@ -4,8 +4,10 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import httpx
 import pytest
 from dotenv import load_dotenv
+from fastapi_csrf_protect import CsrfProtect
 from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -13,8 +15,14 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.core.database import get_db, get_session_factory
+from app.core.settings import settings
+from app.main import create_app
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
+from app.models.employee_session import EmployeeSession
+from app.services.oauth import generate_token, hash_token
+
 
 load_dotenv(
     dotenv_path=Path(__file__).resolve().parents[1] / ".env",
@@ -80,11 +88,12 @@ async def test_invitation(
             employee_id=employee_id,
             token_hash=uuid.uuid4().hex,
             status="pending",
-            expires_at=(datetime.now(timezone.utc) + timedelta(days=7)),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         )
 
         session.add(employee)
         session.add(invitation)
+
         await session.commit()
 
     try:
@@ -92,7 +101,12 @@ async def test_invitation(
 
     finally:
         async with test_admin_session_factory() as session:
-            await session.execute(delete(Employee).where(Employee.user_id == employee_id))
+            await session.execute(
+                delete(Employee).where(
+                    Employee.user_id == employee_id,
+                )
+            )
+
             await session.commit()
 
 
@@ -116,5 +130,77 @@ async def test_admin_session_factory(
             class_=AsyncSession,
             expire_on_commit=False,
         )
+
     finally:
         await engine.dispose()
+
+
+@pytest.fixture
+async def admin_client(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_admin_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> AsyncIterator[httpx.AsyncClient]:
+    employee_id = test_invitation.employee_id
+    session_token = generate_token()
+    now = datetime.now(timezone.utc)
+
+    async with test_admin_session_factory() as db:
+        employee = await db.get(Employee, employee_id)
+
+        assert employee is not None
+
+        employee.role = "admin"
+        employee.status = "active"
+
+        db.add(
+            EmployeeSession(
+                employee_id=employee_id,
+                session_hash=hash_token(session_token),
+                last_active_at=now,
+                expires_at=now + timedelta(days=7),
+            )
+        )
+
+        await db.commit()
+
+    app = create_app()
+
+    async def override_get_db():
+        async with test_session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: test_session_factory
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url=settings.frontend_url,
+            headers={
+                "Origin": settings.frontend_url,
+            },
+        ) as client:
+            client.cookies.set(
+                settings.session_cookie_name,
+                session_token,
+                path="/",
+            )
+
+            csrf_protect = CsrfProtect()
+            csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
+
+            client.cookies.set(
+                csrf_protect._cookie_key,
+                signed_token,
+                path="/",
+            )
+
+            client.headers["X-CSRF-Token"] = csrf_token
+
+            yield client
+
+    finally:
+        app.dependency_overrides.clear()

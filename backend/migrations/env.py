@@ -12,6 +12,7 @@ from app.models.application_settings import ApplicationSettings  # noqa: F401
 # Import models so Alembic can discover their tables.
 from app.models.auth_flow import AuthFlow  # noqa: F401
 from app.models.base import Base
+from app.models.contact_person import ContactPerson  # noqa: F401
 from app.models.conversation import Conversation  # noqa: F401
 from app.models.conversation_message import ConversationMessage  # noqa: F401
 from app.models.email_outbox import EmailOutbox  # noqa: F401
@@ -33,6 +34,7 @@ MANAGED_TABLES = {
     "application_settings",
     "conversations",
     "conversation_messages",
+    "contact_persons",
 }
 
 if config.config_file_name is not None:
