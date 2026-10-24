@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, func, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +24,15 @@ class ConversationMessage(Base):
         CheckConstraint(
             "role IN ('user', 'assistant')",
             name="conversation_messages_role_check",
+        ),
+        CheckConstraint(
+            "sequence_number > 0",
+            name="conversation_messages_sequence_positive_check",
+        ),
+        UniqueConstraint(
+            "conversation_id",
+            "sequence_number",
+            name="conversation_messages_sequence_unique",
         ),
         {"schema": "public"},
     )
@@ -33,6 +51,11 @@ class ConversationMessage(Base):
         ),
         nullable=False,
         index=True,
+    )
+
+    sequence_number: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
     )
 
     role: Mapped[str] = mapped_column(
