@@ -11,9 +11,9 @@ class AssistantResponseComposer:
         if not results:
             return TextGenerationResponse(
                 content=(
-                    "I couldn't determine which type of assistance "
-                    "you need. Could you clarify whether you'd like "
-                    "a message explained or help organizing a task?"
+                    "Could you clarify what you'd like help with? "
+                    "I can explain workplace messages or help organize "
+                    "tasks when that capability is available."
                 ),
                 model="neurolens",
             )
@@ -21,17 +21,19 @@ class AssistantResponseComposer:
         if len(results) == 1:
             return results[0].response
 
-        sections: list[str] = []
-
         headings = {
+            AICapability.GENERAL_CONVERSATION: "Response",
             AICapability.MESSAGE_EXPLANATION: "Message explanation",
             AICapability.TASK_ASSISTANCE: "Suggested steps",
+            AICapability.POLICY_QUESTION: "Company policy",
         }
 
-        for result in results:
-            heading = headings[result.capability]
+        sections: list[str] = []
 
-            sections.append(f"**{heading}**\n\n{result.response.content.strip()}")
+        for result in results:
+            sections.append(
+                f"**{headings[result.capability]}**\n\n{result.response.content.strip()}"
+            )
 
         return TextGenerationResponse(
             content="\n\n".join(sections),
