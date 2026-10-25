@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.pagination import PageResponse
+
 
 class ContactPersonFields(BaseModel):
     name: str = Field(min_length=1, max_length=150)
@@ -68,3 +70,7 @@ class ContactPersonResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class ContactPersonsPageResponse(PageResponse[ContactPersonResponse]):
+    pass

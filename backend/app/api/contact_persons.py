@@ -1,19 +1,23 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
+from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db
+from app.core.pagination import paginate
 from app.core.permissions import require_admin
+from app.models.contact_person import ContactPerson
 from app.schemas.contact_person import (
     ContactPersonResponse,
     CreateContactPersonRequest,
     UpdateContactPersonRequest,
+    ContactPersonsPageResponse,
 )
 from app.services.contact_person import ContactPersonService
 
@@ -46,20 +50,48 @@ async def validate_mutation_csrf(
 
 @router.get(
     "",
-    response_model=list[ContactPersonResponse],
+    response_model=ContactPersonsPageResponse,
 )
 async def list_contact_persons(
-    service: Annotated[
-        ContactPersonService,
-        Depends(get_contact_person_service),
-    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: Annotated[str | None, Query(max_length=100)] = None,
     include_inactive: bool = False,
-) -> list[ContactPersonResponse]:
-    contacts = await service.list(
-        include_inactive=include_inactive,
+) -> ContactPersonsPageResponse:
+    query = select(ContactPerson)
+
+    if not include_inactive:
+        query = query.where(
+            ContactPerson.is_active.is_(True),
+        )
+
+    if search and search.strip():
+        pattern = f"%{search.strip()}%"
+
+        query = query.where(
+            or_(
+                ContactPerson.name.ilike(pattern),
+                ContactPerson.email.ilike(pattern),
+                ContactPerson.responsibility.ilike(pattern),
+                ContactPerson.department.ilike(pattern),
+                ContactPerson.job_title.ilike(pattern),
+            )
+        )
+
+    query = query.order_by(
+        ContactPerson.responsibility.asc(),
+        ContactPerson.name.asc(),
+        ContactPerson.id.asc(),
     )
 
-    return [ContactPersonResponse.model_validate(contact) for contact in contacts]
+    return await paginate(
+        db,
+        query,
+        page=page,
+        page_size=page_size,
+        response_model=ContactPersonResponse,
+    )
 
 
 @router.post(
