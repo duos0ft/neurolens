@@ -9,9 +9,14 @@ from app.ai.capabilities.text_generation import (
     TextGenerationRequest,
     TextGenerationResponse,
 )
+from app.ai.capabilities.types import AICapability
+from app.ai.registry import AIProviderRegistry
 from app.models.conversation import Conversation
 from app.services.assistant import AssistantService
+from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.conversation import ConversationService
+from app.services.orchestrated_assistant import OrchestratedAssistantService
 
 
 class MockTextGenerationProvider:
@@ -841,3 +846,92 @@ async def test_missing_title_provider_preserves_messages(
         assert conversation.title is None
         assert len(provider.assistant_requests) == 1
         assert len(provider.title_requests) == 0
+
+
+@pytest.mark.asyncio
+async def test_orchestrated_assistant_persists_capability_metadata(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+
+    registry = AIProviderRegistry()
+
+    classifier = MockTextGenerationProvider()
+    explanation = MockTextGenerationProvider()
+
+    async def classify(
+        request: TextGenerationRequest,
+    ) -> TextGenerationResponse:
+        return TextGenerationResponse(
+            content=(
+                '{"intents": ['
+                '{"capability": "message_explanation", '
+                '"instruction": "Explain the workplace message.", '
+                '"source_text": null}'
+                "]}"
+            ),
+            model="mock-classifier",
+        )
+
+    classifier.generate = classify
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    registry.register_text_generation(
+        AICapability.MESSAGE_EXPLANATION,
+        explanation,
+    )
+
+    assistant = OrchestratedAssistantService(
+        orchestrator=AssistantOrchestrator(
+            registry=registry,
+        ),
+        composer=AssistantResponseComposer(),
+    )
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+        )
+
+        conversation = await service.create(employee_id)
+
+        result = await service.send_message(
+            employee_id=employee_id,
+            conversation_id=conversation.id,
+            content="Explain what EOD means.",
+            assistant=assistant,
+        )
+
+        assert result is not None
+
+        user_message, assistant_message = result
+
+        assert user_message.capability_metadata is None
+
+        assert assistant_message.capability_metadata == {
+            "version": 1,
+            "capabilities": [
+                "message_explanation",
+            ],
+        }
+
+        stored_messages = await service.get_messages(
+            employee_id=employee_id,
+            conversation_id=conversation.id,
+        )
+
+        assert stored_messages is not None
+        assert len(stored_messages) == 2
+
+        assert stored_messages[1].capability_metadata == {
+            "version": 1,
+            "capabilities": [
+                "message_explanation",
+            ],
+        }

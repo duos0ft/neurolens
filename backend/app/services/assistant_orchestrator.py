@@ -13,6 +13,7 @@ from app.services.assistant_instructions import build_preference_instructions
 from app.services.capability_classifier import CapabilityClassifier
 from app.services.capability_intent import CapabilityIntent
 from app.services.conversation_context import ConversationContextResolver
+from app.services.trusted_conversation_context import TrustedConversationContext
 
 EXPLANATION_INSTRUCTIONS = """
 You are NeuroLens, a workplace communication assistant.
@@ -105,6 +106,7 @@ class AssistantOrchestrator:
         capabilities: list[AICapability],
         history: list[GenerationMessage] | None = None,
         intents: list[CapabilityIntent] | None = None,
+        trusted_context: TrustedConversationContext | None = None,
     ) -> list[CapabilityResult]:
         if not message.strip():
             raise ValueError("Message cannot be empty")
@@ -191,20 +193,22 @@ class AssistantOrchestrator:
             )
 
             if intent is not None:
-                context = self.context_resolver.resolve(
-                    capability=capability,
-                    history=history,
-                    has_policy_question=has_policy_question,
-                    has_isolated_source=intent.source_text is not None,
-                )
-
                 if intent.source_text:
                     content = f"Task: {intent.instruction}\n\nSource text:\n{intent.source_text}"
                 else:
                     content = f"Task: {intent.instruction}\n\nEmployee request:\n{message.strip()}"
 
+                context_messages = []
+
+                if (
+                    trusted_context is not None
+                    and not has_policy_question
+                    and not intent.source_text
+                ):
+                    context_messages = trusted_context.for_capability(capability)
+
                 request_messages = [
-                    *context.messages,
+                    *context_messages,
                     GenerationMessage(
                         role="user",
                         content=content,
@@ -242,6 +246,7 @@ class AssistantOrchestrator:
         self,
         message: str,
         history: list[GenerationMessage] | None = None,
+        trusted_context: TrustedConversationContext | None = None,
     ) -> list[CapabilityResult]:
         if not message.strip():
             raise ValueError("Message cannot be empty")
@@ -288,10 +293,8 @@ class AssistantOrchestrator:
 
         return await self.execute(
             message=message,
-            capabilities=[
-                intent.capability
-                for intent in permitted_intents
-            ],
+            capabilities=[intent.capability for intent in permitted_intents],
             history=history,
             intents=permitted_intents,
+            trusted_context=trusted_context,
         )

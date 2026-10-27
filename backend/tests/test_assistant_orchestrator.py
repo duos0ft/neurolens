@@ -5,11 +5,13 @@ import pytest
 from app.ai.capabilities.text_generation import (
     TextGenerationRequest,
     TextGenerationResponse,
+    GenerationMessage,
 )
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.trusted_conversation_context import TrustedConversationContext
 
 
 class MockProvider:
@@ -545,3 +547,102 @@ async def test_orchestrator_applies_employee_preferences() -> None:
     assert "Be direct" in instructions
     assert "Keep responses brief" in instructions
     assert "Prefer short paragraphs" in instructions
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_uses_matching_trusted_context() -> None:
+    registry = AIProviderRegistry()
+
+    classifier = MockProvider(
+        '{"intents": ['
+        '{"capability": "message_explanation", '
+        '"instruction": "Simplify the previous explanation.", '
+        '"source_text": null}'
+        "]}"
+    )
+
+    explanation = MockProvider("It means finish before the day ends.")
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    registry.register_text_generation(
+        AICapability.MESSAGE_EXPLANATION,
+        explanation,
+    )
+
+    previous_messages = (
+        GenerationMessage(
+            role="user",
+            content="What does EOD mean?",
+        ),
+        GenerationMessage(
+            role="assistant",
+            content="EOD means end of day.",
+        ),
+    )
+
+    context = TrustedConversationContext(
+        by_capability={
+            AICapability.MESSAGE_EXPLANATION: previous_messages,
+        },
+    )
+
+    orchestrator = AssistantOrchestrator(registry=registry)
+
+    results = await orchestrator.respond(
+        message="Can you explain that more simply?",
+        trusted_context=context,
+    )
+
+    assert len(results) == 1
+    assert len(explanation.requests) == 1
+
+    request = explanation.requests[0]
+
+    assert len(request.messages) == 3
+    assert request.messages[0].content == "What does EOD mean?"
+    assert request.messages[1].content == "EOD means end of day."
+    assert "Can you explain that more simply?" in request.messages[2].content
+
+
+@pytest.mark.asyncio
+async def test_policy_intent_does_not_forward_trusted_context() -> None:
+    registry = AIProviderRegistry()
+
+    classifier = MockProvider(
+        '{"intents": ['
+        '{"capability": "policy_question", '
+        '"instruction": "Identify the leave-policy question.", '
+        '"source_text": null}'
+        "]}"
+    )
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    context = TrustedConversationContext(
+        by_capability={
+            AICapability.MESSAGE_EXPLANATION: (
+                GenerationMessage(
+                    role="user",
+                    content="Previous sensitive workplace message.",
+                ),
+            ),
+        },
+    )
+
+    orchestrator = AssistantOrchestrator(registry=registry)
+
+    results = await orchestrator.respond(
+        message="How many leave days do I get?",
+        trusted_context=context,
+    )
+
+    assert len(results) == 1
+    assert results[0].capability == AICapability.POLICY_QUESTION
+    assert "can't verify" in results[0].response.content
