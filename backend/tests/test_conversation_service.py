@@ -194,6 +194,7 @@ async def test_conversation_persists_message_exchange(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -246,6 +247,7 @@ async def test_conversation_includes_previous_messages(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -300,6 +302,7 @@ async def test_provider_failure_does_not_persist_messages(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -394,6 +397,7 @@ async def test_first_message_generates_conversation_title(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -433,6 +437,7 @@ async def test_follow_up_message_does_not_regenerate_title(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -476,6 +481,7 @@ async def test_manually_named_conversation_does_not_generate_title(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(
@@ -518,6 +524,7 @@ async def test_manual_rename_is_preserved_after_follow_up(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -571,6 +578,7 @@ async def test_title_generation_failure_preserves_messages(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -619,6 +627,7 @@ async def test_title_generation_timeout_preserves_messages(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -667,6 +676,7 @@ async def test_title_failure_does_not_expire_main_session_objects(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -744,6 +754,7 @@ async def test_manual_rename_wins_during_title_generation(
         service = ConversationService(
             db=db,
             session_factory=test_session_factory,
+            title_provider=provider,
         )
 
         conversation = await service.create(employee_id)
@@ -788,3 +799,45 @@ async def test_manual_rename_wins_during_title_generation(
 
     assert len(provider.assistant_requests) == 1
     assert len(provider.title_requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_missing_title_provider_preserves_messages(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation,
+) -> None:
+    employee_id = test_invitation.employee_id
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider)
+
+    async with test_session_factory() as db:
+        service = ConversationService(
+            db=db,
+            session_factory=test_session_factory,
+            title_provider=None,
+        )
+
+        conversation = await service.create(employee_id)
+
+        result = await service.send_message(
+            employee_id=employee_id,
+            conversation_id=conversation.id,
+            content="Help me organize my tasks.",
+            assistant=assistant,
+        )
+
+        assert result is not None
+
+        messages = await service.get_messages(
+            employee_id=employee_id,
+            conversation_id=conversation.id,
+        )
+
+        assert messages is not None
+        assert len(messages) == 2
+
+        await db.refresh(conversation)
+
+        assert conversation.title is None
+        assert len(provider.assistant_requests) == 1
+        assert len(provider.title_requests) == 0

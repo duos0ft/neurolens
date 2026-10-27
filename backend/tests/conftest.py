@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.api.assistant_dependencies import get_ai_provider_registry
 from app.core.database import get_db, get_session_factory
 from app.core.settings import settings
 from app.main import create_app
@@ -165,6 +166,89 @@ async def admin_client(
         await db.commit()
 
     app = create_app()
+
+    async def override_get_db():
+        async with test_session_factory() as db:
+            yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: test_session_factory
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url=settings.frontend_url,
+            headers={
+                "Origin": settings.frontend_url,
+            },
+        ) as client:
+            client.cookies.set(
+                settings.session_cookie_name,
+                session_token,
+                path="/",
+            )
+
+            csrf_protect = CsrfProtect()
+            csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
+
+            client.cookies.set(
+                csrf_protect._cookie_key,
+                signed_token,
+                path="/",
+            )
+
+            client.headers["X-CSRF-Token"] = csrf_token
+
+            yield client
+
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def mock_ai_registry():
+    from tests.helpers.mock_ai_registry import create_mock_ai_registry
+
+    return create_mock_ai_registry()
+
+
+@pytest.fixture
+async def employee_client(
+    test_session_factory: async_sessionmaker[AsyncSession],
+    test_admin_session_factory: async_sessionmaker[AsyncSession],
+    test_invitation: EmployeeInvitation,
+    mock_ai_registry,
+) -> AsyncIterator[httpx.AsyncClient]:
+    employee_id = test_invitation.employee_id
+    session_token = generate_token()
+    now = datetime.now(timezone.utc)
+
+    async with test_admin_session_factory() as db:
+        employee = await db.get(Employee, employee_id)
+
+        assert employee is not None
+
+        employee.role = "employee"
+        employee.status = "active"
+
+        db.add(
+            EmployeeSession(
+                employee_id=employee_id,
+                session_hash=hash_token(session_token),
+                last_active_at=now,
+                expires_at=now + timedelta(days=7),
+            )
+        )
+
+        await db.commit()
+
+    app = create_app()
+
+    registry, _ = mock_ai_registry
+
+    app.dependency_overrides[get_ai_provider_registry] = lambda: registry
 
     async def override_get_db():
         async with test_session_factory() as db:

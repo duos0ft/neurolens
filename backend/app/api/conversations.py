@@ -7,7 +7,15 @@ from fastapi_csrf_protect.exceptions import CsrfProtectError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.capabilities.text_generation import TextGenerationError
-from app.api.assistant import get_assistant_service
+from app.ai.capabilities.types import AICapability
+from app.ai.registry import (
+    AIProviderRegistry,
+    ProviderNotConfiguredError,
+)
+from app.api.assistant_dependencies import (
+    get_ai_provider_registry,
+    get_orchestrated_assistant,
+)
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db, get_session_factory
@@ -20,8 +28,9 @@ from app.schemas.conversation import (
     SendConversationMessageRequest,
     UpdateConversationRequest,
 )
-from app.services.assistant import AssistantService
 from app.services.conversation import ConversationService
+from app.services.orchestrated_assistant import OrchestratedAssistantService
+
 
 router = APIRouter(
     prefix="/conversations",
@@ -40,6 +49,27 @@ def get_conversation_service(
         db=db,
         session_factory=session_factory,
     )
+
+
+def get_messaging_conversation_service(
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
+    registry: Annotated[
+        AIProviderRegistry,
+        Depends(get_ai_provider_registry),
+    ],
+) -> ConversationService:
+    try:
+        service.title_provider = registry.get_text_generation(
+            AICapability.CONVERSATION_TITLE,
+        )
+
+    except ProviderNotConfiguredError:
+        service.title_provider = None
+
+    return service
 
 
 async def validate_mutation_csrf(
@@ -65,7 +95,10 @@ async def validate_mutation_csrf(
 async def create_conversation(
     payload: CreateConversationRequest,
     employee: Annotated[Employee, Depends(get_current_employee)],
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> ConversationResponse:
     conversation = await service.create(
@@ -85,7 +118,10 @@ async def create_conversation(
 )
 async def list_conversations(
     employee: Annotated[Employee, Depends(get_current_employee)],
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
 ) -> list[ConversationResponse]:
     conversations = await service.list(employee.user_id)
 
@@ -105,7 +141,10 @@ async def list_conversations(
 async def get_conversation(
     conversation_id: uuid.UUID,
     employee: Annotated[Employee, Depends(get_current_employee)],
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
 ) -> ConversationDetailResponse:
     conversation = await service.get(
         employee_id=employee.user_id,
@@ -147,7 +186,10 @@ async def rename_conversation(
     conversation_id: uuid.UUID,
     payload: UpdateConversationRequest,
     employee: Annotated[Employee, Depends(get_current_employee)],
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> ConversationResponse:
     conversation = await service.rename(
@@ -176,7 +218,10 @@ async def rename_conversation(
 async def delete_conversation(
     conversation_id: uuid.UUID,
     employee: Annotated[Employee, Depends(get_current_employee)],
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> None:
     deleted = await service.delete(
@@ -201,11 +246,19 @@ async def send_conversation_message(
     conversation_id: uuid.UUID,
     payload: SendConversationMessageRequest,
     employee: Annotated[Employee, Depends(get_current_employee)],
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    assistant: Annotated[AssistantService, Depends(get_assistant_service)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_messaging_conversation_service),
+    ],
+    assistant: Annotated[
+        OrchestratedAssistantService,
+        Depends(get_orchestrated_assistant),
+    ],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> list[ConversationMessageResponse]:
-    if not payload.content.strip():
+    content = payload.content.strip()
+
+    if not content:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Message cannot be empty",
@@ -215,11 +268,11 @@ async def send_conversation_message(
         result = await service.send_message(
             employee_id=employee.user_id,
             conversation_id=conversation_id,
-            content=payload.content,
+            content=content,
             assistant=assistant,
         )
 
-    except TextGenerationError as error:
+    except (TextGenerationError, ProviderNotConfiguredError) as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The AI assistant is temporarily unavailable",

@@ -1,19 +1,28 @@
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.registry import AIProviderRegistry
+from app.ai.registry import AIProviderRegistry, ProviderNotConfiguredError
 from app.ai.resolver import resolve_ai_provider_registry
 from app.core.auth import get_current_employee
 from app.core.database import get_db
 from app.models.employee import Employee
 from app.services.assistant_config_service import AssistantConfigService
 from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_response_composer import AssistantResponseComposer
+from app.services.orchestrated_assistant import OrchestratedAssistantService
 
 
 def get_ai_provider_registry() -> AIProviderRegistry:
-    return resolve_ai_provider_registry()
+    try:
+        return resolve_ai_provider_registry()
+
+    except ProviderNotConfiguredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI assistant is temporarily unavailable",
+        ) from error
 
 
 async def get_assistant_orchestrator(
@@ -33,4 +42,16 @@ async def get_assistant_orchestrator(
     return AssistantOrchestrator(
         registry=registry,
         config=config,
+    )
+
+
+def get_orchestrated_assistant(
+    orchestrator: Annotated[
+        AssistantOrchestrator,
+        Depends(get_assistant_orchestrator),
+    ],
+) -> OrchestratedAssistantService:
+    return OrchestratedAssistantService(
+        orchestrator=orchestrator,
+        composer=AssistantResponseComposer(),
     )

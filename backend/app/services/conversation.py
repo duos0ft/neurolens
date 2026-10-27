@@ -4,11 +4,15 @@ import uuid
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.ai.capabilities.text_generation import GenerationMessage
+from app.ai.capabilities.text_generation import (
+    GenerationMessage,
+    TextGenerationProvider,
+)
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
-from app.services.assistant import AssistantService
+from app.services.assistant_protocol import AssistantProtocol
 from app.services.conversation_title import ConversationTitleService
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +24,11 @@ class ConversationService:
         self,
         db: AsyncSession,
         session_factory: async_sessionmaker[AsyncSession] | None = None,
+        title_provider: TextGenerationProvider | None = None,
     ) -> None:
         self.db = db
         self.session_factory = session_factory
+        self.title_provider = title_provider
 
     async def create(
         self,
@@ -100,7 +106,7 @@ class ConversationService:
         employee_id: uuid.UUID,
         conversation_id: uuid.UUID,
         content: str,
-        assistant: AssistantService,
+        assistant: AssistantProtocol,
     ) -> tuple[ConversationMessage, ConversationMessage] | None:
         content = content.strip()
 
@@ -155,7 +161,12 @@ class ConversationService:
 
             next_sequence = (last_sequence or 0) + 1
 
-            should_generate_title = last_sequence is None and conversation.title is None
+            should_generate_title = (
+                last_sequence is None
+                and conversation.title is None
+                and self.title_provider is not None
+                and self.session_factory is not None
+            )
 
             user_message = ConversationMessage(
                 conversation_id=conversation_id,
@@ -180,6 +191,7 @@ class ConversationService:
             )
 
             await self.db.commit()
+
             await self.db.refresh(user_message)
             await self.db.refresh(assistant_message)
 
@@ -193,7 +205,6 @@ class ConversationService:
                 conversation_id=conversation_id,
                 user_message=content,
                 assistant_response=response.content,
-                assistant=assistant,
             )
 
         return user_message, assistant_message
@@ -204,7 +215,6 @@ class ConversationService:
         conversation_id: uuid.UUID,
         user_message: str,
         assistant_response: str,
-        assistant: AssistantService,
     ) -> None:
         if self.session_factory is None:
             logger.warning(
@@ -213,9 +223,16 @@ class ConversationService:
             )
             return
 
+        if self.title_provider is None:
+            logger.debug(
+                "Title generation skipped for conversation %s: title provider is not configured",
+                conversation_id,
+            )
+            return
+
         try:
             title_service = ConversationTitleService(
-                provider=assistant.provider,
+                provider=self.title_provider,
             )
 
             title = await title_service.generate(
