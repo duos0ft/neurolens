@@ -12,7 +12,7 @@ from app.services.assistant_config import AssistantConfig
 from app.services.assistant_instructions import build_preference_instructions
 from app.services.capability_classifier import CapabilityClassifier
 from app.services.capability_intent import CapabilityIntent
-
+from app.services.conversation_context import ConversationContextResolver
 
 EXPLANATION_INSTRUCTIONS = """
 You are NeuroLens, a workplace communication assistant.
@@ -88,6 +88,7 @@ class AssistantOrchestrator:
         registry: AIProviderRegistry,
         enable_task_assistance: bool = True,
         config: AssistantConfig | None = None,
+        context_resolver: ConversationContextResolver | None = None,
     ) -> None:
         self.registry = registry
 
@@ -96,6 +97,7 @@ class AssistantOrchestrator:
         )
 
         self.enable_task_assistance = self.config.enable_task_assistance
+        self.context_resolver = context_resolver or ConversationContextResolver()
 
     async def execute(
         self,
@@ -189,12 +191,20 @@ class AssistantOrchestrator:
             )
 
             if intent is not None:
+                context = self.context_resolver.resolve(
+                    capability=capability,
+                    history=history,
+                    has_policy_question=has_policy_question,
+                    has_isolated_source=intent.source_text is not None,
+                )
+
                 if intent.source_text:
                     content = f"Task: {intent.instruction}\n\nSource text:\n{intent.source_text}"
                 else:
                     content = f"Task: {intent.instruction}\n\nEmployee request:\n{message.strip()}"
 
                 request_messages = [
+                    *context.messages,
                     GenerationMessage(
                         role="user",
                         content=content,
