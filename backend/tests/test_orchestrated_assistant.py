@@ -81,9 +81,81 @@ async def test_orchestrated_assistant_returns_composed_response() -> None:
     assert "Your manager wants an update." in response.content
     assert "Check progress." in response.content
 
-    assert assistant.title_provider is title
+    assert registry.get_text_generation(AICapability.CONVERSATION_TITLE) is title
 
     assert len(classifier.requests) == 1
     assert len(explanation.requests) == 1
     assert len(tasks.requests) == 1
     assert len(title.requests) == 0
+
+
+@pytest.mark.asyncio
+async def test_execute_returns_capability_metadata() -> None:
+    registry = AIProviderRegistry()
+
+    classifier = MockProvider(
+        '{"intents": ['
+        '{"capability": "message_explanation", '
+        '"instruction": "Explain the message.", '
+        '"source_text": null}'
+        "]}"
+    )
+
+    explanation = MockProvider("Your manager wants an update.")
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    registry.register_text_generation(
+        AICapability.MESSAGE_EXPLANATION,
+        explanation,
+    )
+
+    assistant = OrchestratedAssistantService(
+        orchestrator=AssistantOrchestrator(registry=registry),
+        composer=AssistantResponseComposer(),
+    )
+
+    result = await assistant.execute(
+        message="Explain my manager's message.",
+    )
+
+    assert result.response.content == "Your manager wants an update."
+    assert result.capabilities == (AICapability.MESSAGE_EXPLANATION,)
+
+
+@pytest.mark.asyncio
+async def test_respond_preserves_legacy_response_contract() -> None:
+    registry = AIProviderRegistry()
+
+    classifier = MockProvider(
+        '{"intents": ['
+        '{"capability": "general_conversation", '
+        '"instruction": "Respond to the greeting.", '
+        '"source_text": null}'
+        "]}"
+    )
+
+    general = MockProvider("Hello! How can I help?")
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    registry.register_text_generation(
+        AICapability.GENERAL_CONVERSATION,
+        general,
+    )
+
+    assistant = OrchestratedAssistantService(
+        orchestrator=AssistantOrchestrator(registry=registry),
+        composer=AssistantResponseComposer(),
+    )
+
+    response = await assistant.respond("Hello!")
+
+    assert isinstance(response, TextGenerationResponse)
+    assert response.content == "Hello! How can I help?"

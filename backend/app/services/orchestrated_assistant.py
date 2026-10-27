@@ -2,7 +2,7 @@ from app.ai.capabilities.text_generation import (
     GenerationMessage,
     TextGenerationResponse,
 )
-from app.ai.capabilities.types import AICapability
+from app.services.assistant_execution_result import AssistantExecutionResult
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
 
@@ -16,10 +16,21 @@ class OrchestratedAssistantService:
         self.orchestrator = orchestrator
         self.composer = composer
 
-    @property
-    def title_provider(self):
-        return self.orchestrator.registry.get_text_generation(
-            AICapability.CONVERSATION_TITLE,
+    async def execute(
+        self,
+        message: str,
+        history: list[GenerationMessage] | None = None,
+    ) -> AssistantExecutionResult:
+        results = await self.orchestrator.respond(
+            message=message,
+            history=history,
+        )
+
+        response = self.composer.compose(results)
+
+        return AssistantExecutionResult(
+            response=response,
+            capabilities=tuple(result.capability for result in results),
         )
 
     async def respond(
@@ -27,9 +38,9 @@ class OrchestratedAssistantService:
         message: str,
         history: list[GenerationMessage] | None = None,
     ) -> TextGenerationResponse:
-        results = await self.orchestrator.respond(
+        result = await self.execute(
             message=message,
             history=history,
         )
 
-        return self.composer.compose(results)
+        return result.response

@@ -11,7 +11,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -77,4 +77,9 @@ class ConversationMessage(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+
+    capability_metadata: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
     )
