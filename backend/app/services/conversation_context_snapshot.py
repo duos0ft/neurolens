@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from app.ai.capabilities.types import AICapability
 from app.services.conversation_source import ConversationSource
 
-
 SNAPSHOT_VERSION = 1
 
 

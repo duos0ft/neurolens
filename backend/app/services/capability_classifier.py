@@ -9,7 +9,6 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.services.capability_intent import CapabilityIntent
 
-
 CLASSIFICATION_INSTRUCTIONS = """
 Classify employee requests for NeuroLens.
 
@@ -207,7 +206,8 @@ Output:
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Identify only the first practical action for the previous onboarding-documentation request.",
+      "instruction": "Identify only the first practical action for the previous 
+      onboarding-documentation request.",
       "source_text": null
     }
   ]
@@ -231,7 +231,8 @@ Output:
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Create a short checklist of concrete work from the previous client-feedback request without unnecessary reminders.",
+      "instruction": "Create a short checklist of concrete work from the previous 
+      client-feedback request without unnecessary reminders.",
       "source_text": null
     }
   ]
@@ -353,9 +354,7 @@ class CapabilityClassifier:
                     )
 
         except (ValueError, TypeError, KeyError) as error:
-            raise ValueError(
-                "Unable to interpret capability classification"
-            ) from error
+            raise ValueError("Unable to interpret capability classification") from error
 
         return CapabilityClassification(
             intents=intents,

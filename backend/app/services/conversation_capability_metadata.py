@@ -5,7 +5,6 @@ from app.services.conversation_context_snapshot import (
     ConversationContextSnapshot,
 )
 
-
 METADATA_VERSION = 2
 
 SUPPORTED_CAPABILITIES = {

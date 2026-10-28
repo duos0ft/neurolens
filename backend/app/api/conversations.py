@@ -31,7 +31,6 @@ from app.schemas.conversation import (
 from app.services.conversation import ConversationService
 from app.services.orchestrated_assistant import OrchestratedAssistantService
 
-
 router = APIRouter(
     prefix="/conversations",
     tags=["Conversations"],

@@ -3,7 +3,7 @@ import json
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.capabilities.types import AICapability
 from app.models.employee_profile import EmployeeProfile
@@ -371,9 +371,7 @@ async def test_policy_question_uses_referral_without_generation(
 
     assert len(providers[AICapability.GENERAL_CONVERSATION].requests) == 0
 
-    assert len(
-        providers[AICapability.CONVERSATION_TITLE].requests
-    ) == 1
+    assert len(providers[AICapability.CONVERSATION_TITLE].requests) == 1
 
     detail_response = await employee_client.get(
         f"/api/conversations/{conversation_id}",

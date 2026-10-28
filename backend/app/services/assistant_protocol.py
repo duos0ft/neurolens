@@ -11,5 +11,4 @@ class AssistantProtocol(Protocol):
         self,
         message: str,
         history: list[GenerationMessage] | None = None,
-    ) -> TextGenerationResponse:
-        ...
+    ) -> TextGenerationResponse: ...

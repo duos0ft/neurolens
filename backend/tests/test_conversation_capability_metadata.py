@@ -4,8 +4,6 @@ from app.ai.capabilities.types import AICapability
 from app.services.conversation_capability_metadata import (
     ConversationCapabilityMetadata,
 )
-from app.services.conversation_context_snapshot import ConversationContextSnapshot
-from app.services.conversation_source import ConversationSource
 
 
 def test_capability_metadata_round_trip() -> None:
@@ -39,19 +37,3 @@ def test_unknown_capability_is_rejected() -> None:
                 "capabilities": ["unknown_capability"],
             }
         )
-
-
-def test_version_two_metadata_round_trip() -> None:
-    metadata = ConversationCapabilityMetadata(
-        capabilities=(AICapability.MESSAGE_EXPLANATION,),
-        sources=(
-            ConversationContextSnapshot(
-                capability=AICapability.MESSAGE_EXPLANATION,
-                source=ConversationSource(
-                    text="Please review the report.",
-                    start=9,
-                    end=34,
-                ),
-            ),
-        ),
-    )

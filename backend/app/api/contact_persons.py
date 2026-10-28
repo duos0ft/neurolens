@@ -1,10 +1,10 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +15,9 @@ from app.core.permissions import require_admin
 from app.models.contact_person import ContactPerson
 from app.schemas.contact_person import (
     ContactPersonResponse,
+    ContactPersonsPageResponse,
     CreateContactPersonRequest,
     UpdateContactPersonRequest,
-    ContactPersonsPageResponse,
 )
 from app.services.contact_person import ContactPersonService
 

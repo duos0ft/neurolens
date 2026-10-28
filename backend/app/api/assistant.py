@@ -21,7 +21,6 @@ from app.schemas.assistant import (
 from app.services.assistant import AssistantService
 from app.services.orchestrated_assistant import OrchestratedAssistantService
 
-
 router = APIRouter(
     prefix="/assistant",
     tags=["Assistant"],

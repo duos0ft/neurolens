@@ -1,4 +1,5 @@
 """Shared data loading and scoring for the sentiment model test."""
+
 import json
 import sys
 from pathlib import Path
@@ -22,14 +23,18 @@ def load(data_dir):
         df["text"] = df["text"].astype(str)
         frames.append(df[["id", "source", "fold", "text", "label"]])
     full = pd.concat(frames, ignore_index=True)
-    return full[full.fold != 0].reset_index(drop=True), full[full.fold == 0].reset_index(drop=True)
+    return full[full.fold != 0].reset_index(drop=True), full[
+        full.fold == 0
+    ].reset_index(drop=True)
 
 
 def score(y_true, y_pred, labels=LABELS):
     return {
         "n": len(y_true),
         "accuracy": round(accuracy_score(y_true, y_pred), 4),
-        "macro_f1": round(f1_score(y_true, y_pred, labels=labels, average="macro", zero_division=0), 4),
+        "macro_f1": round(
+            f1_score(y_true, y_pred, labels=labels, average="macro", zero_division=0), 4
+        ),
     }
 
 

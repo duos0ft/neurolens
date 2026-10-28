@@ -730,15 +730,11 @@ async def test_first_message_generates_title_through_api(
     assert response.status_code == 201, response.text
     assert len(response.json()) == 2
 
-    detail = await client.get(
-        f"/api/conversations/{conversation_id}"
-    )
+    detail = await client.get(f"/api/conversations/{conversation_id}")
 
     assert detail.status_code == 200, detail.text
 
-    assert detail.json()["title"] == (
-        "Understanding Workplace Assignments"
-    )
+    assert detail.json()["title"] == ("Understanding Workplace Assignments")
 
     assert len(mock_classifier.requests) == 1
     assert len(mock_provider.assistant_requests) == 1
@@ -748,7 +744,4 @@ async def test_first_message_generates_title_through_api(
 
     assert title_request.system_instructions is not None
 
-    assert (
-            "Generate a short, descriptive title"
-            in title_request.system_instructions
-    )
+    assert "Generate a short, descriptive title" in title_request.system_instructions

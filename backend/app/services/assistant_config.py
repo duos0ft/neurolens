@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Literal
 
-
 Directness = Literal["low", "balanced", "high"]
 ResponseLength = Literal["short", "medium", "detailed"]
 

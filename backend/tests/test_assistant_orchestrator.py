@@ -3,9 +3,9 @@ import json
 import pytest
 
 from app.ai.capabilities.text_generation import (
+    GenerationMessage,
     TextGenerationRequest,
     TextGenerationResponse,
-    GenerationMessage,
 )
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry

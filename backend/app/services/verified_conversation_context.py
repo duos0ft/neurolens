@@ -9,7 +9,6 @@ from app.services.conversation_context_snapshot import (
     ConversationContextSnapshot,
 )
 
-
 MAX_VERIFIED_SOURCES = 3
 
 SUPPORTED_CONTEXT_CAPABILITIES = {
