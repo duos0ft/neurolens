@@ -83,12 +83,17 @@ export function TableRowActions<T>({
             <DropdownMenu
                 label="Row actions"
                 disabled={pending}
-                items={availableActions.map((action) => ({
-                    label: action.label,
-                    destructive: action.destructive,
-                    disabled: action.disabled?.(row),
-                    onSelect: () => selectAction(action),
-                }))}
+                items={availableActions.map((action) => {
+                    const Icon = action.icon;
+
+                    return {
+                        label: action.label,
+                        icon: Icon ? <Icon className="size-4"/> : undefined,
+                        destructive: action.destructive,
+                        disabled: action.disabled?.(row),
+                        onSelect: () => selectAction(action),
+                    };
+                })}
             />
 
             <ConfirmationDialog

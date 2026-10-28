@@ -16,17 +16,21 @@ class AssistantService:
     async def respond(
         self,
         message: str,
+        history: list[GenerationMessage] | None = None,
     ) -> TextGenerationResponse:
         if not message.strip():
             raise ValueError("Message cannot be empty")
 
+        messages = [
+            *(history or []),
+            GenerationMessage(
+                role="user",
+                content=message.strip(),
+            ),
+        ]
+
         request = TextGenerationRequest(
-            messages=[
-                GenerationMessage(
-                    role="user",
-                    content=message.strip(),
-                ),
-            ],
+            messages=messages,
             system_instructions=(
                 "You are NeuroLens, an AI workplace assistant. "
                 "Help employees understand workplace communication "

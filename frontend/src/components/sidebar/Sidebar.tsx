@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { BookOpen, CalendarDays, ChevronDown, ListTodo, MessageSquare, Settings, Shield, Users } from "lucide-react";
+import {
+    BookOpen,
+    CalendarDays,
+    ChevronDown,
+    ContactRound,
+    ListTodo,
+    MessageSquare,
+    Settings,
+    Shield,
+    Users,
+} from "lucide-react";
 import { useLocation } from "react-router";
 
 import { cn } from "../../lib/cn";
@@ -9,7 +19,7 @@ import { SidebarItem } from "./SidebarItem";
 import { sidebarStyles as styles } from "./Sidebar.styles";
 
 const navigation = [
-    { label: "Assistant", path: "/assistant", icon: MessageSquare },
+    { label: "Assistant", path: "/app/chat", icon: MessageSquare },
     { label: "Tasks", path: "/tasks", icon: ListTodo },
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Policies", path: "/policies", icon: BookOpen },
@@ -17,6 +27,7 @@ const navigation = [
 
 const adminNavigation = [
     { label: "Employees", path: "/app/admin/employees", icon: Users },
+    { label: "Contact Persons", path: "/app/admin/contact-persons", icon: ContactRound },
     { label: "Settings", path: "/app/admin/settings", icon: Settings },
 ];
 

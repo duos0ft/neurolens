@@ -1,13 +1,16 @@
-"""Fine-tune roberta-base on folds 1-9 of the three sets and score it on fold 0.
-"""
+"""Fine-tune roberta-base on folds 1-9 of the three sets and score it on fold 0."""
+
 import sys
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_linear_schedule_with_warmup
-
 from common import LABELS, load, save, score_by_source
+from torch.utils.data import DataLoader
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    get_linear_schedule_with_warmup,
+)
 
 data_dir, out_dir = sys.argv[1], Path(sys.argv[2])
 out_dir.mkdir(parents=True, exist_ok=True)
@@ -17,14 +20,22 @@ EPOCHS, BATCH, LR, MAX_LEN = 3, 32, 2e-5, 128
 
 train, test = load(data_dir)
 tok = AutoTokenizer.from_pretrained("roberta-base")
-model = AutoModelForSequenceClassification.from_pretrained("roberta-base", num_labels=len(LABELS)).to(device)
+model = AutoModelForSequenceClassification.from_pretrained(
+    "roberta-base", num_labels=len(LABELS)
+).to(device)
 
 
 def batches(df, shuffle):
     rows = list(zip(df["text"].tolist(), df["label"].map(LABELS.index).tolist()))
 
     def collate(items):
-        enc = tok([t for t, _ in items], truncation=True, max_length=MAX_LEN, padding=True, return_tensors="pt")
+        enc = tok(
+            [t for t, _ in items],
+            truncation=True,
+            max_length=MAX_LEN,
+            padding=True,
+            return_tensors="pt",
+        )
         enc["labels"] = torch.tensor([y for _, y in items])
         return enc
 

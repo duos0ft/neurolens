@@ -8,7 +8,9 @@ from app.ai.capabilities.text_generation import (
     TextGenerationError,
     TextGenerationProvider,
 )
+from app.ai.registry import ProviderNotConfiguredError
 from app.ai.resolver import resolve_text_generation_provider
+from app.api.assistant_dependencies import get_orchestrated_assistant
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
 from app.models.employee import Employee
@@ -17,6 +19,7 @@ from app.schemas.assistant import (
     AssistantMessageResponse,
 )
 from app.services.assistant import AssistantService
+from app.services.orchestrated_assistant import OrchestratedAssistantService
 
 router = APIRouter(
     prefix="/assistant",
@@ -24,6 +27,7 @@ router = APIRouter(
 )
 
 
+# Retained for legacy callers and tests during migration.
 def get_assistant_service() -> AssistantService:
     provider: TextGenerationProvider = resolve_text_generation_provider()
 
@@ -39,7 +43,10 @@ async def send_message(
     request: Request,
     payload: AssistantMessageRequest,
     employee: Annotated[Employee, Depends(get_current_employee)],
-    assistant: Annotated[AssistantService, Depends(get_assistant_service)],
+    assistant: Annotated[
+        OrchestratedAssistantService,
+        Depends(get_orchestrated_assistant),
+    ],
     csrf_protect: Annotated[CsrfProtect, Depends()],
 ) -> AssistantMessageResponse:
     try:
@@ -51,16 +58,20 @@ async def send_message(
             detail="Invalid or missing CSRF token",
         ) from error
 
-    if not payload.message.strip():
+    message = payload.message.strip()
+
+    if not message:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Message cannot be empty",
         )
 
     try:
-        response = await assistant.respond(payload.message)
+        response = await assistant.respond(
+            message=message,
+        )
 
-    except TextGenerationError as error:
+    except (TextGenerationError, ProviderNotConfiguredError) as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The AI assistant is temporarily unavailable",

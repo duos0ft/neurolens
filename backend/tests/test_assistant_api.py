@@ -11,13 +11,14 @@ from app.ai.capabilities.text_generation import (
     TextGenerationRequest,
     TextGenerationResponse,
 )
-from app.api.assistant import get_assistant_service
+from app.ai.capabilities.types import AICapability
+from app.ai.registry import AIProviderRegistry
+from app.api.assistant_dependencies import get_ai_provider_registry
 from app.core.database import get_db
 from app.core.settings import settings
 from app.main import create_app
 from app.models.employee import Employee
 from app.models.employee_session import EmployeeSession
-from app.services.assistant import AssistantService
 from app.services.oauth import generate_token, hash_token
 
 
@@ -37,11 +38,39 @@ class MockTextGenerationProvider:
         )
 
 
+class MockClassificationProvider:
+    def __init__(self) -> None:
+        self.last_request: TextGenerationRequest | None = None
+
+    async def generate(
+        self,
+        request: TextGenerationRequest,
+    ) -> TextGenerationResponse:
+        self.last_request = request
+
+        return TextGenerationResponse(
+            content=(
+                '{"intents": ['
+                '{"capability": "message_explanation", '
+                '"instruction": "Explain the employee request.", '
+                '"source_text": null}'
+                "]}"
+            ),
+            model="mock-classifier",
+        )
+
+
 @pytest.fixture
 async def authenticated_client(
     test_session_factory: async_sessionmaker[AsyncSession],
     test_invitation,
-) -> AsyncIterator[tuple[httpx.AsyncClient, MockTextGenerationProvider]]:
+) -> AsyncIterator[
+    tuple[
+        httpx.AsyncClient,
+        MockTextGenerationProvider,
+        MockClassificationProvider,
+    ]
+]:
     employee_id = test_invitation.employee_id
     session_token = generate_token()
     now = datetime.now(timezone.utc)
@@ -65,6 +94,20 @@ async def authenticated_client(
         await db.commit()
 
     provider = MockTextGenerationProvider()
+    classifier = MockClassificationProvider()
+
+    registry = AIProviderRegistry()
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    registry.register_text_generation(
+        AICapability.MESSAGE_EXPLANATION,
+        provider,
+    )
+
     app = create_app()
 
     async def override_get_db():
@@ -72,7 +115,7 @@ async def authenticated_client(
             yield db
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_assistant_service] = lambda: AssistantService(provider)
+    app.dependency_overrides[get_ai_provider_registry] = lambda: registry
 
     try:
         transport = httpx.ASGITransport(app=app)
@@ -101,7 +144,7 @@ async def authenticated_client(
 
             client.headers["X-CSRF-Token"] = csrf_token
 
-            yield client, provider
+            yield client, provider, classifier
 
     finally:
         app.dependency_overrides.clear()
@@ -111,7 +154,7 @@ async def authenticated_client(
 async def test_authenticated_employee_can_send_message(
     authenticated_client,
 ) -> None:
-    client, provider = authenticated_client
+    client, provider, classifier = authenticated_client
 
     response = await client.post(
         "/api/assistant/messages",
@@ -120,22 +163,32 @@ async def test_authenticated_employee_can_send_message(
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
+
     assert response.json() == {
         "content": "Break the assignment into three manageable steps.",
         "model": "mock-model",
     }
 
+    assert classifier.last_request is not None
     assert provider.last_request is not None
+
     assert provider.last_request.messages[0].role == "user"
-    assert provider.last_request.messages[0].content == ("Help me understand this assignment.")
+    assert "Help me understand this assignment." in provider.last_request.messages[0].content
+
+    assert "Explain the employee request." in provider.last_request.messages[0].content
+
+    assert provider.last_request.system_instructions is not None
+    assert "Explain the central meaning in plain, natural language" in (
+        provider.last_request.system_instructions
+    )
 
 
 @pytest.mark.asyncio
 async def test_assistant_rejects_empty_message(
     authenticated_client,
 ) -> None:
-    client, provider = authenticated_client
+    client, provider, classifier = authenticated_client
 
     response = await client.post(
         "/api/assistant/messages",
@@ -146,13 +199,14 @@ async def test_assistant_rejects_empty_message(
 
     assert response.status_code == 422
     assert provider.last_request is None
+    assert classifier.last_request is None
 
 
 @pytest.mark.asyncio
 async def test_assistant_requires_csrf(
     authenticated_client,
 ) -> None:
-    client, provider = authenticated_client
+    client, provider, classifier = authenticated_client
 
     response = await client.post(
         "/api/assistant/messages",
@@ -166,6 +220,7 @@ async def test_assistant_requires_csrf(
 
     assert response.status_code == 403
     assert provider.last_request is None
+    assert classifier.last_request is None
 
 
 @pytest.mark.asyncio
@@ -173,14 +228,18 @@ async def test_assistant_handles_provider_failure(
     authenticated_client,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client, provider = authenticated_client
+    client, provider, classifier = authenticated_client
 
     async def failing_generate(
         request: TextGenerationRequest,
     ) -> TextGenerationResponse:
         raise TextGenerationError("Internal provider connection details")
 
-    monkeypatch.setattr(provider, "generate", failing_generate)
+    monkeypatch.setattr(
+        provider,
+        "generate",
+        failing_generate,
+    )
 
     response = await client.post(
         "/api/assistant/messages",
@@ -195,6 +254,8 @@ async def test_assistant_handles_provider_failure(
     }
 
     assert "Internal provider connection details" not in response.text
+
+    assert classifier.last_request is not None
 
 
 @pytest.mark.asyncio

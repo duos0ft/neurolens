@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import application_settings, assistant, preferences
+from app.api import application_settings, assistant, contact_persons, conversations, preferences
 from app.api.auth import router as auth_router
 from app.api.employee_invitations import router as employee_invitations_router
 from app.api.employees import router as employees_router
@@ -22,7 +22,9 @@ def create_app() -> FastAPI:
     app.include_router(profile_router, prefix="/api")
     app.include_router(preferences.router, prefix="/api")
     app.include_router(application_settings.router, prefix="/api")
+    app.include_router(contact_persons.router, prefix="/api")
     app.include_router(assistant.router, prefix="/api")
+    app.include_router(conversations.router, prefix="/api")
 
     return app
 

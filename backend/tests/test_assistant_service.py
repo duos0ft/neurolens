@@ -1,6 +1,7 @@
 import pytest
 
 from app.ai.capabilities.text_generation import (
+    GenerationMessage,
     TextGenerationRequest,
     TextGenerationResponse,
 )
@@ -48,3 +49,42 @@ async def test_assistant_rejects_empty_messages() -> None:
         await assistant.respond("   ")
 
     assert provider.last_request is None
+
+
+@pytest.mark.asyncio
+async def test_assistant_includes_conversation_history() -> None:
+    provider = MockTextGenerationProvider()
+    assistant = AssistantService(provider=provider)
+
+    history = [
+        GenerationMessage(
+            role="user",
+            content="Explain this assignment.",
+        ),
+        GenerationMessage(
+            role="assistant",
+            content="You need to prepare a report.",
+        ),
+    ]
+
+    await assistant.respond(
+        message="Break that down into steps.",
+        history=history,
+    )
+
+    assert provider.last_request is not None
+
+    assert provider.last_request.messages == [
+        GenerationMessage(
+            role="user",
+            content="Explain this assignment.",
+        ),
+        GenerationMessage(
+            role="assistant",
+            content="You need to prepare a report.",
+        ),
+        GenerationMessage(
+            role="user",
+            content="Break that down into steps.",
+        ),
+    ]
