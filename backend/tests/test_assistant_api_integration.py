@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.ai.capabilities.types import AICapability
 from app.models.employee_profile import EmployeeProfile
 from app.services.assistant_config import AssistantConfig
-from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_orchestrator import AssistantOrchestrator, CapabilityDisabledError
 from tests.helpers.mock_ai_registry import create_mock_ai_registry
 
 
@@ -108,9 +108,11 @@ async def test_disabled_task_assistance_does_not_call_provider() -> None:
         ),
     )
 
-    results = await orchestrator.respond("Break down this assignment into steps.")
-
-    assert results == []
+    with pytest.raises(
+        CapabilityDisabledError,
+        match="No requested assistant capabilities are enabled",
+    ):
+        await orchestrator.respond("Break down this assignment into steps.")
 
     assert len(providers[AICapability.TASK_ASSISTANCE].requests) == 0
 
