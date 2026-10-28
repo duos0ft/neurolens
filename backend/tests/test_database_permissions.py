@@ -14,6 +14,9 @@ EXPECTED_ACCESS = {
     "auth_flows": ("SELECT", "INSERT", "UPDATE", "DELETE"),
     "employee_sessions": ("SELECT", "INSERT", "UPDATE", "DELETE"),
     "application_settings": ("SELECT", "INSERT"),
+    "contact_persons": ("SELECT", "INSERT"),
+    "conversations": ("SELECT", "INSERT", "UPDATE", "DELETE"),
+    "conversation_messages": ("SELECT", "INSERT", "UPDATE", "DELETE"),
 }
 
 
@@ -29,6 +32,15 @@ EXPECTED_UPDATE_COLUMNS = {
         "enable_task_assistance",
         "enable_policy_assistance",
         "enable_sentiment_analysis",
+    },
+    "contact_persons": {
+        "name",
+        "job_title",
+        "email",
+        "department",
+        "responsibility",
+        "is_primary",
+        "is_active",
     },
 }
 

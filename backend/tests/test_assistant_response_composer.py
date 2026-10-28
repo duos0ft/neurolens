@@ -26,8 +26,8 @@ def test_composes_multiple_capabilities() -> None:
         ]
     )
 
-    assert "**Message explanation**" in response.content
-    assert "**Suggested steps**" in response.content
+    assert "### What this means" in response.content
+    assert "### What to do" in response.content
     assert "Your manager is requesting a progress update." in response.content
     assert "1. Check progress." in response.content
     assert response.model == "neurolens-composed"

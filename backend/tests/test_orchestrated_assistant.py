@@ -76,8 +76,8 @@ async def test_orchestrated_assistant_returns_composed_response() -> None:
 
     response = await assistant.respond("Explain this message and create a task list.")
 
-    assert "**Message explanation**" in response.content
-    assert "**Suggested steps**" in response.content
+    assert "### What this means" in response.content
+    assert "### What to do" in response.content
     assert "Your manager wants an update." in response.content
     assert "Check progress." in response.content
 

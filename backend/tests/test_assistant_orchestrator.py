@@ -11,7 +11,6 @@ from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_orchestrator import AssistantOrchestrator
-from app.services.trusted_conversation_context import TrustedConversationContext
 
 
 class MockProvider:
@@ -177,10 +176,13 @@ async def test_invalid_classification_does_not_execute_capabilities() -> None:
         enable_task_assistance=True,
     )
 
-    results = await orchestrator.respond("Explain this message and make a task list.")
+    with pytest.raises(
+        RuntimeError,
+        match="Unable to classify the employee's request",
+    ):
+        await orchestrator.respond("Explain this message and make a task list.")
 
-    assert results == []
-    assert len(classifier.requests) == 1
+    assert len(classifier.requests) == 2
     assert len(explanation.requests) == 0
     assert len(tasks.requests) == 0
 
@@ -390,7 +392,6 @@ async def test_empty_classification_does_not_execute_providers() -> None:
     registry = AIProviderRegistry()
 
     classifier = MockProvider(classification_response())
-
     explanation = MockProvider("Should not execute.")
 
     registry.register_text_generation(
@@ -404,10 +405,13 @@ async def test_empty_classification_does_not_execute_providers() -> None:
 
     orchestrator = AssistantOrchestrator(registry)
 
-    results = await orchestrator.respond("Can you help me?")
+    with pytest.raises(
+        RuntimeError,
+        match="Unable to classify the employee's request",
+    ):
+        await orchestrator.respond("Can you help me?")
 
-    assert results == []
-    assert len(classifier.requests) == 1
+    assert len(classifier.requests) == 2
     assert len(explanation.requests) == 0
 
 
@@ -545,12 +549,12 @@ async def test_orchestrator_applies_employee_preferences() -> None:
 
     assert instructions is not None
     assert "Be direct" in instructions
-    assert "Keep responses brief" in instructions
-    assert "Prefer short paragraphs" in instructions
+    assert "1 to 2 concise sentences" in instructions
+    assert "concise, natural-language guidance" in instructions
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_uses_matching_trusted_context() -> None:
+async def test_explanation_follow_up_receives_recent_history() -> None:
     registry = AIProviderRegistry()
 
     classifier = MockProvider(
@@ -561,7 +565,7 @@ async def test_orchestrator_uses_matching_trusted_context() -> None:
         "]}"
     )
 
-    explanation = MockProvider("It means finish before the day ends.")
+    explanation = MockProvider("Your manager wants you to help, but not spend all day on it.")
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
@@ -573,76 +577,29 @@ async def test_orchestrator_uses_matching_trusted_context() -> None:
         explanation,
     )
 
-    previous_messages = (
+    orchestrator = AssistantOrchestrator(registry=registry)
+
+    history = [
         GenerationMessage(
             role="user",
-            content="What does EOD mean?",
+            content='Explain "Help the new hire, but not all day."',
         ),
         GenerationMessage(
             role="assistant",
-            content="EOD means end of day.",
+            content="Your manager is asking you to help the new hire.",
         ),
-    )
-
-    context = TrustedConversationContext(
-        by_capability={
-            AICapability.MESSAGE_EXPLANATION: previous_messages,
-        },
-    )
-
-    orchestrator = AssistantOrchestrator(registry=registry)
+    ]
 
     results = await orchestrator.respond(
-        message="Can you explain that more simply?",
-        trusted_context=context,
+        message="Can you make that simpler?",
+        history=history,
     )
 
     assert len(results) == 1
-    assert len(explanation.requests) == 1
 
     request = explanation.requests[0]
 
     assert len(request.messages) == 3
-    assert request.messages[0].content == "What does EOD mean?"
-    assert request.messages[1].content == "EOD means end of day."
-    assert "Can you explain that more simply?" in request.messages[2].content
-
-
-@pytest.mark.asyncio
-async def test_policy_intent_does_not_forward_trusted_context() -> None:
-    registry = AIProviderRegistry()
-
-    classifier = MockProvider(
-        '{"intents": ['
-        '{"capability": "policy_question", '
-        '"instruction": "Identify the leave-policy question.", '
-        '"source_text": null}'
-        "]}"
-    )
-
-    registry.register_text_generation(
-        AICapability.REQUEST_CLASSIFICATION,
-        classifier,
-    )
-
-    context = TrustedConversationContext(
-        by_capability={
-            AICapability.MESSAGE_EXPLANATION: (
-                GenerationMessage(
-                    role="user",
-                    content="Previous sensitive workplace message.",
-                ),
-            ),
-        },
-    )
-
-    orchestrator = AssistantOrchestrator(registry=registry)
-
-    results = await orchestrator.respond(
-        message="How many leave days do I get?",
-        trusted_context=context,
-    )
-
-    assert len(results) == 1
-    assert results[0].capability == AICapability.POLICY_QUESTION
-    assert "can't verify" in results[0].response.content
+    assert request.messages[0].content == history[0].content
+    assert request.messages[1].content == history[1].content
+    assert "Can you make that simpler?" in request.messages[2].content

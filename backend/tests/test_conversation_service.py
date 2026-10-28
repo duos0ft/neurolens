@@ -915,10 +915,11 @@ async def test_orchestrated_assistant_persists_capability_metadata(
         assert user_message.capability_metadata is None
 
         assert assistant_message.capability_metadata == {
-            "version": 1,
+            "version": 2,
             "capabilities": [
                 "message_explanation",
             ],
+            "sources": [],
         }
 
         stored_messages = await service.get_messages(
@@ -930,8 +931,9 @@ async def test_orchestrated_assistant_persists_capability_metadata(
         assert len(stored_messages) == 2
 
         assert stored_messages[1].capability_metadata == {
-            "version": 1,
+            "version": 2,
             "capabilities": [
                 "message_explanation",
             ],
+            "sources": [],
         }

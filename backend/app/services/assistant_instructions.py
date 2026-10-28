@@ -4,64 +4,85 @@ from app.services.assistant_config import AssistantConfig
 def build_preference_instructions(
     config: AssistantConfig,
 ) -> str:
-    instructions = [
-        "Employee communication preferences:",
-    ]
-
     directness = {
-        "low": ("Use a gentle, considerate tone while remaining clear and specific."),
-        "balanced": ("Use a balanced, professional, and approachable tone."),
-        "high": ("Be direct, explicit, and concise. Avoid unnecessary introductions."),
+        "low": (
+            "Use a gentle, considerate tone. Be clear without sounding abrupt or overly formal."
+        ),
+        "balanced": (
+            "Use a clear, approachable, and professional tone. "
+            "Be friendly without unnecessary reassurance or filler."
+        ),
+        "high": (
+            "Be direct, explicit, and concise. Lead with the "
+            "important information and avoid unnecessary introductions."
+        ),
     }
-
-    instructions.append(directness[config.directness])
 
     response_length = {
-        "short": ("Keep responses brief and include only essential details."),
+        "short": (
+            "Prefer 1 to 2 concise sentences for simple explanations. "
+            "When actions are requested, usually give no more than "
+            "2 practical steps. Include additional detail only when essential."
+        ),
         "medium": (
-            "Provide enough detail to explain the request clearly without unnecessary elaboration."
+            "For straightforward explanations, prefer 2 to 4 sentences. "
+            "When actions are requested, usually provide 2 to 4 "
+            "practical steps. Avoid excessive sections and repetition."
         ),
         "detailed": (
-            "Provide thorough explanations when additional detail "
-            "helps the employee understand the request."
+            "Provide a thorough but well-organized response. "
+            "Include relevant context, dependencies, and important "
+            "uncertainties when useful. Avoid unnecessary repetition."
         ),
     }
 
-    instructions.append(response_length[config.response_length])
+    instructions = [
+        "Employee communication preferences:",
+        directness[config.directness],
+        response_length[config.response_length],
+    ]
 
     if config.highlight_ambiguity:
         instructions.append(
-            "Explicitly identify important ambiguity, missing "
-            "information, and uncertain interpretations."
+            "Identify ambiguity only when it could change the "
+            "employee's understanding or next action. "
+            "Prefer a brief clarification over a long list of unknowns."
         )
     else:
         instructions.append(
-            "Do not add a separate ambiguity section by default. "
-            "Still identify uncertainty when necessary to avoid "
-            "misleading the employee."
+            "Do not include a separate ambiguity section by default. "
+            "Still communicate uncertainty when necessary for accuracy."
         )
 
     if config.step_by_step_guidance:
         instructions.append(
-            "When providing actionable guidance, organize it "
-            "into clear, manageable steps when useful."
+            "When actionable guidance is needed, present a short, "
+            "ordered sequence of manageable steps. "
+            "Do not invent extra work simply to create more steps."
         )
     else:
         instructions.append(
-            "Prefer short paragraphs over numbered steps, "
-            "unless the employee explicitly requests a checklist "
-            "or step-by-step instructions."
+            "Prefer concise, natural-language guidance rather than "
+            "numbered steps, unless the employee explicitly asks "
+            "for a task breakdown or checklist."
         )
 
     if config.always_show_next_step:
         instructions.append(
-            "When a meaningful next step exists, make it explicit. "
-            "Do not invent responsibilities or deadlines."
+            "When an actionable next step exists and has not already "
+            "been made clear, suggest one specific next action. "
+            "Do not repeat an existing plan or invent obligations."
         )
     else:
         instructions.append(
-            "Do not automatically append a next-step suggestion "
-            "unless the employee requests one or it is essential."
+            "Do not automatically append a next-step recommendation "
+            "unless explicitly requested or essential to the answer."
         )
+
+    instructions.append(
+        "Treat these preferences as communication guidance. "
+        "Never compromise factual accuracy, important uncertainty, "
+        "or organizational capability restrictions to follow them."
+    )
 
     return "\n".join(instructions)

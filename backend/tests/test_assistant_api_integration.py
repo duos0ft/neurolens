@@ -84,8 +84,8 @@ async def test_employee_preferences_reach_explanation_provider(
 
     assert instructions is not None
     assert "Be direct" in instructions
-    assert "Keep responses brief" in instructions
-    assert "Prefer short paragraphs" in instructions
+    assert "1 to 2 concise sentences" in instructions
+    assert "Prefer concise, natural-language guidance" in instructions
     assert "Do not automatically append" in instructions
 
 
@@ -286,8 +286,38 @@ async def test_conversation_preserves_follow_up_messages(
 
     # History is persisted, but classified generation currently
     # uses capability-scoped requests rather than prior chat turns.
-    for request in providers[AICapability.MESSAGE_EXPLANATION].requests:
-        assert len(request.messages) == 1
+    explanation_requests = providers[AICapability.MESSAGE_EXPLANATION].requests
+
+    assert len(explanation_requests) == 3
+
+    # First message: no previous conversation history.
+    assert len(explanation_requests[0].messages) == 1
+
+    # Second message: first user/assistant exchange + current request.
+    assert len(explanation_requests[1].messages) == 3
+
+    assert [message.role for message in explanation_requests[1].messages] == [
+        "user",
+        "assistant",
+        "user",
+    ]
+
+    assert explanation_requests[1].messages[0].content == ("Explain what EOD means.")
+
+    assert "What does that imply for my work?" in explanation_requests[1].messages[2].content
+
+    # Third message: two previous exchanges + current request.
+    assert len(explanation_requests[2].messages) == 5
+
+    assert [message.role for message in explanation_requests[2].messages] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+        "user",
+    ]
+
+    assert "Can you make the explanation clearer?" in explanation_requests[2].messages[-1].content
 
 
 @pytest.mark.asyncio

@@ -5,9 +5,11 @@ import pytest
 from app.ai.capabilities.text_generation import (
     TextGenerationRequest,
     TextGenerationResponse,
+    GenerationMessage,
 )
 from app.ai.capabilities.types import AICapability
 from app.services.capability_classifier import CapabilityClassifier
+from tests.test_assistant_orchestrator import MockProvider
 
 
 class MockClassifierProvider:
@@ -351,7 +353,7 @@ async def test_extracts_exact_source_text() -> None:
 
 
 @pytest.mark.asyncio
-async def test_rejects_invented_source_text() -> None:
+async def test_discards_invented_source_text() -> None:
     classifier = CapabilityClassifier(
         MockClassifierProvider(
             json.dumps(
@@ -368,11 +370,14 @@ async def test_rejects_invented_source_text() -> None:
         )
     )
 
-    with pytest.raises(
-        ValueError,
-        match="Unable to interpret capability classification",
-    ):
-        await classifier.classify("My manager asked for a progress update.")
+    result = await classifier.classify("My manager asked me to review the report.")
+
+    assert result.capabilities == [
+        AICapability.MESSAGE_EXPLANATION,
+    ]
+
+    assert result.intents[0].instruction == "Explain the message."
+    assert result.intents[0].source_text is None
 
 
 @pytest.mark.asyncio
@@ -395,4 +400,76 @@ async def test_accepts_null_source_text() -> None:
 
     result = await classifier.classify("Hello!")
 
+    assert result.intents[0].source_text is None
+
+
+@pytest.mark.asyncio
+async def test_classifier_receives_conversation_history() -> None:
+    provider = MockProvider(
+        '{"intents": ['
+        '{"capability": "message_explanation", '
+        '"instruction": "Simplify the previous explanation.", '
+        '"source_text": null}'
+        "]}"
+    )
+
+    classifier = CapabilityClassifier(provider)
+
+    history = [
+        GenerationMessage(
+            role="user",
+            content='Explain "Please send the report by EOD."',
+        ),
+        GenerationMessage(
+            role="assistant",
+            content="EOD means end of day.",
+        ),
+    ]
+
+    result = await classifier.classify(
+        message="Can you make that simpler?",
+        history=history,
+    )
+
+    assert result.capabilities == [
+        AICapability.MESSAGE_EXPLANATION,
+    ]
+
+    request = provider.requests[0]
+
+    assert len(request.messages) == 3
+    assert request.messages[0].content == history[0].content
+    assert request.messages[1].content == history[1].content
+    assert request.messages[2].content == "Can you make that simpler?"
+
+
+@pytest.mark.asyncio
+async def test_historical_source_text_is_not_accepted_as_explicit_source() -> None:
+    provider = MockProvider(
+        json.dumps(
+            {
+                "intents": [
+                    {
+                        "capability": "task_assistance",
+                        "instruction": "Create a short checklist from the previous request.",
+                        "source_text": "Review last week's client feedback.",
+                    }
+                ]
+            }
+        )
+    )
+
+    classifier = CapabilityClassifier(provider)
+
+    result = await classifier.classify(
+        message="Can you turn that into a short checklist?",
+        history=[
+            GenerationMessage(
+                role="user",
+                content="Review last week's client feedback.",
+            ),
+        ],
+    )
+
+    assert result.capabilities == [AICapability.TASK_ASSISTANCE]
     assert result.intents[0].source_text is None

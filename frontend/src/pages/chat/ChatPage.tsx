@@ -18,6 +18,7 @@ import {
 import { chatPageStyles as styles } from "./ChatPage.styles";
 import { RenameConversationDialog } from "./RenameConversationDialog";
 import { ConfirmationDialog } from "../../components/dialog/ConfirmationDialog";
+import { ChatMessageContent } from "./ChatMessageContent";
 
 export function Component() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -482,9 +483,7 @@ export function Component() {
                                             </div>
 
                                             <div className={styles.assistantMessage}>
-                                                <p className={styles.messageContent}>
-                                                    {item.content}
-                                                </p>
+                                                <ChatMessageContent content={item.content}/>
                                             </div>
                                         </div>
                                     )

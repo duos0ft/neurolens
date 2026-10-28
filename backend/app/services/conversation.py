@@ -8,17 +8,15 @@ from app.ai.capabilities.text_generation import (
     GenerationMessage,
     TextGenerationProvider,
 )
-from app.ai.capabilities.types import AICapability
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.services.assistant_execution_result import AssistantExecutionResult
 from app.services.assistant_protocol import AssistantProtocol
-from app.services.capability_history import CapabilityHistoryResolver
 from app.services.conversation_capability_metadata import (
     ConversationCapabilityMetadata,
 )
 from app.services.conversation_title import ConversationTitleService
-from app.services.trusted_conversation_context import TrustedConversationContext
+
 
 logger = logging.getLogger(__name__)
 
@@ -154,24 +152,6 @@ class ConversationService:
                 for message in history_messages
             ]
 
-            history_resolver = CapabilityHistoryResolver()
-
-            trusted_context = TrustedConversationContext(
-                by_capability={
-                    capability: tuple(
-                        history_resolver.resolve(
-                            capability=capability,
-                            history=history_messages,
-                        ).messages
-                    )
-                    for capability in (
-                        AICapability.GENERAL_CONVERSATION,
-                        AICapability.MESSAGE_EXPLANATION,
-                        AICapability.TASK_ASSISTANCE,
-                    )
-                },
-            )
-
             capability_metadata = None
 
             execute = getattr(assistant, "execute", None)
@@ -180,7 +160,6 @@ class ConversationService:
                 execution_result: AssistantExecutionResult = await execute(
                     message=content,
                     history=history,
-                    trusted_context=trusted_context,
                 )
 
                 response = execution_result.response
@@ -188,6 +167,7 @@ class ConversationService:
                 if execution_result.capabilities:
                     capability_metadata = ConversationCapabilityMetadata(
                         capabilities=execution_result.capabilities,
+                        sources=execution_result.sources,
                     ).to_dict()
 
             else:
