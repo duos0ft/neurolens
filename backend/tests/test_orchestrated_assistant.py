@@ -159,3 +159,94 @@ async def test_respond_preserves_legacy_response_contract() -> None:
 
     assert isinstance(response, TextGenerationResponse)
     assert response.content == "Hello! How can I help?"
+
+
+@pytest.mark.asyncio
+async def test_execute_reuses_precomputed_classification() -> None:
+    registry = AIProviderRegistry()
+
+    classifier = MockProvider(
+        '{"intents": ['
+        '{"capability": "message_explanation", '
+        '"instruction": "Explain the message.", '
+        '"source_text": null}'
+        "]}"
+    )
+
+    explanation = MockProvider("Your manager wants an update.")
+
+    registry.register_text_generation(
+        AICapability.REQUEST_CLASSIFICATION,
+        classifier,
+    )
+
+    registry.register_text_generation(
+        AICapability.MESSAGE_EXPLANATION,
+        explanation,
+    )
+
+    orchestrator = AssistantOrchestrator(
+        registry=registry,
+    )
+
+    assistant = OrchestratedAssistantService(
+        orchestrator=orchestrator,
+        composer=AssistantResponseComposer(),
+    )
+
+    classification = await orchestrator.classify(
+        message="Explain this message.",
+    )
+
+    result = await assistant.execute(
+        message="Explain this message.",
+        classification=classification,
+    )
+
+    assert result.response.content == "Your manager wants an update."
+    assert result.capabilities == (AICapability.MESSAGE_EXPLANATION,)
+
+
+@pytest.mark.asyncio
+async def test_extract_tasks_returns_structured_suggestions() -> None:
+    registry = AIProviderRegistry()
+
+    extraction_provider = MockProvider(
+        '{"tasks": ['
+        '{"title": "Review client feedback", '
+        '"description": "Identify important issues.", '
+        '"priority": null, '
+        '"due_date": null, '
+        '"source_text": "Review client feedback", '
+        '"subtasks": []}'
+        "]}"
+    )
+
+    registry.register_text_generation(
+        AICapability.TASK_EXTRACTION,
+        extraction_provider,
+    )
+
+    assistant = OrchestratedAssistantService(
+        orchestrator=AssistantOrchestrator(
+            registry=registry,
+        ),
+        composer=AssistantResponseComposer(),
+    )
+
+    result = await assistant.extract_tasks(
+        source_text="Review client feedback and prepare a summary.",
+    )
+
+    assert result.capabilities == (AICapability.TASK_EXTRACTION,)
+
+    assert result.task_suggestions is not None
+    assert result.task_suggestions.source_message_id is None
+
+    tasks = result.task_suggestions.extraction.tasks
+
+    assert len(tasks) == 1
+    assert tasks[0].title == "Review client feedback"
+
+    assert "1 possible task" in result.response.content
+    assert result.response.model == "neurolens-task-extraction"

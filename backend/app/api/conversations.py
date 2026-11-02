@@ -15,6 +15,7 @@ from app.ai.registry import (
 from app.api.assistant_dependencies import (
     get_ai_provider_registry,
     get_orchestrated_assistant,
+    get_task_extraction_service,
 )
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
@@ -28,8 +29,19 @@ from app.schemas.conversation import (
     SendConversationMessageRequest,
     UpdateConversationRequest,
 )
-from app.services.conversation import ConversationService
+from app.schemas.task_extraction import (
+    TaskExtractionResponse,
+    ResolvedTaskExtractionResponse,
+    ConversationTaskExtractionRequest,
+)
+from app.services.assistant_orchestrator import (
+    CapabilityClassificationError,
+    CapabilityDisabledError,
+)
+from app.services.conversation import ConversationService, TaskSourceAmbiguityError
 from app.services.orchestrated_assistant import OrchestratedAssistantService
+from app.services.task_extraction import TaskExtractionError, TaskExtractionService
+from app.services.task_source_resolver import TaskSourceResolutionError, TaskSourceResolver
 
 router = APIRouter(
     prefix="/conversations",
@@ -271,6 +283,34 @@ async def send_conversation_message(
             assistant=assistant,
         )
 
+    except CapabilityDisabledError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=("This assistant capability is currently unavailable."),
+        ) from error
+
+    except CapabilityClassificationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't process your message. Please try again."),
+        ) from error
+
+    except TaskSourceAmbiguityError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "I couldn't determine which earlier message "
+                "you meant. Please specify the assignment "
+                "or select the message directly."
+            ),
+        ) from error
+
+    except (TaskSourceResolutionError, TaskExtractionError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't prepare task suggestions. Please try again."),
+        ) from error
+
     except (TextGenerationError, ProviderNotConfiguredError) as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -290,3 +330,177 @@ async def send_conversation_message(
         )
         for message in result
     ]
+
+
+@router.post(
+    "/{conversation_id}/messages/{message_id}/extract-tasks",
+    response_model=TaskExtractionResponse,
+    dependencies=[Depends(validate_request_origin)],
+)
+async def extract_conversation_message_tasks(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    employee: Annotated[Employee, Depends(get_current_employee)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
+    extraction_service: Annotated[
+        TaskExtractionService,
+        Depends(get_task_extraction_service),
+    ],
+    _: Annotated[None, Depends(validate_mutation_csrf)],
+) -> TaskExtractionResponse:
+    messages = await service.get_messages(
+        employee_id=employee.user_id,
+        conversation_id=conversation_id,
+    )
+
+    if messages is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    source_message = next(
+        (message for message in messages if message.id == message_id and message.role == "user"),
+        None,
+    )
+
+    if source_message is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source message not found",
+        )
+
+    try:
+        result = await extraction_service.extract(
+            text=source_message.content,
+        )
+
+    except ProviderNotConfiguredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Task extraction is currently unavailable",
+        ) from error
+
+    except (TextGenerationError, TaskExtractionError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't extract tasks from this message. Please try again."),
+        ) from error
+
+    return TaskExtractionResponse(
+        tasks=result.tasks,
+    )
+
+
+@router.post(
+    "/{conversation_id}/extract-tasks",
+    response_model=ResolvedTaskExtractionResponse,
+    dependencies=[Depends(validate_request_origin)],
+)
+async def extract_conversation_tasks(
+    conversation_id: uuid.UUID,
+    payload: ConversationTaskExtractionRequest,
+    employee: Annotated[Employee, Depends(get_current_employee)],
+    service: Annotated[
+        ConversationService,
+        Depends(get_conversation_service),
+    ],
+    registry: Annotated[
+        AIProviderRegistry,
+        Depends(get_ai_provider_registry),
+    ],
+    extraction_service: Annotated[
+        TaskExtractionService,
+        Depends(get_task_extraction_service),
+    ],
+    _: Annotated[None, Depends(validate_mutation_csrf)],
+) -> ResolvedTaskExtractionResponse:
+    messages = await service.get_messages(
+        employee_id=employee.user_id,
+        conversation_id=conversation_id,
+    )
+
+    if messages is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    candidates = [
+        message for message in messages if message.role == "user" and message.content.strip()
+    ]
+
+    if not candidates:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No previous employee messages are available for task extraction.",
+        )
+
+    resolver = TaskSourceResolver(
+        registry=registry,
+    )
+
+    try:
+        source_message_id = await resolver.resolve(
+            request=payload.request,
+            messages=candidates,
+        )
+
+    except ProviderNotConfiguredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Task source resolution is currently unavailable",
+        ) from error
+
+    except (TextGenerationError, TaskSourceResolutionError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't identify the source message. Please try again."),
+        ) from error
+
+    if source_message_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "I couldn't determine which earlier message you meant. "
+                "Please specify the request or select the message directly."
+            ),
+        )
+
+    # The resolver's output must correspond to a user-authored
+    # message in this employee-owned conversation.
+    source_message = next(
+        (message for message in candidates if message.id == source_message_id),
+        None,
+    )
+
+    if source_message is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source message not found",
+        )
+
+    try:
+        result = await extraction_service.extract(
+            text=source_message.content,
+        )
+
+    except ProviderNotConfiguredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Task extraction is currently unavailable",
+        ) from error
+
+    except (TextGenerationError, TaskExtractionError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't extract tasks from this message. Please try again."),
+        ) from error
+
+    return ResolvedTaskExtractionResponse(
+        source_message_id=source_message.id,
+        tasks=result.tasks,
+    )

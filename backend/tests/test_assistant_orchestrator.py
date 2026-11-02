@@ -10,7 +10,10 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
-from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_orchestrator import (
+    AssistantOrchestrator,
+    CapabilityClassificationError,
+)
 
 
 class MockProvider:
@@ -177,7 +180,7 @@ async def test_invalid_classification_does_not_execute_capabilities() -> None:
     )
 
     with pytest.raises(
-        RuntimeError,
+        CapabilityClassificationError,
         match="Unable to classify the employee's request",
     ):
         await orchestrator.respond("Explain this message and make a task list.")
@@ -406,7 +409,7 @@ async def test_empty_classification_does_not_execute_providers() -> None:
     orchestrator = AssistantOrchestrator(registry)
 
     with pytest.raises(
-        RuntimeError,
+        CapabilityClassificationError,
         match="Unable to classify the employee's request",
     ):
         await orchestrator.respond("Can you help me?")

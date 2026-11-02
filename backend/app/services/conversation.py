@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.ai.capabilities.text_generation import (
     GenerationMessage,
     TextGenerationProvider,
+    TextGenerationResponse,
 )
+from app.ai.capabilities.types import AICapability
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.services.assistant_execution_result import AssistantExecutionResult
@@ -16,10 +18,16 @@ from app.services.conversation_capability_metadata import (
     ConversationCapabilityMetadata,
 )
 from app.services.conversation_title import ConversationTitleService
+from app.services.orchestrated_assistant import OrchestratedAssistantService
+from app.services.task_source_resolver import TaskSourceResolver, TaskSourceResolutionError
 
 logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 20
+
+
+class TaskSourceAmbiguityError(Exception):
+    pass
 
 
 class ConversationService:
@@ -152,14 +160,91 @@ class ConversationService:
             ]
 
             capability_metadata = None
+            task_suggestions = None
 
-            execute = getattr(assistant, "execute", None)
-
-            if callable(execute):
-                execution_result: AssistantExecutionResult = await execute(
+            if isinstance(assistant, OrchestratedAssistantService):
+                classification = await assistant.orchestrator.classify(
                     message=content,
                     history=history,
                 )
+
+                if AICapability.TASK_EXTRACTION in classification.capabilities:
+                    if AICapability.POLICY_QUESTION in classification.capabilities:
+                        execution_result = AssistantExecutionResult(
+                            response=TextGenerationResponse(
+                                content=(
+                                    "I can't extract tasks from a request "
+                                    "mixed with unverified company-policy "
+                                    "information. Please provide the "
+                                    "workplace assignment separately."
+                                ),
+                                model="neurolens",
+                            ),
+                            capabilities=(AICapability.POLICY_QUESTION,),
+                        )
+                    else:
+                        extraction_intent = next(
+                            intent
+                            for intent in classification.intents
+                            if intent.capability == AICapability.TASK_EXTRACTION
+                        )
+
+                        source_text = extraction_intent.source_text
+                        source_message_id = None
+
+                        if source_text is None:
+                            candidates = [
+                                message
+                                for message in history_messages
+                                if message.role == "user" and message.content.strip()
+                            ]
+
+                            if not candidates:
+                                raise TaskSourceAmbiguityError(
+                                    "No earlier workplace message is available"
+                                )
+
+                            resolver = TaskSourceResolver(
+                                registry=assistant.orchestrator.registry,
+                            )
+
+                            source_message_id = await resolver.resolve(
+                                request=content,
+                                messages=candidates,
+                            )
+
+                            if source_message_id is None:
+                                raise TaskSourceAmbiguityError(
+                                    "Unable to identify the earlier workplace message"
+                                )
+
+                            source_message = next(
+                                (
+                                    message
+                                    for message in candidates
+                                    if message.id == source_message_id
+                                ),
+                                None,
+                            )
+
+                            if source_message is None:
+                                raise TaskSourceResolutionError(
+                                    "Resolved source is not an authorized message"
+                                )
+
+                            source_text = source_message.content
+
+                        execution_result = await assistant.extract_tasks(
+                            source_text=source_text,
+                            source_message_id=source_message_id,
+                        )
+
+                else:
+                    execution_result = await assistant.execute(
+                        message=content,
+                        history=history,
+                        classification=classification,
+                    )
 
                 response = execution_result.response
 
@@ -169,11 +254,58 @@ class ConversationService:
                         sources=execution_result.sources,
                     ).to_dict()
 
+                if execution_result.task_suggestions is not None:
+                    suggestions = execution_result.task_suggestions
+
+                    task_suggestions = {
+                        "version": 1,
+                        "source_message_id": (
+                            str(suggestions.source_message_id)
+                            if suggestions.source_message_id is not None
+                            else None
+                        ),
+                        "tasks": [
+                            task.model_dump(mode="json") for task in suggestions.extraction.tasks
+                        ],
+                    }
+
             else:
-                response = await assistant.respond(
-                    message=content,
-                    history=history,
-                )
+                execute = getattr(assistant, "execute", None)
+
+                if callable(execute):
+                    execution_result: AssistantExecutionResult = await execute(
+                        message=content,
+                        history=history,
+                    )
+
+                    response = execution_result.response
+
+                    if execution_result.capabilities:
+                        capability_metadata = ConversationCapabilityMetadata(
+                            capabilities=execution_result.capabilities,
+                            sources=execution_result.sources,
+                        ).to_dict()
+
+                    if execution_result.task_suggestions is not None:
+                        suggestions = execution_result.task_suggestions
+
+                        task_suggestions = {
+                            "version": 1,
+                            "source_message_id": (
+                                str(suggestions.source_message_id)
+                                if suggestions.source_message_id is not None
+                                else None
+                            ),
+                            "tasks": [
+                                task.model_dump(mode="json")
+                                for task in suggestions.extraction.tasks
+                            ],
+                        }
+                else:
+                    response = await assistant.respond(
+                        message=content,
+                        history=history,
+                    )
 
             last_sequence = await self.db.scalar(
                 select(func.max(ConversationMessage.sequence_number)).where(
@@ -204,6 +336,7 @@ class ConversationService:
                 content=response.content,
                 model=response.model,
                 capability_metadata=capability_metadata,
+                task_suggestions=task_suggestions,
             )
 
             self.db.add_all(

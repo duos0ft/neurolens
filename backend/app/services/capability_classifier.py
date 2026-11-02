@@ -9,6 +9,7 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.services.capability_intent import CapabilityIntent
 
+
 CLASSIFICATION_INSTRUCTIONS = """
 Classify employee requests for NeuroLens.
 
@@ -22,6 +23,9 @@ Available intents:
   indirect language, or ambiguous communication.
 - task_assistance: Break down work, create action lists,
   prioritize assignments, or plan tasks.
+- task_extraction: Identify actionable tasks from a workplace
+  message or conversation and propose individually selectable
+  tasks for the employee's task list.
 - policy_question: Questions requiring the organization's
   actual policies, entitlements, benefits, rules, or procedures.
 
@@ -51,6 +55,26 @@ Classification rules:
 - If no specialized intent applies, use general_conversation.
 - Do not use general_conversation to bypass company-policy restrictions.
 
+Task-assistance versus task-extraction rules:
+- Use task_assistance when the employee wants guidance about
+  completing work, prioritizing tasks, or breaking work into steps.
+- Use task_extraction when the employee wants actionable work
+  identified as task suggestions that can be reviewed or saved.
+- Requests such as "extract the tasks", "identify tasks I can add",
+  or "turn that message into tasks for My Tasks" are task_extraction.
+- Requests to add previously discussed work to My Tasks are
+  task_extraction at this stage because employee review and
+  explicit approval are required before anything is saved.
+- Requests for a checklist, practical advice, or the first step
+  are task_assistance unless the employee explicitly wants task
+  suggestions for their task list.
+- Do not classify a simple message explanation as task_extraction.
+- Do not automatically classify all actionable workplace messages
+  as task_extraction.
+- If the employee requests both an explanation and task suggestions,
+  include message_explanation and task_extraction.
+- Classification never authorizes the creation or saving of tasks.
+
 Follow-up classification:
 - A request to simplify, shorten, rephrase, or clarify an earlier
   response is a valid conversational follow-up.
@@ -61,7 +85,9 @@ Follow-up classification:
 - Requests such as "what should I do first?" or "give me the first
   step" are task_assistance when referring to workplace work.
 - Requests to convert previous work into a checklist are
-  task_assistance.
+  task_assistance unless task-list suggestions are requested.
+- Requests to extract tasks from an earlier workplace message
+  are task_extraction, even if that message is not repeated.
 - Do not classify a follow-up as an unrelated new conversation.
 - Previous messages are context, not new requests to execute.
 - If a follow-up concerns company policies, classify it as
@@ -134,8 +160,21 @@ Output:
 }
 
 Employee:
-"My manager wrote: 'Review the report and send an update.'
-Explain it and create a checklist."
+"Extract tasks from this request: Review the report and send an update."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "task_extraction",
+      "instruction": "Identify actionable task suggestions from the report request.",
+      "source_text": "Review the report and send an update."
+    }
+  ]
+}
+
+Employee:
+"My manager wrote: 'Review the report and send an update.' Explain it and create a checklist."
 
 Output:
 {
@@ -148,6 +187,25 @@ Output:
     {
       "capability": "task_assistance",
       "instruction": "Create a checklist from the manager's request.",
+      "source_text": "Review the report and send an update."
+    }
+  ]
+}
+
+Employee:
+"My manager wrote: 'Review the report and send an update.' Explain it and suggest tasks I can save."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "message_explanation",
+      "instruction": "Explain the manager's request.",
+      "source_text": "Review the report and send an update."
+    },
+    {
+      "capability": "task_extraction",
+      "instruction": "Identify individually selectable task suggestions from the request.",
       "source_text": "Review the report and send an update."
     }
   ]
@@ -168,8 +226,7 @@ Output:
 }
 
 Employee:
-"My manager wrote: 'Please send me your availability.'
-Explain the message and tell me our company's leave policy."
+"My manager wrote: 'Please send me your availability.' Explain the message and tell me our company's leave policy."
 
 Output:
 {
@@ -190,24 +247,20 @@ Output:
 Conversation example:
 
 Previous user:
-"My manager asked me to review onboarding documentation by Friday.
-Can you explain what they expect?"
+"My manager asked me to review onboarding documentation by Friday. Can you explain what they expect?"
 
 Previous assistant:
-"Your manager wants you to review the onboarding documents,
-correct outdated information, and send a summary by Friday."
+"Your manager wants you to review the onboarding documents, correct outdated information, and send a summary by Friday."
 
 Latest user:
-"That still feels like a lot. Can you make it simpler and
-tell me just the first thing I should do?"
+"That still feels like a lot. Can you make it simpler and tell me just the first thing I should do?"
 
 Output:
 {
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Identify only the first practical action for the previous 
-      onboarding-documentation request.",
+      "instruction": "Identify only the first practical action for the previous onboarding-documentation request.",
       "source_text": null
     }
   ]
@@ -219,20 +272,39 @@ Previous user:
 "My manager asked me to review last week's client feedback."
 
 Previous assistant:
-"Review the feedback, identify important issues, and prepare
-a short summary for the team."
+"Review the feedback, identify important issues, and prepare a short summary for the team."
 
 Latest user:
-"Can you turn my manager's request into a short checklist?
-Please include only the actual work I need to complete."
+"Can you turn my manager's request into a short checklist? Please include only the actual work I need to complete."
 
 Output:
 {
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Create a short checklist of concrete work from the previous 
-      client-feedback request without unnecessary reminders.",
+      "instruction": "Create a short checklist of concrete work from the previous client-feedback request.",
+      "source_text": null
+    }
+  ]
+}
+
+Conversation example:
+
+Previous user:
+"My manager asked me to review last week's client feedback."
+
+Previous assistant:
+"Your manager wants you to review the feedback and prepare a summary."
+
+Latest user:
+"Can you extract the tasks from my manager's request we discussed earlier?"
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "task_extraction",
+      "instruction": "Identify individually selectable tasks from the earlier manager request.",
       "source_text": null
     }
   ]
@@ -272,7 +344,9 @@ class CapabilityClassifier:
         message: str,
         history: list[GenerationMessage] | None = None,
     ) -> CapabilityClassification:
-        if not message.strip():
+        message = message.strip()
+
+        if not message:
             raise ValueError("Message cannot be empty")
 
         request = TextGenerationRequest(
@@ -281,7 +355,7 @@ class CapabilityClassifier:
                 *(history or [])[-6:],
                 GenerationMessage(
                     role="user",
-                    content=message.strip(),
+                    content=message,
                 ),
             ],
         )
@@ -306,6 +380,7 @@ class CapabilityClassifier:
                 AICapability.GENERAL_CONVERSATION,
                 AICapability.MESSAGE_EXPLANATION,
                 AICapability.TASK_ASSISTANCE,
+                AICapability.TASK_EXTRACTION,
                 AICapability.POLICY_QUESTION,
             }
 
@@ -316,7 +391,6 @@ class CapabilityClassifier:
                     raise ValueError("Invalid intent")
 
                 capability = AICapability(item["capability"])
-
                 instruction = item["instruction"]
                 source_text = item.get("source_text")
 
@@ -338,9 +412,8 @@ class CapabilityClassifier:
                     if not source_text.strip():
                         raise ValueError("Source text cannot be empty")
 
-                    # Historical or invented source text must never
-                    # become a verified source for the latest request.
-                    # Keep the classification but discard the source.
+                    # Historical or invented source text cannot be
+                    # considered verified evidence for this message.
                     if source_text not in message:
                         source_text = None
 
@@ -354,7 +427,9 @@ class CapabilityClassifier:
                     )
 
         except (ValueError, TypeError, KeyError) as error:
-            raise ValueError("Unable to interpret capability classification") from error
+            raise ValueError(
+                "Unable to interpret capability classification"
+            ) from error
 
         return CapabilityClassification(
             intents=intents,

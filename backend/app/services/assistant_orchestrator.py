@@ -11,7 +11,7 @@ from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_instructions import build_preference_instructions
-from app.services.capability_classifier import CapabilityClassifier
+from app.services.capability_classifier import CapabilityClassifier, CapabilityClassification
 from app.services.capability_intent import CapabilityIntent
 from app.services.conversation_context_snapshot import ConversationContextSnapshot
 from app.services.conversation_snapshot_builder import ConversationSnapshotBuilder
@@ -152,6 +152,10 @@ class CapabilityResult:
 
 
 class CapabilityDisabledError(Exception):
+    pass
+
+
+class CapabilityClassificationError(Exception):
     pass
 
 
@@ -358,11 +362,11 @@ class AssistantOrchestrator:
 
         return results
 
-    async def respond(
+    async def classify(
         self,
         message: str,
         history: list[GenerationMessage] | None = None,
-    ) -> list[CapabilityResult]:
+    ) -> CapabilityClassification:
         message = message.strip()
 
         if not message:
@@ -374,8 +378,6 @@ class AssistantOrchestrator:
 
         classifier = CapabilityClassifier(provider)
 
-        classification = None
-
         for attempt in range(1, MAX_CLASSIFICATION_ATTEMPTS + 1):
             try:
                 classification = await classifier.classify(
@@ -384,7 +386,7 @@ class AssistantOrchestrator:
                 )
 
                 if classification.intents:
-                    break
+                    return classification
 
                 logger.warning(
                     "Capability classification returned no intents (attempt %s/%s)",
@@ -401,10 +403,35 @@ class AssistantOrchestrator:
                 )
 
                 if attempt == MAX_CLASSIFICATION_ATTEMPTS:
-                    raise RuntimeError("Unable to classify the employee's request") from error
+                    raise CapabilityClassificationError(
+                        "Unable to classify the employee's request"
+                    ) from error
 
-        if classification is None or not classification.intents:
-            raise RuntimeError("Unable to classify the employee's request")
+        raise CapabilityClassificationError("Unable to classify the employee's request")
+
+    async def respond(
+        self,
+        message: str,
+        history: list[GenerationMessage] | None = None,
+        classification: CapabilityClassification | None = None,
+    ) -> list[CapabilityResult]:
+        message = message.strip()
+
+        if not message:
+            raise ValueError("Message cannot be empty")
+
+        if classification is None:
+            classification = await self.classify(
+                message=message,
+                history=history,
+            )
+
+        # Structured extraction will be dispatched by the
+        # conversation workflow in a later step.
+        if AICapability.TASK_EXTRACTION in classification.capabilities:
+            raise CapabilityDisabledError(
+                "Task extraction requires the structured extraction workflow"
+            )
 
         permitted_intents: list[CapabilityIntent] = []
 
@@ -432,7 +459,10 @@ class AssistantOrchestrator:
 
         return await self.execute(
             message=message,
-            capabilities=[intent.capability for intent in permitted_intents],
+            capabilities=[
+                intent.capability
+                for intent in permitted_intents
+            ],
             history=history,
             intents=permitted_intents,
         )
