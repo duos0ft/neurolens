@@ -13,10 +13,29 @@ export interface ConversationMessage {
     content: string;
     model: string | null;
     created_at: string;
+    task_suggestions: TaskSuggestions | null;
 }
 
 export interface ConversationDetail extends Conversation {
     messages: ConversationMessage[];
+}
+
+export interface ExtractedSubtask {
+    title: string;
+}
+
+export interface ExtractedTask {
+    title: string;
+    description: string | null;
+    priority: "low" | "medium" | "high" | null;
+    due_date: string | null;
+    source_text: string | null;
+    subtasks: ExtractedSubtask[];
+}
+
+export interface TaskSuggestions {
+    source_message_id: string | null;
+    tasks: ExtractedTask[];
 }
 
 export function getConversations(): Promise<Conversation[]> {
