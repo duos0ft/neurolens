@@ -1,24 +1,30 @@
 export const dropdownMenuStyles = {
     trigger: [
         "inline-flex size-8 shrink-0 items-center justify-center",
-        "rounded-lg text-fg-muted transition-colors",
+        "rounded-lg text-fg-muted",
+        "transition-colors duration-150",
         "hover:bg-muted hover:text-fg",
         "data-[open=true]:bg-muted data-[open=true]:text-fg",
-        "focus-visible:outline-2 focus-visible:outline-ring",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-visible:outline-2 focus-visible:outline-accent",
+        "disabled:cursor-not-allowed disabled:opacity-40",
     ].join(" "),
 
+    triggerIcon: "size-[18px]",
+
     menu: [
-        "m-0 overflow-hidden rounded-lg border border-border",
-        "bg-surface p-1 text-fg shadow-lg",
+        "rounded-xl border border-border",
+        "bg-surface p-1.5 text-fg",
+        "shadow-popover",
+        "outline-none",
     ].join(" "),
 
     item: [
         "flex min-h-9 w-full items-center gap-2.5",
-        "rounded-md px-2.5 py-2 text-left",
-        "text-sm font-medium text-fg",
-        "outline-none transition-colors",
-        "hover:bg-muted focus-visible:bg-muted",
+        "rounded-lg px-2.5 py-2 text-left",
+        "text-sm font-medium leading-ui text-fg-body",
+        "outline-none transition-colors duration-150",
+        "hover:bg-muted hover:text-fg",
+        "focus-visible:bg-muted focus-visible:text-fg",
         "disabled:cursor-not-allowed disabled:opacity-40",
     ].join(" "),
 
@@ -27,10 +33,13 @@ export const dropdownMenuStyles = {
         "text-fg-muted [&_svg]:size-4",
     ].join(" "),
 
+    itemLabel: "min-w-0 flex-1 truncate",
+
     destructive: [
-        "text-neg-fg",
-        "hover:bg-neg-fg/10 focus-visible:bg-neg-fg/10",
+        "text-destructive",
+        "hover:bg-destructive/10 hover:text-destructive",
+        "focus-visible:bg-destructive/10 focus-visible:text-destructive",
     ].join(" "),
 
-    destructiveIcon: "text-neg-fg",
+    destructiveIcon: "text-destructive",
 };

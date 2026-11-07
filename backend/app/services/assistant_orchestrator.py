@@ -290,14 +290,6 @@ class AssistantOrchestrator:
             intent = scoped_intents.get(capability)
             source_snapshot = source_snapshots.get(capability)
 
-            if (
-                intent is not None
-                and intent.source_text is not None
-                and capability in SPECIALIST_CAPABILITIES
-                and source_snapshot is None
-            ):
-                raise ValueError("Unable to verify the workplace source text")
-
             system_instructions = self._build_system_instructions(
                 capability=capability,
             )

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 QUOTE_PAIRS = {
     '"': '"',
     "“": "”",
@@ -29,8 +30,9 @@ class ConversationSourceResolver:
         if not message or not source_text:
             return None
 
-        # An exact substring match is necessary but not sufficient.
-        # Require the source to be explicitly delimited by quotes.
+        if source_text not in message:
+            return None
+
         for opening, closing in QUOTE_PAIRS.items():
             search_start = 0
 
@@ -56,11 +58,14 @@ class ConversationSourceResolver:
                 quoted_text = message[content_start:closing_index]
 
                 if quoted_text == source_text:
-                    return ConversationSource(
+                    source = ConversationSource(
                         text=source_text,
                         start=content_start,
                         end=closing_index,
                     )
+
+                    if source.matches(message):
+                        return source
 
                 search_start = closing_index + len(closing)
 

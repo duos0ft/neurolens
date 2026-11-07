@@ -14,6 +14,7 @@ import { useLocation } from "react-router";
 
 import { cn } from "../../lib/cn";
 import { Button } from "../button";
+import { RecentConversations } from "./RecentConversations";
 import { SidebarAccount } from "./SidebarAccount";
 import { SidebarItem } from "./SidebarItem";
 import { sidebarStyles as styles } from "./Sidebar.styles";
@@ -69,7 +70,8 @@ export function Sidebar({
         <aside
             className={cn(
                 styles.root,
-                "fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-200 ease-in-out",
+                "fixed inset-y-0 left-0 z-50 w-64",
+                "transition-transform duration-200 ease-in-out",
                 "lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:translate-x-0",
                 mobileOpen ? "translate-x-0" : "-translate-x-full",
             )}
@@ -77,16 +79,20 @@ export function Sidebar({
         >
             <div className={styles.header}>
                 <div
-                    className={cn(
-                        styles.logo,
-                        "bg-gradient-to-br from-sky-300 via-blue-500 to-blue-700",
-                    )}
+                    className={styles.logo}
+                    aria-hidden="true"
                 />
-                <span className={styles.brand}>NeuroLens</span>
+
+                <span className={styles.brand}>
+                    NeuroLens
+                </span>
             </div>
 
             <div className={styles.content}>
-                <nav className={styles.nav} aria-label="Main navigation">
+                <nav
+                    className={styles.nav}
+                    aria-label="Main navigation"
+                >
                     {navigation.map(({ label, path, icon }) => (
                         <SidebarItem
                             key={path}
@@ -97,6 +103,10 @@ export function Sidebar({
                         />
                     ))}
                 </nav>
+
+                <div className={styles.recentSection}>
+                    <RecentConversations onNavigate={onNavigate}/>
+                </div>
 
                 {isAdmin && (
                     <div className={styles.section}>

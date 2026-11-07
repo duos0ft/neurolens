@@ -1,45 +1,29 @@
 import { type ChangeEvent, type KeyboardEvent, type SyntheticEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, MessageSquare, MessageSquarePlus, MessagesSquare, Pencil, Trash2 } from "lucide-react";
+import { ArrowUp, MessageSquarePlus, MessagesSquare } from "lucide-react";
+import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "../../components/button";
-import { DropdownMenu } from "../../components/dropdown-menu/DropdownMenu";
-import { PageHeader } from "../../components/page-header/PageHeader";
+import { TaskSuggestions } from "../../components/task-suggestions/TaskSuggestions";
 import {
     type Conversation,
     createConversation,
-    deleteConversation,
     getConversation,
-    getConversations,
-    renameConversation,
     sendConversationMessage,
 } from "../../lib/conversations";
-import { chatPageStyles as styles } from "./ChatPage.styles";
-import { RenameConversationDialog } from "./RenameConversationDialog";
-import { ConfirmationDialog } from "../../components/dialog/ConfirmationDialog";
 import { ChatMessageContent } from "./ChatMessageContent";
+import { chatPageStyles as styles } from "./ChatPage.styles";
 
 export function Component() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const messagesRef = useRef<HTMLDivElement>(null);
 
     const queryClient = useQueryClient();
-
-    const [ selectedConversationId, setSelectedConversationId ] = useState<string | null>(null);
+    const [ searchParams, setSearchParams ] = useSearchParams();
     const [ message, setMessage ] = useState("");
 
-    const [ renamingConversation, setRenamingConversation ] = useState<{
-        id: string;
-        title: string;
-    } | null>(null);
-
-    const [ deletingConversationId, setDeletingConversationId ] = useState<string | null>(null);
-
-    const conversationsQuery = useQuery({
-        queryKey: [ "conversations" ],
-        queryFn: getConversations,
-    });
+    const selectedConversationId = searchParams.get("conversation");
 
     const conversationQuery = useQuery({
         queryKey: [ "conversation", selectedConversationId ],
@@ -48,15 +32,13 @@ export function Component() {
     });
 
     const createMutation = useMutation({
-        mutationFn: () => createConversation(),
+        mutationFn: createConversation,
 
         onSuccess: (conversation) => {
-            setSelectedConversationId(conversation.id);
-            setMessage("");
-
-            if (textareaRef.current) {
-                textareaRef.current.style.height = "auto";
-            }
+            setSearchParams(
+                { conversation: conversation.id },
+                { replace: true },
+            );
 
             queryClient.setQueryData<Conversation[]>(
                 [ "conversations" ],
@@ -108,104 +90,17 @@ export function Component() {
         },
     });
 
-    const renameMutation = useMutation({
-        mutationFn: ({
-            conversationId,
-            title,
-        }: {
-            conversationId: string;
-            title: string;
-        }) => renameConversation(conversationId, title),
+    const conversationTitle = conversationQuery.data?.title ?? "New conversation";
 
-        onSuccess: (conversation) => {
-            setRenamingConversation(null);
-
-            queryClient.setQueryData<Conversation[]>(
-                [ "conversations" ],
-                (previous = []) => previous.map((item) =>
-                    item.id === conversation.id ? conversation : item,
-                ),
-            );
-
-            void queryClient.invalidateQueries({
-                queryKey: [ "conversations" ],
-            });
-
-            void queryClient.invalidateQueries({
-                queryKey: [ "conversation", conversation.id ],
-            });
-
-            toast.success("Conversation renamed");
-        },
-
-        onError: (error) => {
-            toast.error("Unable to rename conversation", {
-                description: error instanceof Error
-                    ? error.message
-                    : "Please try again.",
-            });
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (conversationId: string) => deleteConversation(conversationId),
-
-        onSuccess: (_result, conversationId) => {
-            queryClient.setQueryData<Conversation[]>(
-                [ "conversations" ],
-                (previous = []) => previous.filter(
-                    (conversation) => conversation.id !== conversationId,
-                ),
-            );
-
-            queryClient.removeQueries({
-                queryKey: [ "conversation", conversationId ],
-            });
-
-            if (selectedConversationId === conversationId) {
-                setSelectedConversationId(null);
-                setMessage("");
-            }
-
-            setDeletingConversationId(null);
-
-            void queryClient.invalidateQueries({
-                queryKey: [ "conversations" ],
-            });
-
-            toast.success("Conversation deleted");
-        },
-
-        onError: (error) => {
-            toast.error("Unable to delete conversation", {
-                description: error instanceof Error
-                    ? error.message
-                    : "Please try again.",
-            });
-        },
-    });
-
-    const conversations = conversationsQuery.data ?? [];
+    const isBusy = createMutation.isPending || sendMutation.isPending;
+    const conversationReady = selectedConversationId !== null && conversationQuery.isSuccess;
 
     function handleNewConversation() {
-        if (createMutation.isPending || sendMutation.isPending) {
+        if (isBusy) {
             return;
         }
 
         createMutation.mutate();
-    }
-
-    function handleSelectConversation(conversationId: string) {
-        if (sendMutation.isPending) {
-            return;
-        }
-
-        setSelectedConversationId(conversationId);
-        setMessage("");
-
-        if (textareaRef.current) {
-            textareaRef.current.style.height = "auto";
-        }
     }
 
     function handleSendMessage(event: SyntheticEvent<HTMLFormElement>) {
@@ -217,7 +112,7 @@ export function Component() {
             !selectedConversationId
             || !content
             || sendMutation.isPending
-            || !conversationQuery.isSuccess
+            || !conversationReady
         ) {
             return;
         }
@@ -264,7 +159,7 @@ export function Component() {
         if (
             !message.trim()
             || sendMutation.isPending
-            || !conversationQuery.isSuccess
+            || !conversationReady
         ) {
             return;
         }
@@ -273,10 +168,18 @@ export function Component() {
     }
 
     useEffect(() => {
-        if (selectedConversationId && conversationQuery.isSuccess) {
+        setMessage("");
+
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+        }
+    }, [ selectedConversationId ]);
+
+    useEffect(() => {
+        if (conversationReady) {
             textareaRef.current?.focus();
         }
-    }, [ selectedConversationId, conversationQuery.isSuccess ]);
+    }, [ conversationReady, selectedConversationId ]);
 
     useEffect(() => {
         const container = messagesRef.current;
@@ -287,141 +190,68 @@ export function Component() {
 
         container.scrollTo({
             top: container.scrollHeight,
-            behavior: "smooth",
+            behavior: "instant",
         });
     }, [ conversationQuery.data?.messages.length, selectedConversationId ]);
 
     return (
         <div className={styles.root}>
-            <PageHeader
-                title="NeuroLens Assistant"
-                description="Get help understanding workplace communication and organizing your tasks."
-                actions={
-                    <Button
-                        variant="primary"
-                        disabled={createMutation.isPending || sendMutation.isPending}
-                        onClick={handleNewConversation}
-                    >
-                        <MessageSquarePlus className={styles.actionIcon}/>
-                        {createMutation.isPending ? "Creating..." : "New conversation"}
-                    </Button>
-                }
-            />
-
             <div className={styles.workspace}>
-                <aside className={styles.conversationSidebar}>
-                    <div className={styles.sidebarHeader}>
-                        <h2 className={styles.sidebarTitle}>
-                            Conversations
-                        </h2>
+                <section className={styles.chatArea} aria-label="Conversation">
+                    <header className={styles.chatHeader}>
+                        <div className={styles.chatHeaderMain}>
+                            <div className={styles.chatHeaderContent}>
+                                <h1 className={styles.chatTitle}>
+                                    {selectedConversationId ? conversationTitle : "Assistant"}
+                                </h1>
 
-                        {conversationsQuery.isSuccess && (
-                            <span className={styles.sidebarCount}>
-                                {conversations.length}
-                            </span>
-                        )}
-                    </div>
+                                <span className={styles.chatSubtitle}>
+                                    {selectedConversationId
+                                        ? "NeuroLens"
+                                        : "Workplace communication and task guidance"}
+                                </span>
+                            </div>
+                        </div>
 
-                    {conversationsQuery.isPending && (
-                        <p className={styles.sidebarHint}>
-                            Loading conversations...
-                        </p>
-                    )}
-
-                    {conversationsQuery.isError && (
-                        <div className={styles.sidebarError} role="alert">
-                            <p>Unable to load conversations.</p>
-
+                        <div className={styles.headerActions}>
                             <Button
-                                variant="ghost"
-                                onClick={() => void conversationsQuery.refetch()}
+                                variant="primary"
+                                className={styles.newConversationButton}
+                                disabled={isBusy}
+                                onClick={handleNewConversation}
                             >
-                                Try again
+                                <MessageSquarePlus className={styles.actionIcon}/>
+                                {createMutation.isPending ? "Creating..." : "New conversation"}
                             </Button>
                         </div>
-                    )}
+                    </header>
 
-                    {conversationsQuery.isSuccess && conversations.length === 0 && (
-                        <p className={styles.sidebarHint}>
-                            Your conversations will appear here.
-                        </p>
-                    )}
-
-                    <div className={styles.conversationList}>
-                        {conversations.map((conversation) => (
-                            <div
-                                key={conversation.id}
-                                className={
-                                    selectedConversationId === conversation.id
-                                        ? styles.conversationActive
-                                        : styles.conversationItem
-                                }
-                            >
-                                <button
-                                    type="button"
-                                    disabled={sendMutation.isPending}
-                                    className={styles.conversationSelect}
-                                    onClick={() => handleSelectConversation(conversation.id)}
-                                >
-                                    <MessageSquare className={styles.conversationIcon}/>
-
-                                    <span className={styles.conversationTitle}>
-                                        {conversation.title || "New conversation"}
-                                    </span>
-                                </button>
-
-                                <DropdownMenu
-                                    label={`Actions for ${conversation.title || "New conversation"}`}
-                                    disabled={
-                                        sendMutation.isPending
-                                        || renameMutation.isPending
-                                        || deleteMutation.isPending
-                                    }
-                                    items={[
-                                        {
-                                            label: "Rename",
-                                            icon: <Pencil className="size-4"/>,
-                                            onSelect: () => setRenamingConversation({
-                                                id: conversation.id,
-                                                title: conversation.title ?? "",
-                                            }),
-                                        },
-                                        {
-                                            label: "Delete",
-                                            icon: <Trash2 className="size-4"/>,
-                                            destructive: true,
-                                            onSelect: () => setDeletingConversationId(conversation.id),
-                                        },
-                                    ]}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </aside>
-
-                <section className={styles.chatArea} aria-label="Conversation">
                     {!selectedConversationId ? (
                         <div className={styles.emptyState}>
-                            <div className={styles.emptyIcon}>
-                                <MessageSquarePlus className={styles.emptyIconGraphic}/>
-                            </div>
-
-                            <h2 className={styles.emptyTitle}>
-                                How can I help you today?
-                            </h2>
-
                             <p className={styles.emptyDescription}>
-                                I'm here to help you understand workplace communication,
-                                organize your thoughts, and make complex tasks easier
-                                to manage.
+                                Start a conversation to clarify workplace communication
+                                or organize tasks into manageable actions.
                             </p>
+
+                            <div className={styles.emptyActions}>
+                                <button
+                                    type="button"
+                                    className={styles.emptyAction}
+                                    disabled={isBusy}
+                                    onClick={handleNewConversation}
+                                >
+                                    Start a conversation
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <>
                             <div
                                 ref={messagesRef}
                                 className={styles.messages}
+                                aria-label="Conversation messages"
                                 aria-live="polite"
+                                aria-relevant="additions"
                             >
                                 {conversationQuery.isPending && (
                                     <p className={styles.messageHint}>
@@ -446,17 +276,9 @@ export function Component() {
                                     && conversationQuery.data.messages.length === 0
                                     && !sendMutation.isPending && (
                                     <div className={styles.emptyState}>
-                                        <div className={styles.emptyIcon}>
-                                            <MessageSquarePlus className={styles.emptyIconGraphic}/>
-                                        </div>
-
-                                        <h2 className={styles.emptyTitle}>
-                                            What's on your mind?
-                                        </h2>
-
                                         <p className={styles.emptyDescription}>
-                                            Ask me to clarify instructions, summarize
-                                            information, or break a task into smaller steps.
+                                            Paste a workplace message to understand it,
+                                            or describe work you'd like help organizing.
                                         </p>
                                     </div>
                                 )}
@@ -483,14 +305,27 @@ export function Component() {
                                             </div>
 
                                             <div className={styles.assistantMessage}>
+                                                <div className={styles.assistantMeta}>
+                                                    NeuroLens
+                                                </div>
+
                                                 <ChatMessageContent content={item.content}/>
+
+                                                {item.task_suggestions && (
+                                                    <TaskSuggestions
+                                                        suggestions={item.task_suggestions}
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                     )
                                 ))}
 
                                 {sendMutation.isPending && (
-                                    <div className={styles.messageRow} role="status">
+                                    <div
+                                        className={styles.messageRow}
+                                        role="status"
+                                    >
                                         <div className={styles.assistantAvatar}>
                                             <MessagesSquare className={styles.assistantAvatarIcon}/>
                                         </div>
@@ -512,13 +347,10 @@ export function Component() {
                                         value={message}
                                         onKeyDown={handleMessageKeyDown}
                                         onChange={handleMessageChange}
-                                        placeholder="Message NeuroLens..."
+                                        placeholder="Paste a message or ask a question..."
                                         className={styles.messageInput}
                                         maxLength={10000}
-                                        disabled={
-                                            sendMutation.isPending
-                                            || !conversationQuery.isSuccess
-                                        }
+                                        disabled={!conversationReady || sendMutation.isPending}
                                         aria-label="Message NeuroLens"
                                         rows={1}
                                     />
@@ -530,7 +362,7 @@ export function Component() {
                                         disabled={
                                             !message.trim()
                                             || sendMutation.isPending
-                                            || !conversationQuery.isSuccess
+                                            || !conversationReady
                                         }
                                         aria-label="Send message"
                                     >
@@ -546,46 +378,6 @@ export function Component() {
                     )}
                 </section>
             </div>
-
-            <RenameConversationDialog
-                open={renamingConversation !== null}
-                title={renamingConversation?.title ?? ""}
-                loading={renameMutation.isPending}
-                onClose={() => {
-                    if (!renameMutation.isPending) {
-                        setRenamingConversation(null);
-                    }
-                }}
-                onSave={(title) => {
-                    if (!renamingConversation) {
-                        return;
-                    }
-
-                    renameMutation.mutate({
-                        conversationId: renamingConversation.id,
-                        title,
-                    });
-                }}
-            />
-
-            <ConfirmationDialog
-                open={deletingConversationId !== null}
-                onClose={() => {
-                    if (!deleteMutation.isPending) {
-                        setDeletingConversationId(null);
-                    }
-                }}
-                onConfirm={() => {
-                    if (deletingConversationId && !deleteMutation.isPending) {
-                        deleteMutation.mutate(deletingConversationId);
-                    }
-                }}
-                loading={deleteMutation.isPending}
-                destructive
-                title="Delete conversation"
-                description="This conversation and all its messages will be permanently deleted. This action cannot be undone."
-                confirmLabel="Delete conversation"
-            />
         </div>
     );
 }
