@@ -37,7 +37,10 @@ class OrchestratedAssistantService:
         )
 
         return AssistantExecutionResult(
-            response=self.composer.compose(results),
+            response=self.composer.compose(
+                results,
+                config=self.orchestrator.config,
+            ),
             capabilities=tuple(result.capability for result in results),
             sources=tuple(result.source for result in results if result.source is not None),
         )
