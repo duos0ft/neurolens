@@ -973,4 +973,3 @@ async def test_orchestrated_assistant_persists_capability_metadata(
     assert request.system_instructions is not None
     assert "Structured explanation output:" in request.system_instructions
     assert "Explain the workplace message." in request.messages[0].content
-

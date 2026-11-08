@@ -345,4 +345,3 @@ async def test_extract_tasks_returns_structured_suggestions() -> None:
     assert result.response.model == "neurolens-task-extraction"
 
     assert len(extraction_provider.requests) == 1
-

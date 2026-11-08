@@ -14,7 +14,6 @@ from app.services.assistant_orchestrator import (
 )
 from tests.helpers.mock_ai_registry import create_mock_ai_registry
 
-
 EXPLANATION_CONTENT = "Your manager is requesting an update."
 
 
@@ -418,13 +417,9 @@ async def test_policy_question_uses_referral_without_generation(
 
     assert len(providers[AICapability.TASK_ASSISTANCE].requests) == 0
 
-    assert len(
-        providers[AICapability.GENERAL_CONVERSATION].requests
-    ) == 0
+    assert len(providers[AICapability.GENERAL_CONVERSATION].requests) == 0
 
-    assert len(
-        providers[AICapability.CONVERSATION_TITLE].requests
-    ) == 1
+    assert len(providers[AICapability.CONVERSATION_TITLE].requests) == 1
 
     detail_response = await employee_client.get(
         f"/api/conversations/{conversation_id}",

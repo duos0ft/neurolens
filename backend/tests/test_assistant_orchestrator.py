@@ -729,8 +729,8 @@ async def test_explanation_follow_up_receives_recent_history() -> None:
     assert results[0].structured_explanation is not None
 
     assert (
-            results[0].structured_explanation.explanation
-            == "Your manager wants you to help, but not spend all day on it."
+        results[0].structured_explanation.explanation
+        == "Your manager wants you to help, but not spend all day on it."
     )
 
     request = explanation.requests[0]
