@@ -5,6 +5,7 @@ from app.ai.registry import (
     AIProviderRegistry,
     ProviderNotConfiguredError,
 )
+from tests.test_assistant_orchestrator import MockProvider
 
 
 def test_registers_provider_for_capability() -> None:
@@ -72,3 +73,15 @@ def test_rejects_unsupported_capability() -> None:
             AICapability.EMBEDDINGS,
             object(),
         )
+
+
+def test_registry_supports_task_extraction() -> None:
+    registry = AIProviderRegistry()
+    provider = MockProvider('{"tasks": []}')
+
+    registry.register_text_generation(
+        AICapability.TASK_EXTRACTION,
+        provider,
+    )
+
+    assert registry.get_text_generation(AICapability.TASK_EXTRACTION) is provider

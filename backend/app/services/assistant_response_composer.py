@@ -1,5 +1,7 @@
+from app.ai.capabilities.message_explanation import StructuredExplanation
 from app.ai.capabilities.text_generation import TextGenerationResponse
 from app.ai.capabilities.types import AICapability
+from app.services.assistant_config import AssistantConfig
 from app.services.assistant_orchestrator import CapabilityResult
 
 CAPABILITY_HEADINGS = {
@@ -11,9 +13,46 @@ CAPABILITY_HEADINGS = {
 
 
 class AssistantResponseComposer:
+    def _compose_explanation(
+        self,
+        explanation: StructuredExplanation,
+        config: AssistantConfig,
+    ) -> str:
+        sections = [
+            explanation.explanation,
+        ]
+
+        if config.highlight_ambiguity and explanation.ambiguities:
+            ambiguities = "\n".join(f"- {item}" for item in explanation.ambiguities)
+
+            sections.append(f"**What needs clarification**\n\n{ambiguities}")
+
+        if config.step_by_step_guidance and explanation.steps:
+            steps = "\n".join(
+                f"{index}. {step}" for index, step in enumerate(explanation.steps, start=1)
+            )
+
+            sections.append(f"**How to approach it**\n\n{steps}")
+
+        if config.always_show_next_step and explanation.next_step:
+            # Avoid repeating the first action when the ordered
+            # guidance already presents the same next step.
+            first_step = (
+                explanation.steps[0] if config.step_by_step_guidance and explanation.steps else None
+            )
+
+            def normalize(value: str) -> str:
+                return value.strip().rstrip(".! ").casefold()
+
+            if first_step is None or normalize(first_step) != normalize(explanation.next_step):
+                sections.append(f"**Next step**\n\n{explanation.next_step}")
+
+        return "\n\n".join(sections)
+
     def compose(
         self,
         results: list[CapabilityResult],
+        config: AssistantConfig | None = None,
     ) -> TextGenerationResponse:
         if not results:
             return TextGenerationResponse(
@@ -25,23 +64,21 @@ class AssistantResponseComposer:
                 model="neurolens",
             )
 
-        if len(results) == 1:
-            return results[0].response
+        resolved_config = config or AssistantConfig()
 
-        sections: list[str] = []
+        sections: list[tuple[AICapability, str]] = []
 
         for result in results:
-            content = result.response.content.strip()
+            if result.structured_explanation is not None:
+                content = self._compose_explanation(
+                    explanation=result.structured_explanation,
+                    config=resolved_config,
+                )
+            else:
+                content = result.response.content.strip()
 
-            if not content:
-                continue
-
-            heading = CAPABILITY_HEADINGS.get(
-                result.capability,
-                "Additional information",
-            )
-
-            sections.append(f"### {heading}\n\n{content}")
+            if content:
+                sections.append((result.capability, content))
 
         if not sections:
             return TextGenerationResponse(
@@ -49,7 +86,25 @@ class AssistantResponseComposer:
                 model="neurolens",
             )
 
+        if len(results) == 1 and len(sections) == 1:
+            capability, content = sections[0]
+
+            return TextGenerationResponse(
+                content=content,
+                model=results[0].response.model,
+            )
+
+        formatted_sections: list[str] = []
+
+        for capability, content in sections:
+            heading = CAPABILITY_HEADINGS.get(
+                capability,
+                "Additional information",
+            )
+
+            formatted_sections.append(f"### {heading}\n\n{content}")
+
         return TextGenerationResponse(
-            content="\n\n".join(sections),
+            content="\n\n".join(formatted_sections),
             model="neurolens-composed",
         )

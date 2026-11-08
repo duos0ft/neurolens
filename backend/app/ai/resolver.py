@@ -47,6 +47,13 @@ def resolve_ai_provider_registry() -> AIProviderRegistry:
     )
 
     registry.register_text_generation(
+        AICapability.TASK_EXTRACTION,
+        resolve_text_generation_provider(
+            settings.ai_task_assistance_model,
+        ),
+    )
+
+    registry.register_text_generation(
         AICapability.CONVERSATION_TITLE,
         resolve_text_generation_provider(
             settings.ai_conversation_title_model,

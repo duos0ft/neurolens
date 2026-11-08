@@ -83,3 +83,8 @@ class ConversationMessage(Base):
         JSONB,
         nullable=True,
     )
+
+    task_suggestions: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )

@@ -8,7 +8,7 @@ import { RequireAuth } from "./RequireAuth";
 export const router = createBrowserRouter([
     {
         path: "/",
-        element: <Navigate to="/app" replace/>,
+        element: <Navigate to="/app/chat" replace/>,
     },
     {
         path: "/auth",
@@ -49,7 +49,7 @@ export const router = createBrowserRouter([
                 children: [
                     {
                         index: true,
-                        lazy: () => import("../pages/dashboard/DashboardPage"),
+                        element: <Navigate to="/app/chat" replace/>,
                     },
                     {
                         path: "profile",
@@ -86,6 +86,6 @@ export const router = createBrowserRouter([
     },
     {
         path: "*",
-        element: <Navigate to="/app" replace/>,
+        element: <Navigate to="/app/chat" replace/>,
     },
 ]);

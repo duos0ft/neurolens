@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { useAuth } from "../providers/AuthProvider";
@@ -8,12 +8,21 @@ import { appLayoutStyles as styles } from "./AppLayout.styles";
 
 export function AppLayout() {
     const { employee } = useAuth();
+    const location = useLocation();
+
     const [ mobileOpen, setMobileOpen ] = useState(false);
 
     const isAdmin = employee?.role === "admin";
+    const isWorkspace = location.pathname === "/app/chat";
 
     useEffect(() => {
-        if (!mobileOpen) return;
+        setMobileOpen(false);
+    }, [ location.pathname ]);
+
+    useEffect(() => {
+        if (!mobileOpen) {
+            return;
+        }
 
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
@@ -23,7 +32,9 @@ export function AppLayout() {
 
         window.addEventListener("keydown", handleKeyDown);
 
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
     }, [ mobileOpen ]);
 
     return (
@@ -56,8 +67,20 @@ export function AppLayout() {
                     </button>
                 </div>
 
-                <main className={styles.main}>
-                    <div className={styles.mainInner}>
+                <main
+                    className={
+                        isWorkspace
+                            ? styles.workspaceMain
+                            : styles.main
+                    }
+                >
+                    <div
+                        className={
+                            isWorkspace
+                                ? styles.workspaceMainInner
+                                : styles.mainInner
+                        }
+                    >
                         <Outlet/>
                     </div>
                 </main>

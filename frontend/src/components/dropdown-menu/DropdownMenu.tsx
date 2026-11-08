@@ -21,14 +21,16 @@ interface DropdownMenuProps {
 interface MenuPosition {
     top: number;
     left: number;
+    width: number;
     maxHeight: number;
     openAbove: boolean;
 }
 
-const MENU_WIDTH = 156;
+const MENU_WIDTH = 168;
 const MENU_MAX_HEIGHT = 240;
-const VIEWPORT_PADDING = 8;
-const MENU_GAP = 4;
+const VIEWPORT_PADDING = 12;
+const MENU_GAP = 6;
+const ITEM_HEIGHT = 38;
 
 export function DropdownMenu({
     items,
@@ -46,6 +48,7 @@ export function DropdownMenu({
     const [ position, setPosition ] = useState<MenuPosition>({
         top: 0,
         left: 0,
+        width: MENU_WIDTH,
         maxHeight: MENU_MAX_HEIGHT,
         openAbove: false,
     });
@@ -65,20 +68,20 @@ export function DropdownMenu({
         const availableAbove =
             rect.top - MENU_GAP - VIEWPORT_PADDING;
 
-        const estimatedMenuHeight = Math.min(
+        const estimatedHeight = Math.min(
             MENU_MAX_HEIGHT,
-            items.length * 40 + 8,
+            items.length * ITEM_HEIGHT + 8,
         );
 
         const openAbove =
-            availableBelow < estimatedMenuHeight
+            availableBelow < estimatedHeight
             && availableAbove > availableBelow;
 
         const availableHeight = openAbove
             ? availableAbove
             : availableBelow;
 
-        const menuWidth = Math.min(
+        const width = Math.min(
             MENU_WIDTH,
             window.innerWidth - VIEWPORT_PADDING * 2,
         );
@@ -86,8 +89,8 @@ export function DropdownMenu({
         const left = Math.max(
             VIEWPORT_PADDING,
             Math.min(
-                rect.right - menuWidth,
-                window.innerWidth - menuWidth - VIEWPORT_PADDING,
+                rect.right - width,
+                window.innerWidth - width - VIEWPORT_PADDING,
             ),
         );
 
@@ -96,6 +99,7 @@ export function DropdownMenu({
                 ? rect.top - MENU_GAP
                 : rect.bottom + MENU_GAP,
             left,
+            width,
             maxHeight: Math.max(
                 0,
                 Math.min(MENU_MAX_HEIGHT, availableHeight),
@@ -105,8 +109,10 @@ export function DropdownMenu({
     }, [ items.length ]);
 
     function closeMenu(restoreFocus = true) {
-        if (popoverRef.current?.matches(":popover-open")) {
-            popoverRef.current.hidePopover();
+        const popover = popoverRef.current;
+
+        if (popover?.matches(":popover-open")) {
+            popover.hidePopover();
         }
 
         setOpen(false);
@@ -118,7 +124,7 @@ export function DropdownMenu({
 
     function focusItem(focusLast = false) {
         const enabledIndices = items
-            .map((item, index) => !item.disabled ? index : -1)
+            .map((item, index) => item.disabled ? -1 : index)
             .filter((index) => index !== -1);
 
         const index = focusLast
@@ -137,8 +143,10 @@ export function DropdownMenu({
 
         updatePosition();
 
-        if (!popoverRef.current?.matches(":popover-open")) {
-            popoverRef.current?.showPopover();
+        const popover = popoverRef.current;
+
+        if (popover && !popover.matches(":popover-open")) {
+            popover.showPopover();
         }
 
         setOpen(true);
@@ -151,10 +159,7 @@ export function DropdownMenu({
     function handleTriggerKeyDown(
         event: KeyboardEvent<HTMLButtonElement>,
     ) {
-        if (
-            event.key === "ArrowDown"
-            || event.key === "ArrowUp"
-        ) {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
             openMenu(event.key === "ArrowUp");
         }
@@ -250,7 +255,7 @@ export function DropdownMenu({
                 onKeyDown={handleTriggerKeyDown}
             >
                 <MoreHorizontal
-                    className="size-5"
+                    className={styles.triggerIcon}
                     aria-hidden="true"
                 />
             </button>
@@ -267,10 +272,7 @@ export function DropdownMenu({
                     inset: "auto",
                     zIndex: 60,
                     margin: 0,
-                    width: Math.min(
-                        MENU_WIDTH,
-                        window.innerWidth - VIEWPORT_PADDING * 2,
-                    ),
+                    width: position.width,
                     top: position.top,
                     left: position.left,
                     maxHeight: position.maxHeight,
@@ -330,7 +332,9 @@ export function DropdownMenu({
                             </span>
                         )}
 
-                        <span>{item.label}</span>
+                        <span className={styles.itemLabel}>
+                            {item.label}
+                        </span>
                     </button>
                 ))}
             </div>

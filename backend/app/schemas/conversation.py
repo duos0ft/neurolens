@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.ai.capabilities.task_extraction import ExtractedTask
+
 
 class CreateConversationRequest(BaseModel):
     title: str | None = Field(
@@ -19,12 +21,18 @@ class ConversationResponse(BaseModel):
     updated_at: datetime
 
 
+class ConversationTaskSuggestionsResponse(BaseModel):
+    source_message_id: uuid.UUID | None = None
+    tasks: list[ExtractedTask] = Field(default_factory=list)
+
+
 class ConversationMessageResponse(BaseModel):
     id: uuid.UUID
     role: Literal["user", "assistant"]
     content: str
     model: str | None
     created_at: datetime
+    task_suggestions: ConversationTaskSuggestionsResponse | None = None
 
 
 class ConversationDetailResponse(ConversationResponse):

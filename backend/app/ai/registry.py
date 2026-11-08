@@ -6,6 +6,7 @@ TEXT_GENERATION_CAPABILITIES = frozenset(
         AICapability.REQUEST_CLASSIFICATION,
         AICapability.MESSAGE_EXPLANATION,
         AICapability.TASK_ASSISTANCE,
+        AICapability.TASK_EXTRACTION,
         AICapability.POLICY_GENERATION,
         AICapability.CONVERSATION_TITLE,
         AICapability.GENERAL_CONVERSATION,

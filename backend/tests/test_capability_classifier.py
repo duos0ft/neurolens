@@ -473,3 +473,66 @@ async def test_historical_source_text_is_not_accepted_as_explicit_source() -> No
 
     assert result.capabilities == [AICapability.TASK_ASSISTANCE]
     assert result.intents[0].source_text is None
+
+
+@pytest.mark.asyncio
+async def test_classifies_explicit_task_extraction() -> None:
+    provider = MockProvider(
+        json.dumps(
+            {
+                "intents": [
+                    {
+                        "capability": "task_extraction",
+                        "instruction": "Identify task suggestions for My Tasks.",
+                        "source_text": None,
+                    }
+                ]
+            }
+        )
+    )
+
+    classifier = CapabilityClassifier(provider)
+
+    result = await classifier.classify("Extract the tasks from my manager's request.")
+
+    assert result.capabilities == [
+        AICapability.TASK_EXTRACTION,
+    ]
+    assert result.intents[0].source_text is None
+
+
+@pytest.mark.asyncio
+async def test_task_extraction_follow_up_receives_history() -> None:
+    provider = MockProvider(
+        json.dumps(
+            {
+                "intents": [
+                    {
+                        "capability": "task_extraction",
+                        "instruction": "Extract tasks from the earlier manager request.",
+                        "source_text": "Review last week's client feedback.",
+                    }
+                ]
+            }
+        )
+    )
+
+    classifier = CapabilityClassifier(provider)
+
+    result = await classifier.classify(
+        message="Can you extract those tasks for My Tasks?",
+        history=[
+            GenerationMessage(
+                role="user",
+                content="Review last week's client feedback.",
+            ),
+        ],
+    )
+
+    assert result.capabilities == [
+        AICapability.TASK_EXTRACTION,
+    ]
+
+    # Historical text must never become verified source text
+    # for the latest employee message.
+    assert result.intents[0].source_text is None

@@ -12,6 +12,7 @@ from app.services.assistant_config_service import AssistantConfigService
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.orchestrated_assistant import OrchestratedAssistantService
+from app.services.task_extraction import TaskExtractionService
 
 
 def get_ai_provider_registry() -> AIProviderRegistry:
@@ -55,3 +56,12 @@ def get_orchestrated_assistant(
         orchestrator=orchestrator,
         composer=AssistantResponseComposer(),
     )
+
+
+def get_task_extraction_service(
+    registry: Annotated[
+        AIProviderRegistry,
+        Depends(get_ai_provider_registry),
+    ],
+) -> TaskExtractionService:
+    return TaskExtractionService(registry=registry)

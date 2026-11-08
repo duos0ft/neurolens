@@ -5,6 +5,7 @@ class AICapability(StrEnum):
     REQUEST_CLASSIFICATION = "request_classification"
     MESSAGE_EXPLANATION = "message_explanation"
     TASK_ASSISTANCE = "task_assistance"
+    TASK_EXTRACTION = "task_extraction"
     POLICY_GENERATION = "policy_generation"
     EMBEDDINGS = "embeddings"
     KNOWLEDGE_RETRIEVAL = "knowledge_retrieval"

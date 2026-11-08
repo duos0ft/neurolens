@@ -10,7 +10,10 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
-from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_orchestrator import (
+    AssistantOrchestrator,
+    CapabilityClassificationError,
+)
 
 
 class MockProvider:
@@ -39,9 +42,26 @@ def classification_response(
                 {
                     "capability": capability,
                     "instruction": instruction,
+                    "source_text": None,
                 }
                 for capability, instruction in intents
             ],
+        }
+    )
+
+
+def explanation_response(
+    explanation: str,
+    ambiguities: list[str] | None = None,
+    steps: list[str] | None = None,
+    next_step: str | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "explanation": explanation,
+            "ambiguities": ambiguities if ambiguities is not None else [],
+            "steps": steps if steps is not None else [],
+            "next_step": next_step,
         }
     )
 
@@ -63,17 +83,24 @@ async def test_orchestrator_executes_multiple_capabilities() -> None:
         )
     )
 
-    explanation = MockProvider("The manager wants a progress update.")
+    explanation = MockProvider(
+        explanation_response(
+            "The manager wants a progress update.",
+        )
+    )
+
     tasks = MockProvider("1. Check progress. 2. Report blockers.")
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
     )
+
     registry.register_text_generation(
         AICapability.TASK_ASSISTANCE,
         tasks,
@@ -91,8 +118,17 @@ async def test_orchestrator_executes_multiple_capabilities() -> None:
         AICapability.TASK_ASSISTANCE,
     ]
 
-    assert results[0].response.content == ("The manager wants a progress update.")
+    assert results[0].structured_explanation is not None
+
+    assert results[0].structured_explanation.explanation == "The manager wants a progress update."
+
+    assert results[0].structured_explanation.ambiguities == []
+    assert results[0].structured_explanation.steps == []
+    assert results[0].structured_explanation.next_step is None
+
     assert results[1].response.content == ("1. Check progress. 2. Report blockers.")
+
+    assert results[1].structured_explanation is None
 
     assert len(classifier.requests) == 1
     assert len(explanation.requests) == 1
@@ -120,17 +156,24 @@ async def test_disabled_task_assistance_preserves_explanation() -> None:
         )
     )
 
-    explanation = MockProvider("This message requests an update.")
+    explanation = MockProvider(
+        explanation_response(
+            "This message requests an update.",
+        )
+    )
+
     tasks = MockProvider("This should not be generated.")
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
     )
+
     registry.register_text_generation(
         AICapability.TASK_ASSISTANCE,
         tasks,
@@ -145,6 +188,10 @@ async def test_disabled_task_assistance_preserves_explanation() -> None:
 
     assert len(results) == 1
     assert results[0].capability == AICapability.MESSAGE_EXPLANATION
+
+    assert results[0].structured_explanation is not None
+    assert results[0].structured_explanation.explanation == "This message requests an update."
+
     assert len(classifier.requests) == 1
     assert len(explanation.requests) == 1
     assert len(tasks.requests) == 0
@@ -155,17 +202,25 @@ async def test_invalid_classification_does_not_execute_capabilities() -> None:
     registry = AIProviderRegistry()
 
     classifier = MockProvider("invalid JSON")
-    explanation = MockProvider("Should not execute")
+
+    explanation = MockProvider(
+        explanation_response(
+            "Should not execute.",
+        )
+    )
+
     tasks = MockProvider("Should not execute")
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
     )
+
     registry.register_text_generation(
         AICapability.TASK_ASSISTANCE,
         tasks,
@@ -177,7 +232,7 @@ async def test_invalid_classification_does_not_execute_capabilities() -> None:
     )
 
     with pytest.raises(
-        RuntimeError,
+        CapabilityClassificationError,
         match="Unable to classify the employee's request",
     ):
         await orchestrator.respond("Explain this message and make a task list.")
@@ -213,6 +268,7 @@ async def test_policy_question_does_not_call_generation_provider() -> None:
     assert results[0].capability == AICapability.POLICY_QUESTION
     assert "can't verify" in results[0].response.content
     assert results[0].response.model == "neurolens"
+    assert results[0].structured_explanation is None
     assert len(classifier.requests) == 1
 
 
@@ -233,17 +289,24 @@ async def test_mixed_policy_request_does_not_call_generation_provider() -> None:
         )
     )
 
-    explanation = MockProvider("This should not be generated.")
+    explanation = MockProvider(
+        explanation_response(
+            "This should not be generated.",
+        )
+    )
+
     tasks = MockProvider("This should not be generated.")
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
     )
+
     registry.register_text_generation(
         AICapability.TASK_ASSISTANCE,
         tasks,
@@ -281,17 +344,24 @@ async def test_disabled_task_assistance_does_not_block_explanation() -> None:
         )
     )
 
-    explanation = MockProvider("Your manager wants a status update.")
+    explanation = MockProvider(
+        explanation_response(
+            "Your manager wants a status update.",
+        )
+    )
+
     tasks = MockProvider("Should not be called")
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
     )
+
     registry.register_text_generation(
         AICapability.TASK_ASSISTANCE,
         tasks,
@@ -306,6 +376,10 @@ async def test_disabled_task_assistance_does_not_block_explanation() -> None:
 
     assert len(results) == 1
     assert results[0].capability == AICapability.MESSAGE_EXPLANATION
+
+    assert results[0].structured_explanation is not None
+    assert results[0].structured_explanation.explanation == "Your manager wants a status update."
+
     assert len(explanation.requests) == 1
     assert len(tasks.requests) == 0
 
@@ -329,6 +403,7 @@ async def test_general_conversation_uses_general_provider() -> None:
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.GENERAL_CONVERSATION,
         general,
@@ -341,6 +416,7 @@ async def test_general_conversation_uses_general_provider() -> None:
     assert len(results) == 1
     assert results[0].capability == AICapability.GENERAL_CONVERSATION
     assert results[0].response.content == "Hello! How can I help?"
+    assert results[0].structured_explanation is None
     assert len(general.requests) == 1
 
 
@@ -362,16 +438,23 @@ async def test_general_conversation_is_removed_from_mixed_requests() -> None:
     )
 
     general = MockProvider("General response.")
-    explanation = MockProvider("EOD means end of day.")
+
+    explanation = MockProvider(
+        explanation_response(
+            "EOD means end of day.",
+        )
+    )
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.GENERAL_CONVERSATION,
         general,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
@@ -383,6 +466,10 @@ async def test_general_conversation_is_removed_from_mixed_requests() -> None:
 
     assert len(results) == 1
     assert results[0].capability == AICapability.MESSAGE_EXPLANATION
+
+    assert results[0].structured_explanation is not None
+    assert results[0].structured_explanation.explanation == "EOD means end of day."
+
     assert len(general.requests) == 0
     assert len(explanation.requests) == 1
 
@@ -392,12 +479,18 @@ async def test_empty_classification_does_not_execute_providers() -> None:
     registry = AIProviderRegistry()
 
     classifier = MockProvider(classification_response())
-    explanation = MockProvider("Should not execute.")
+
+    explanation = MockProvider(
+        explanation_response(
+            "Should not execute.",
+        )
+    )
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
         classifier,
     )
+
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
         explanation,
@@ -406,7 +499,7 @@ async def test_empty_classification_does_not_execute_providers() -> None:
     orchestrator = AssistantOrchestrator(registry)
 
     with pytest.raises(
-        RuntimeError,
+        CapabilityClassificationError,
         match="Unable to classify the employee's request",
     ):
         await orchestrator.respond("Can you help me?")
@@ -440,7 +533,11 @@ async def test_mixed_policy_request_uses_isolated_source() -> None:
         )
     )
 
-    explanation = MockProvider("Your manager is asking when you are available.")
+    explanation = MockProvider(
+        explanation_response(
+            "Your manager is asking when you are available.",
+        )
+    )
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
@@ -462,6 +559,13 @@ async def test_mixed_policy_request_uses_isolated_source() -> None:
         AICapability.MESSAGE_EXPLANATION,
         AICapability.POLICY_QUESTION,
     ]
+
+    assert results[0].structured_explanation is not None
+
+    assert (
+        results[0].structured_explanation.explanation
+        == "Your manager is asking when you are available."
+    )
 
     assert len(explanation.requests) == 1
 
@@ -490,7 +594,11 @@ async def test_mixed_policy_request_without_source_does_not_generate() -> None:
         )
     )
 
-    explanation = MockProvider("Should not be generated.")
+    explanation = MockProvider(
+        explanation_response(
+            "Should not be generated.",
+        )
+    )
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
@@ -517,7 +625,11 @@ async def test_mixed_policy_request_without_source_does_not_generate() -> None:
 async def test_orchestrator_applies_employee_preferences() -> None:
     registry = AIProviderRegistry()
 
-    explanation = MockProvider("Your manager wants a progress update.")
+    explanation = MockProvider(
+        explanation_response(
+            "Your manager wants a progress update.",
+        )
+    )
 
     registry.register_text_generation(
         AICapability.MESSAGE_EXPLANATION,
@@ -545,12 +657,21 @@ async def test_orchestrator_applies_employee_preferences() -> None:
     assert len(results) == 1
     assert len(explanation.requests) == 1
 
+    assert results[0].structured_explanation is not None
+
     instructions = explanation.requests[0].system_instructions
 
     assert instructions is not None
-    assert "Be direct" in instructions
-    assert "1 to 2 concise sentences" in instructions
-    assert "concise, natural-language guidance" in instructions
+    assert "Be direct, explicit, and concise" in instructions
+    assert "1 to 2 sentences" in instructions
+    assert "Prefer concise natural-language explanations" in instructions
+    assert "Do not proactively add ambiguity analysis" in instructions
+    assert "Do not automatically append a next-step recommendation" in instructions
+
+    assert '"explanation"' in instructions
+    assert '"ambiguities"' in instructions
+    assert '"steps"' in instructions
+    assert '"next_step"' in instructions
 
 
 @pytest.mark.asyncio
@@ -558,14 +679,19 @@ async def test_explanation_follow_up_receives_recent_history() -> None:
     registry = AIProviderRegistry()
 
     classifier = MockProvider(
-        '{"intents": ['
-        '{"capability": "message_explanation", '
-        '"instruction": "Simplify the previous explanation.", '
-        '"source_text": null}'
-        "]}"
+        classification_response(
+            (
+                "message_explanation",
+                "Simplify the previous explanation.",
+            ),
+        )
     )
 
-    explanation = MockProvider("Your manager wants you to help, but not spend all day on it.")
+    explanation = MockProvider(
+        explanation_response(
+            "Your manager wants you to help, but not spend all day on it.",
+        )
+    )
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
@@ -577,7 +703,9 @@ async def test_explanation_follow_up_receives_recent_history() -> None:
         explanation,
     )
 
-    orchestrator = AssistantOrchestrator(registry=registry)
+    orchestrator = AssistantOrchestrator(
+        registry=registry,
+    )
 
     history = [
         GenerationMessage(
@@ -596,6 +724,14 @@ async def test_explanation_follow_up_receives_recent_history() -> None:
     )
 
     assert len(results) == 1
+    assert results[0].capability == AICapability.MESSAGE_EXPLANATION
+
+    assert results[0].structured_explanation is not None
+
+    assert (
+        results[0].structured_explanation.explanation
+        == "Your manager wants you to help, but not spend all day on it."
+    )
 
     request = explanation.requests[0]
 
