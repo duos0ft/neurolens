@@ -62,6 +62,24 @@ class MockTextGenerationProvider:
         if self.should_fail:
             raise TextGenerationError("Internal provider connection details")
 
+        is_explanation_request = (
+            request.system_instructions is not None
+            and "Structured explanation output:" in request.system_instructions
+        )
+
+        if is_explanation_request:
+            return TextGenerationResponse(
+                content=json.dumps(
+                    {
+                        "explanation": "Start by reviewing the assignment requirements.",
+                        "ambiguities": [],
+                        "steps": [],
+                        "next_step": None,
+                    }
+                ),
+                model="mock-model",
+            )
+
         return TextGenerationResponse(
             content="Start by reviewing the assignment requirements.",
             model="mock-model",

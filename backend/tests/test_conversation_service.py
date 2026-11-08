@@ -874,7 +874,23 @@ async def test_orchestrated_assistant_persists_capability_metadata(
             model="mock-classifier",
         )
 
+    async def generate_explanation(
+        request: TextGenerationRequest,
+    ) -> TextGenerationResponse:
+        explanation.assistant_requests.append(request)
+
+        return TextGenerationResponse(
+            content=(
+                '{"explanation": "EOD means end of day.", '
+                '"ambiguities": [], '
+                '"steps": [], '
+                '"next_step": null}'
+            ),
+            model="mock-model",
+        )
+
     classifier.generate = classify
+    explanation.generate = generate_explanation
 
     registry.register_text_generation(
         AICapability.REQUEST_CLASSIFICATION,
@@ -912,7 +928,14 @@ async def test_orchestrated_assistant_persists_capability_metadata(
 
         user_message, assistant_message = result
 
+        assert user_message.role == "user"
+        assert user_message.content == "Explain what EOD means."
         assert user_message.capability_metadata is None
+
+        assert assistant_message.role == "assistant"
+        assert assistant_message.content == "EOD means end of day."
+        assert assistant_message.model == "mock-model"
+        assert assistant_message.task_suggestions is None
 
         assert assistant_message.capability_metadata == {
             "version": 2,
@@ -930,6 +953,9 @@ async def test_orchestrated_assistant_persists_capability_metadata(
         assert stored_messages is not None
         assert len(stored_messages) == 2
 
+        assert stored_messages[0].content == "Explain what EOD means."
+        assert stored_messages[1].content == "EOD means end of day."
+
         assert stored_messages[1].capability_metadata == {
             "version": 2,
             "capabilities": [
@@ -937,3 +963,14 @@ async def test_orchestrated_assistant_persists_capability_metadata(
             ],
             "sources": [],
         }
+
+        assert stored_messages[1].task_suggestions is None
+
+    assert len(explanation.assistant_requests) == 1
+
+    request = explanation.assistant_requests[0]
+
+    assert request.system_instructions is not None
+    assert "Structured explanation output:" in request.system_instructions
+    assert "Explain the workplace message." in request.messages[0].content
+

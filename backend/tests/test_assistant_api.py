@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
 
@@ -33,7 +34,14 @@ class MockTextGenerationProvider:
         self.last_request = request
 
         return TextGenerationResponse(
-            content="Break the assignment into three manageable steps.",
+            content=json.dumps(
+                {
+                    "explanation": "Break the assignment into three manageable steps.",
+                    "ambiguities": [],
+                    "steps": [],
+                    "next_step": None,
+                }
+            ),
             model="mock-model",
         )
 
@@ -49,12 +57,16 @@ class MockClassificationProvider:
         self.last_request = request
 
         return TextGenerationResponse(
-            content=(
-                '{"intents": ['
-                '{"capability": "message_explanation", '
-                '"instruction": "Explain the employee request.", '
-                '"source_text": null}'
-                "]}"
+            content=json.dumps(
+                {
+                    "intents": [
+                        {
+                            "capability": "message_explanation",
+                            "instruction": "Explain the employee request.",
+                            "source_text": None,
+                        },
+                    ],
+                }
             ),
             model="mock-classifier",
         )
@@ -174,14 +186,22 @@ async def test_authenticated_employee_can_send_message(
     assert provider.last_request is not None
 
     assert provider.last_request.messages[0].role == "user"
-    assert "Help me understand this assignment." in provider.last_request.messages[0].content
 
-    assert "Explain the employee request." in provider.last_request.messages[0].content
+    assert "Help me understand this assignment." in (provider.last_request.messages[0].content)
+
+    assert "Explain the employee request." in (provider.last_request.messages[0].content)
 
     assert provider.last_request.system_instructions is not None
+
     assert "Explain the central meaning in plain, natural language" in (
         provider.last_request.system_instructions
     )
+
+    assert "Structured explanation output:" in (provider.last_request.system_instructions)
+
+    # The API must expose the composed explanation, not raw JSON.
+    assert not response.json()["content"].startswith("{")
+    assert '"ambiguities":' not in response.json()["content"]
 
 
 @pytest.mark.asyncio
@@ -254,7 +274,6 @@ async def test_assistant_handles_provider_failure(
     }
 
     assert "Internal provider connection details" not in response.text
-
     assert classifier.last_request is not None
 
 
