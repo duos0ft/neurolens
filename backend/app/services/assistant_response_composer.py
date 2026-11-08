@@ -4,7 +4,6 @@ from app.ai.capabilities.types import AICapability
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_orchestrator import CapabilityResult
 
-
 CAPABILITY_HEADINGS = {
     AICapability.GENERAL_CONVERSATION: "Response",
     AICapability.MESSAGE_EXPLANATION: "What this means",

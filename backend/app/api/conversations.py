@@ -30,9 +30,9 @@ from app.schemas.conversation import (
     UpdateConversationRequest,
 )
 from app.schemas.task_extraction import (
-    TaskExtractionResponse,
-    ResolvedTaskExtractionResponse,
     ConversationTaskExtractionRequest,
+    ResolvedTaskExtractionResponse,
+    TaskExtractionResponse,
 )
 from app.services.assistant_orchestrator import (
     CapabilityClassificationError,

@@ -15,11 +15,10 @@ from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_instructions import build_preference_instructions
-from app.services.capability_classifier import CapabilityClassifier, CapabilityClassification
+from app.services.capability_classifier import CapabilityClassification, CapabilityClassifier
 from app.services.capability_intent import CapabilityIntent
 from app.services.conversation_context_snapshot import ConversationContextSnapshot
 from app.services.conversation_snapshot_builder import ConversationSnapshotBuilder
-
 
 logger = logging.getLogger(__name__)
 
@@ -569,10 +568,7 @@ class AssistantOrchestrator:
 
         return await self.execute(
             message=message,
-            capabilities=[
-                intent.capability
-                for intent in permitted_intents
-            ],
+            capabilities=[intent.capability for intent in permitted_intents],
             history=history,
             intents=permitted_intents,
         )

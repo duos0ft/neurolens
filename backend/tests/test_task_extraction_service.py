@@ -175,8 +175,8 @@ async def test_rejects_empty_workplace_text() -> None:
     service, provider = create_service(json.dumps({"tasks": []}))
 
     with pytest.raises(
-            ValueError,
-            match="Workplace text cannot be empty",
+        ValueError,
+        match="Workplace text cannot be empty",
     ):
         await service.extract("   ")
 

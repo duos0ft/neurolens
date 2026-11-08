@@ -19,7 +19,7 @@ from app.services.conversation_capability_metadata import (
 )
 from app.services.conversation_title import ConversationTitleService
 from app.services.orchestrated_assistant import OrchestratedAssistantService
-from app.services.task_source_resolver import TaskSourceResolver, TaskSourceResolutionError
+from app.services.task_source_resolver import TaskSourceResolutionError, TaskSourceResolver
 
 logger = logging.getLogger(__name__)
 

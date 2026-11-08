@@ -9,7 +9,6 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.services.capability_intent import CapabilityIntent
 
-
 CLASSIFICATION_INSTRUCTIONS = """
 You are the intent classifier for NeuroLens, a workplace communication
 and task-management assistant.
@@ -271,7 +270,8 @@ Output:
 }
 
 Employee:
-"My manager wrote: 'Review the report and send an update.' Explain it and create a checklist of steps."
+"My manager wrote: 'Review the report and send an update.' 
+Explain it and create a checklist of steps."
 
 Output:
 {
@@ -323,7 +323,8 @@ Output:
 }
 
 Employee:
-"My manager wrote: 'Please send me your availability.' Explain the message and tell me our company's leave policy."
+"My manager wrote: 'Please send me your availability.' Explain the message and tell me our 
+company's leave policy."
 
 Output:
 {
@@ -344,7 +345,8 @@ Output:
 Conversation example:
 
 Previous user:
-"My manager asked me to review onboarding documentation by Friday. Can you explain what they expect?"
+"My manager asked me to review onboarding documentation by Friday. 
+Can you explain what they expect?"
 
 Previous assistant:
 "Your manager wants you to review the onboarding documents by Friday."
@@ -357,7 +359,8 @@ Output:
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Identify only the first practical action for the earlier onboarding-documentation request.",
+      "instruction": "Identify only the first practical action for the earlier 
+      onboarding-documentation request.",
       "source_text": null
     }
   ]
@@ -379,7 +382,8 @@ Output:
   "intents": [
     {
       "capability": "task_extraction",
-      "instruction": "Identify individually selectable task suggestions from the earlier client-feedback assignment.",
+      "instruction": "Identify individually selectable task suggestions from the 
+      earlier client-feedback assignment.",
       "source_text": null
     }
   ]
@@ -401,7 +405,8 @@ Output:
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Provide a concise sequence of practical steps for completing the earlier client-feedback assignment.",
+      "instruction": "Provide a concise sequence of practical steps for 
+      completing the earlier client-feedback assignment.",
       "source_text": null
     }
   ]
@@ -423,7 +428,8 @@ Output:
   "intents": [
     {
       "capability": "task_extraction",
-      "instruction": "Identify trackable task suggestions from the earlier client-feedback request.",
+      "instruction": "Identify trackable task suggestions from the 
+      earlier client-feedback request.",
       "source_text": null
     }
   ]
@@ -566,9 +572,7 @@ class CapabilityClassifier:
                     )
 
         except (ValueError, TypeError, KeyError) as error:
-            raise ValueError(
-                "Unable to interpret capability classification"
-            ) from error
+            raise ValueError("Unable to interpret capability classification") from error
 
         return CapabilityClassification(
             intents=intents,

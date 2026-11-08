@@ -1,7 +1,6 @@
 from app.ai.capabilities.text_generation import TextGenerationProvider
 from app.ai.capabilities.types import AICapability
 
-
 TEXT_GENERATION_CAPABILITIES = frozenset(
     {
         AICapability.REQUEST_CLASSIFICATION,

@@ -1549,24 +1549,26 @@ async def test_task_source_resolver_rejects_fabricated_message_id(
 
         if "Identify the earlier employee-provided message" in instructions:
             return TextGenerationResponse(
-                content=json.dumps({
-                    "message_id": fabricated_id,
-                }),
+                content=json.dumps(
+                    {
+                        "message_id": fabricated_id,
+                    }
+                ),
                 model="mock-classifier",
             )
 
         return TextGenerationResponse(
-            content=json.dumps({
-                "intents": [
-                    {
-                        "capability": "task_extraction",
-                        "instruction": (
-                            "Extract tasks from the earlier manager request."
-                        ),
-                        "source_text": None,
-                    }
-                ]
-            }),
+            content=json.dumps(
+                {
+                    "intents": [
+                        {
+                            "capability": "task_extraction",
+                            "instruction": ("Extract tasks from the earlier manager request."),
+                            "source_text": None,
+                        }
+                    ]
+                }
+            ),
             model="mock-classifier",
         )
 
@@ -1579,10 +1581,7 @@ async def test_task_source_resolver_rejects_fabricated_message_id(
     response = await client.post(
         f"/api/conversations/{conversation_id}/messages",
         json={
-            "content": (
-                "Extract the tasks from the manager's "
-                "request we discussed earlier."
-            ),
+            "content": ("Extract the tasks from the manager's request we discussed earlier."),
         },
     )
 
@@ -1592,9 +1591,7 @@ async def test_task_source_resolver_rejects_fabricated_message_id(
 
     assert mock_task_extraction.requests == []
 
-    detail = await client.get(
-        f"/api/conversations/{conversation_id}"
-    )
+    detail = await client.get(f"/api/conversations/{conversation_id}")
 
     assert detail.status_code == 200
     assert len(detail.json()["messages"]) == 2

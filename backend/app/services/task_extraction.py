@@ -10,7 +10,6 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 
-
 TASK_EXTRACTION_INSTRUCTIONS = """\
 You are NeuroLens, a precise workplace task-extraction assistant.
 
@@ -115,7 +114,8 @@ Output example:
       "description": "Review last week's feedback and identify the three most important issues.",
       "priority": "low",
       "due_date": null,
-      "source_text": "review the client feedback from last week, identify the three most important issues",
+      "source_text": "review the client feedback from last week, identify the three most important 
+      issues",
       "subtasks": [
         {
           "title": "Review last week's client feedback"
@@ -127,7 +127,8 @@ Output example:
     },
     {
       "title": "Prepare and email the feedback summary",
-      "description": "Prepare a short summary for the team and email it to the manager by Friday. The work is not urgent and should fit around other work.",
+      "description": "Prepare a short summary for the team and email it to the manager by Friday. 
+      The work is not urgent and should fit around other work.",
       "priority": "low",
       "due_date": null,
       "source_text": "prepare a short summary for the team, and email it to me by Friday",

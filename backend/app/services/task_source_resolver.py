@@ -9,7 +9,6 @@ from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.models.conversation_message import ConversationMessage
 
-
 TASK_SOURCE_RESOLUTION_INSTRUCTIONS = """
 Identify the earlier employee-provided message that the latest
 employee request refers to.
