@@ -3,8 +3,8 @@ import { type SubmitEvent, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "../../../components/button";
-import { Dialog } from "../../../components/dialog/Dialog";
-import { Input } from "../../../components/input/Input";
+import { Dialog } from "../../../components/dialog";
+import { Input } from "../../../components/input";
 import {
     type ContactPerson,
     type ContactPersonInput,
@@ -66,7 +66,7 @@ export function ContactPersonDialog({
         setIsPrimary(contact?.is_primary ?? false);
 
         saveMutation.reset();
-    }, [ open, contact ]);
+    }, [ open, contact, saveMutation ]);
 
     function closeDialog() {
         if (saveMutation.isPending) {
