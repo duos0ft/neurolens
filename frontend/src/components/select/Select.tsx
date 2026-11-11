@@ -19,6 +19,7 @@ export function Select<T>({
         left: 0,
         width: 0,
         maxHeight: 240,
+        openAbove: false,
     });
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +50,7 @@ export function Select<T>({
             left: rect.left,
             width: rect.width,
             maxHeight,
+            openAbove,
         });
     }
 
@@ -199,11 +201,13 @@ export function Select<T>({
                 className={styles.dropdown}
                 style={{
                     position: "fixed",
+                    inset: "auto",
+                    margin: 0,
                     top: position.top,
                     left: position.left,
                     width: position.width,
                     maxHeight: position.maxHeight,
-                    transform: position.top < (triggerRef.current?.getBoundingClientRect().top ?? 0)
+                    transform: position.openAbove
                         ? "translateY(-100%)"
                         : undefined,
                 }}

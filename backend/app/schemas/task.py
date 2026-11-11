@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -121,4 +122,51 @@ class TaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None
+    archived_at: datetime | None
+    deleted_at: datetime | None
     subtasks: list[SubtaskResponse] = Field(default_factory=list)
+
+
+class TaskStatsResponse(BaseModel):
+    todo: int
+    in_progress: int
+    completed: int
+
+
+class UpdateTaskStatusRequest(BaseModel):
+    status: Literal["todo", "in_progress", "completed"]
+
+
+class CreateSubtaskRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+
+class UpdateSubtaskRequest(BaseModel):
+    id: uuid.UUID | None = None
+    title: str = Field(min_length=1, max_length=200)
+
+
+class CreateTaskRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    priority: Literal["low", "medium", "high"] | None = None
+    due_date: date | None = None
+    subtasks: list[CreateSubtaskRequest] = Field(
+        default_factory=list,
+        max_length=50,
+    )
+
+
+class UpdateTaskRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    priority: Literal["low", "medium", "high"] | None = None
+    due_date: date | None = None
+    subtasks: list[UpdateSubtaskRequest] | None = Field(
+        default=None,
+        max_length=50,
+    )
+
+class UpdateSubtaskCompletionRequest(BaseModel):
+    completed: bool
+    

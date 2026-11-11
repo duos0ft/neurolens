@@ -5,7 +5,7 @@ export const dropdownMenuStyles = {
         "transition-colors duration-150",
         "hover:bg-muted hover:text-fg",
         "data-[open=true]:bg-muted data-[open=true]:text-fg",
-        "focus-visible:outline-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-border-strong",
         "disabled:cursor-not-allowed disabled:opacity-40",
     ].join(" "),
 
@@ -33,7 +33,7 @@ export const dropdownMenuStyles = {
         "text-fg-muted [&_svg]:size-4",
     ].join(" "),
 
-    itemLabel: "min-w-0 flex-1 truncate",
+    itemLabel: "min-w-0 flex-1 whitespace-nowrap",
 
     destructive: [
         "text-destructive",
@@ -42,4 +42,6 @@ export const dropdownMenuStyles = {
     ].join(" "),
 
     destructiveIcon: "text-destructive",
+
+    separator: "my-1.5 border-t border-border",
 };

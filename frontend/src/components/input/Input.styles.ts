@@ -5,7 +5,7 @@ export const inputVariants = cva(
         "flex w-full min-w-0 rounded-lg border border-border bg-bg text-fg",
         "transition-colors outline-none",
         "placeholder:text-fg-muted",
-        "focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/15",
+        "focus-visible:border-border-strong focus-visible:ring-0",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "aria-invalid:border-neg-fg aria-invalid:ring-2 aria-invalid:ring-neg-fg/15",
     ],

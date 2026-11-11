@@ -9,7 +9,7 @@ export const recentConversationsStyles = {
         "justify-between gap-2 rounded-lg",
         "px-3 py-2 text-left",
         "transition-colors hover:bg-muted",
-        "focus-visible:outline-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-border-strong",
     ].join(" "),
 
     heading: [

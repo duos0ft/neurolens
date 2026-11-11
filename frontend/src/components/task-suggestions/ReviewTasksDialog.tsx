@@ -1,4 +1,4 @@
-import { type FormEvent, useId, useState } from "react";
+import { type SyntheticEvent, useId, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import type { ReviewedTask, TaskPriority } from "../../lib/tasks";
@@ -7,6 +7,7 @@ import { DatePicker } from "../date-picker/DatePicker";
 import { Dialog } from "../dialog";
 import { Input } from "../input";
 import { reviewTasksDialogStyles as styles } from "./ReviewTasksDialog.styles";
+import { Select } from "../select/Select";
 
 interface ReviewTasksDialogProps {
     tasks: ReviewedTask[];
@@ -25,7 +26,6 @@ export function ReviewTasksDialog({
     const titleId = useId();
     const descriptionId = useId();
     const dueDateId = useId();
-    const priorityId = useId();
 
     const [ drafts, setDrafts ] = useState<ReviewedTask[]>(
         () => tasks.map((task) => ({
@@ -95,7 +95,7 @@ export function ReviewTasksDialog({
         setValidationError(null);
     }
 
-    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
         event.preventDefault();
 
         if (saving) {
@@ -301,29 +301,23 @@ export function ReviewTasksDialog({
                         </div>
 
                         <div className={styles.field}>
-                            <label
-                                htmlFor={priorityId}
-                                className={styles.label}
-                            >
+                            <label className={styles.label}>
                                 Priority
                             </label>
 
-                            <select
-                                id={priorityId}
-                                className={styles.select}
-                                value={activeTask.priority ?? ""}
-                                onChange={(event) => updateTask({
-                                    priority: (
-                                        event.target.value || null
-                                    ) as TaskPriority,
+                            <Select<Exclude<TaskPriority, null>>
+                                options={[
+                                    { label: "Low", value: "low" },
+                                    { label: "Medium", value: "medium" },
+                                    { label: "High", value: "high" },
+                                ]}
+                                value={activeTask.priority}
+                                onChange={(priority) => updateTask({
+                                    priority,
                                 })}
+                                placeholder="No priority"
                                 disabled={saving}
-                            >
-                                <option value="">No priority</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
+                            />
                         </div>
                     </div>
 

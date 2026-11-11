@@ -52,6 +52,10 @@ export const router = createBrowserRouter([
                         element: <Navigate to="/app/chat" replace/>,
                     },
                     {
+                        path: "my-tasks",
+                        lazy: () => import("../pages/tasks/TasksPage"),
+                    },
+                    {
                         path: "profile",
                         lazy: () => import("../pages/profile/ProfilePage"),
                     },
