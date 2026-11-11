@@ -216,73 +216,56 @@ class ConversationService:
                             if message.role == "user" and message.content.strip()
                         ]
 
-                        resolved_sources: dict[
-                            str,
-                            tuple[str, uuid.UUID | None, datetime],
-                        ] = {}
-
                         for intent in selected_extractions:
-                            source_text = intent.source_text
                             source_message_id = None
                             reference_datetime = message_received_at
 
-                            if source_text is None:
+                            if intent.source_scope == "previous":
                                 if not candidates:
                                     raise TaskSourceAmbiguityError(
                                         "No earlier employee message is available"
                                     )
 
-                                source_key = content
+                                resolver = TaskSourceResolver(
+                                    registry=assistant.orchestrator.registry,
+                                )
 
-                                if source_key in resolved_sources:
+                                source_message_id = await resolver.resolve(
+                                    request=f"{content}\n\nRequested information: {intent.instruction}",
+                                    messages=candidates,
+                                )
+
+                                if source_message_id is None:
+                                    raise TaskSourceAmbiguityError(
+                                        "Unable to identify the earlier message"
+                                    )
+
+                                source_message = next(
                                     (
-                                        source_text,
-                                        source_message_id,
-                                        reference_datetime,
-                                    ) = resolved_sources[source_key]
+                                        message
+                                        for message in candidates
+                                        if message.id == source_message_id
+                                    ),
+                                    None,
+                                )
 
-                                else:
-                                    resolver = TaskSourceResolver(
-                                        registry=assistant.orchestrator.registry,
+                                if source_message is None:
+                                    raise TaskSourceResolutionError(
+                                        "Resolved source is not an authorized message"
                                     )
 
-                                    source_message_id = await resolver.resolve(
-                                        request=content,
-                                        messages=candidates,
-                                    )
+                                source_text = source_message.content
+                                reference_datetime = source_message.created_at
 
-                                    if source_message_id is None:
-                                        raise TaskSourceAmbiguityError(
-                                            "Unable to identify the earlier message"
-                                        )
-
-                                    source_message = next(
-                                        (
-                                            message
-                                            for message in candidates
-                                            if message.id == source_message_id
-                                        ),
-                                        None,
-                                    )
-
-                                    if source_message is None:
-                                        raise TaskSourceResolutionError(
-                                            "Resolved source is not an authorized message"
-                                        )
-
-                                    source_text = source_message.content
-                                    reference_datetime = source_message.created_at
-
-                                    resolved_sources[source_key] = (
-                                        source_text,
-                                        source_message_id,
-                                        reference_datetime,
-                                    )
+                            else:
+                                source_text = intent.source_text or content
 
                             if intent.capability == AICapability.TASK_EXTRACTION:
                                 extraction_result = await assistant.extract_tasks(
                                     source_text=source_text,
                                     source_message_id=source_message_id,
+                                    reference_datetime=reference_datetime,
+                                    timezone=timezone,
                                 )
 
                                 extraction_results.append(extraction_result)

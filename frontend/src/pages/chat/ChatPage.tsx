@@ -14,6 +14,7 @@ import {
 } from "../../lib/conversations";
 import { ChatMessageContent } from "./ChatMessageContent";
 import { chatPageStyles as styles } from "./ChatPage.styles";
+import { CalendarSuggestions } from "../../components/calendar-suggestions/CalendarSuggestions";
 
 export function Component() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -315,6 +316,13 @@ export function Component() {
                                                     <TaskSuggestions
                                                         messageId={item.id}
                                                         suggestions={item.task_suggestions}
+                                                    />
+                                                )}
+
+                                                {item.calendar_suggestions && (
+                                                    <CalendarSuggestions
+                                                        messageId={item.id}
+                                                        suggestions={item.calendar_suggestions}
                                                     />
                                                 )}
                                             </div>

@@ -13,7 +13,7 @@ from app.services.assistant_execution_result import (
 )
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
-from app.services.calendar_extraction import CalendarExtractionService
+from app.services.calendar.calendar_extraction import CalendarExtractionService
 from app.services.capability_classifier import CapabilityClassification
 from app.services.task_extraction import TaskExtractionService
 
@@ -52,6 +52,8 @@ class OrchestratedAssistantService:
         self,
         source_text: str,
         source_message_id: uuid.UUID | None = None,
+        reference_datetime: datetime | None = None,
+        timezone: str | None = None,
     ) -> AssistantExecutionResult:
         extraction_service = TaskExtractionService(
             registry=self.orchestrator.registry,
@@ -59,6 +61,8 @@ class OrchestratedAssistantService:
 
         extraction = await extraction_service.extract(
             text=source_text,
+            reference_datetime=reference_datetime,
+            timezone=timezone,
         )
 
         if extraction.tasks:

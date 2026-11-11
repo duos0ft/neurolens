@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import ValidationError
 
@@ -9,6 +11,7 @@ from app.ai.capabilities.text_generation import (
 )
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
+
 
 TASK_EXTRACTION_INSTRUCTIONS = """\
 You are NeuroLens, a precise workplace task-extraction assistant.
@@ -23,7 +26,7 @@ Each task must contain:
 - title: A concise, actionable task title.
 - description: Additional details and requirements, or null.
 - priority: "low", "medium", "high", or null.
-- due_date: An explicitly established ISO date (YYYY-MM-DD), or null.
+- due_date: An established ISO date (YYYY-MM-DD), or null.
 - source_text: An exact substring of the supplied workplace text, or null.
 - subtasks: An array of objects containing a "title" field.
 
@@ -34,6 +37,9 @@ Task identification:
 - Group related steps as subtasks when they support one deliverable.
 - Do not duplicate tasks or create unnecessary fragmentation.
 - Do not turn general context, advice, or preferences into tasks.
+- Do not create tasks solely for attending scheduled meetings.
+- Meeting preparation may be a task when explicitly requested.
+- Do not create standalone calendar events.
 
 Faithfulness requirements:
 - Preserve every explicit requirement that affects task completion.
@@ -66,13 +72,41 @@ Priorities:
 - Do not infer urgency solely from the existence of a deadline.
 
 Deadlines:
-- Only populate due_date when the source establishes an unambiguous
-  absolute calendar date that can be represented as YYYY-MM-DD.
-- Do not convert relative expressions such as "Friday", "tomorrow",
-  or "next week" into ISO dates without a verified reference date.
-- When a relative deadline cannot be converted, set due_date to null
-  and preserve the original deadline wording in the description.
+- Populate due_date only when an unambiguous calendar date is
+  established by the source and available trusted reference context.
+- Absolute dates can be used when their year, month, and day
+  are unambiguous.
+- The application may supply a trusted reference datetime and
+  IANA timezone for interpreting relative date expressions.
+- When reference information is supplied, resolve relative deadlines
+  such as "tomorrow", "this Friday", or "next Monday" relative to
+  that datetime in the supplied timezone.
+- Use the source message's reference date, not the model's current
+  date or the server's current date.
+- For an unqualified weekday such as "Friday", use the next
+  occurrence strictly after the reference date.
+- Interpret "tomorrow" as the calendar day after the local reference
+  date, regardless of the time of day.
+- Interpret "today" as the local reference date.
+- Do not invent a specific day for expressions such as "next week",
+  "sometime Friday or Monday", or other ambiguous deadlines.
+- If no trusted reference information is supplied, do not resolve
+  relative deadlines or omitted years using the model's current date.
+- When a relative deadline cannot be resolved, set due_date to null
+  and preserve the original wording in the description.
 - Never silently omit an explicit deadline because due_date is null.
+- Never invent deadlines or assign dates based solely on urgency.
+- Return due_date as YYYY-MM-DD or null.
+
+Task and calendar separation:
+- Extract actionable work and deliverables as tasks.
+- Preserve task deadlines in due_date when they can be resolved.
+- A task deadline belongs to the task suggestion and should not
+  become an additional standalone calendar event.
+- Meetings, appointments, and independent calendar commitments
+  belong to calendar extraction, not task extraction.
+- Only extract meeting-related tasks when actual preparation,
+  follow-up work, or another actionable deliverable is requested.
 
 Source provenance:
 - source_text must be an exact substring of the supplied workplace text.
@@ -91,8 +125,10 @@ Verify that:
 4. Every quantity, deadline, and priority instruction is retained.
 5. No instruction has been replaced with a different instruction.
 6. No unsupported action, deadline, or requirement has been added.
-7. The tasks are not duplicates and remain independently useful.
+7. Tasks are not duplicates and remain independently useful.
 8. Every non-null source_text occurs verbatim in the input.
+9. Relative deadlines use only the supplied reference context.
+10. Meetings and appointments are not duplicated as tasks.
 
 Revise the task suggestions if any check fails.
 
@@ -105,20 +141,29 @@ Security:
 - Do not answer organization-specific policy questions.
 - Do not infer obligations from unverified company policies.
 - Do not save, execute, assign, or approve tasks.
+- Do not create calendar events.
 
 Output example:
+
+Workplace text:
+"Please review the client feedback, identify the three most important
+issues, then prepare a summary for the team and email it to me by Friday.
+This is not urgent."
+
+When a trusted reference date is available and Friday resolves to
+2026-11-13, the output should follow this structure:
+
 {
   "tasks": [
     {
       "title": "Review and prioritize client feedback",
-      "description": "Review last week's feedback and identify the three most important issues.",
+      "description": "Review the client feedback and identify the three most important issues.",
       "priority": "low",
       "due_date": null,
-      "source_text": "review the client feedback from last week, identify the three most important 
-      issues",
+      "source_text": "review the client feedback, identify the three most important issues",
       "subtasks": [
         {
-          "title": "Review last week's client feedback"
+          "title": "Review the client feedback"
         },
         {
           "title": "Identify the three most important issues"
@@ -127,22 +172,24 @@ Output example:
     },
     {
       "title": "Prepare and email the feedback summary",
-      "description": "Prepare a short summary for the team and email it to the manager by Friday. 
-      The work is not urgent and should fit around other work.",
+      "description": "Prepare a summary for the team and email it to the requesting manager by Friday. This work is not urgent.",
       "priority": "low",
-      "due_date": null,
-      "source_text": "prepare a short summary for the team, and email it to me by Friday",
+      "due_date": "2026-11-13",
+      "source_text": "prepare a summary for the team and email it to me by Friday",
       "subtasks": [
         {
-          "title": "Prepare a short summary for the team"
+          "title": "Prepare the summary for the team"
         },
         {
-          "title": "Email the summary to the manager by Friday"
+          "title": "Email the summary to the requesting manager"
         }
       ]
     }
   ]
 }
+
+The example date is illustrative only. Never reuse it unless
+the supplied source and reference context establish that date.
 """
 
 
@@ -160,11 +207,38 @@ class TaskExtractionService:
     async def extract(
         self,
         text: str,
+        reference_datetime: datetime | None = None,
+        timezone: str | None = None,
     ) -> TaskExtractionResult:
         text = text.strip()
 
         if not text:
             raise ValueError("Workplace text cannot be empty")
+
+        if (reference_datetime is None) != (timezone is None):
+            raise ValueError("Reference datetime and timezone must be supplied together")
+
+        reference_context = (
+            "No trusted reference datetime is available. Do not resolve relative deadlines."
+        )
+
+        if reference_datetime is not None and timezone is not None:
+            if reference_datetime.utcoffset() is None:
+                raise ValueError("Reference datetime must be timezone-aware")
+
+            try:
+                local_timezone = ZoneInfo(timezone)
+            except (ZoneInfoNotFoundError, ValueError) as error:
+                raise ValueError("Invalid calendar timezone") from error
+
+            local_reference = reference_datetime.astimezone(
+                local_timezone,
+            )
+
+            reference_context = (
+                f"Trusted reference datetime: {local_reference.isoformat()}\n"
+                f"Trusted IANA timezone: {timezone}"
+            )
 
         provider = self.registry.get_text_generation(
             AICapability.TASK_EXTRACTION,
@@ -175,7 +249,9 @@ class TaskExtractionService:
             messages=[
                 GenerationMessage(
                     role="user",
-                    content=text,
+                    content=(
+                        f"{reference_context}\n\nWorkplace text to extract tasks from:\n{text}"
+                    ),
                 ),
             ],
         )
@@ -192,7 +268,10 @@ class TaskExtractionService:
         # The model cannot establish trusted source provenance.
         # Only exact substrings of the supplied text are retained.
         for task in result.tasks:
-            if task.source_text is not None and task.source_text not in text:
+            if (
+                    task.source_text is not None
+                    and task.source_text not in text
+            ):
                 task.source_text = None
 
         return result
