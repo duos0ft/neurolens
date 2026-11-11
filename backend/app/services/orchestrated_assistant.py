@@ -36,6 +36,11 @@ class OrchestratedAssistantService:
             classification=classification,
         )
 
+        policy_answer = next(
+            (result.policy_answer for result in results if result.policy_answer is not None),
+            None,
+        )
+
         return AssistantExecutionResult(
             response=self.composer.compose(
                 results,
@@ -43,6 +48,8 @@ class OrchestratedAssistantService:
             ),
             capabilities=tuple(result.capability for result in results),
             sources=tuple(result.source for result in results if result.source is not None),
+            policy_status=policy_answer.status if policy_answer is not None else None,
+            citations=policy_answer.citations if policy_answer is not None else (),
         )
 
     async def extract_tasks(

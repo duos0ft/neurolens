@@ -17,6 +17,9 @@ EXPECTED_ACCESS = {
     "contact_persons": ("SELECT", "INSERT"),
     "conversations": ("SELECT", "INSERT", "UPDATE", "DELETE"),
     "conversation_messages": ("SELECT", "INSERT", "UPDATE", "DELETE"),
+    # The application only reads the knowledge base; ingestion is privileged.
+    "knowledge_documents": ("SELECT",),
+    "knowledge_chunks": ("SELECT",),
 }
 
 

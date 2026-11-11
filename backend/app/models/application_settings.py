@@ -48,7 +48,7 @@ class ApplicationSettings(Base):
     enable_policy_assistance: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        server_default="true",
+        server_default="false",
     )
 
     enable_sentiment_analysis: Mapped[bool] = mapped_column(

@@ -20,6 +20,8 @@ from app.models.employee import Employee  # noqa: F401
 from app.models.employee_invitation import EmployeeInvitation  # noqa: F401
 from app.models.employee_profile import EmployeeProfile  # noqa: F401
 from app.models.employee_session import EmployeeSession  # noqa: F401
+from app.models.knowledge_chunk import KnowledgeChunk  # noqa: F401
+from app.models.knowledge_document import KnowledgeDocument  # noqa: F401
 
 config = context.config
 migration_url = settings.migration_database_url or settings.database_url
@@ -35,6 +37,8 @@ MANAGED_TABLES = {
     "conversations",
     "conversation_messages",
     "contact_persons",
+    "knowledge_documents",
+    "knowledge_chunks",
 }
 
 if config.config_file_name is not None:

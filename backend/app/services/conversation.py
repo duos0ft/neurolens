@@ -249,9 +249,8 @@ class ConversationService:
                 response = execution_result.response
 
                 if execution_result.capabilities:
-                    capability_metadata = ConversationCapabilityMetadata(
-                        capabilities=execution_result.capabilities,
-                        sources=execution_result.sources,
+                    capability_metadata = ConversationCapabilityMetadata.from_execution_result(
+                        execution_result
                     ).to_dict()
 
                 if execution_result.task_suggestions is not None:
@@ -281,9 +280,8 @@ class ConversationService:
                     response = execution_result.response
 
                     if execution_result.capabilities:
-                        capability_metadata = ConversationCapabilityMetadata(
-                            capabilities=execution_result.capabilities,
-                            sources=execution_result.sources,
+                        capability_metadata = ConversationCapabilityMetadata.from_execution_result(
+                            execution_result
                         ).to_dict()
 
                     if execution_result.task_suggestions is not None:

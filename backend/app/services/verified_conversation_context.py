@@ -70,7 +70,7 @@ class VerifiedConversationContextResolver:
                 break
 
             # Version 1 metadata has no verified source provenance.
-            if raw_metadata.get("version") != 2:
+            if raw_metadata.get("version") not in (2, 3):
                 break
 
             # Never reuse mixed-capability exchanges.

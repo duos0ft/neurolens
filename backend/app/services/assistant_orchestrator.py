@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
+from app.ai.capabilities.embeddings import EmbeddingError
 from app.ai.capabilities.message_explanation import StructuredExplanation
 from app.ai.capabilities.text_generation import (
     GenerationMessage,
@@ -19,6 +20,7 @@ from app.services.capability_classifier import CapabilityClassification, Capabil
 from app.services.capability_intent import CapabilityIntent
 from app.services.conversation_context_snapshot import ConversationContextSnapshot
 from app.services.conversation_snapshot_builder import ConversationSnapshotBuilder
+from app.services.policy_answer import PolicyAnswer, PolicyAnswerService
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +244,7 @@ class CapabilityResult:
     response: TextGenerationResponse
     source: ConversationContextSnapshot | None = None
     structured_explanation: StructuredExplanation | None = None
+    policy_answer: PolicyAnswer | None = None
 
 
 class CapabilityDisabledError(Exception):
@@ -255,6 +258,41 @@ class CapabilityClassificationError(Exception):
 MAX_GENERATION_HISTORY = 6
 MAX_CLASSIFICATION_ATTEMPTS = 2
 
+OMITTED_SOURCE_PLACEHOLDER = "[quoted workplace message omitted]"
+
+
+def build_policy_query(
+    message: str,
+    intent: CapabilityIntent | None,
+    source_snapshots: list[ConversationContextSnapshot],
+) -> str:
+    """Build the retrieval question for a policy intent.
+
+    Quoted workplace messages belong to other capabilities. They are
+    removed so untrusted third-party text cannot steer policy retrieval
+    or the grounded answer.
+    """
+
+    query = message
+
+    spans = sorted(
+        ((snapshot.source.start, snapshot.source.end) for snapshot in source_snapshots),
+        reverse=True,
+    )
+
+    for start, end in spans:
+        if 0 <= start < end <= len(query):
+            query = f"{query[:start]}{OMITTED_SOURCE_PLACEHOLDER}{query[end:]}"
+
+    query = query.strip()
+
+    # The classifier sees recent history, so its scoped instruction helps
+    # resolve short follow-ups such as "what about part-time staff?".
+    if intent is not None and intent.instruction:
+        query = f"{query}\n\nContext: {intent.instruction}"
+
+    return query
+
 
 class AssistantOrchestrator:
     def __init__(
@@ -263,8 +301,10 @@ class AssistantOrchestrator:
         enable_task_assistance: bool = True,
         config: AssistantConfig | None = None,
         snapshot_builder: ConversationSnapshotBuilder | None = None,
+        policy_answerer: PolicyAnswerService | None = None,
     ) -> None:
         self.registry = registry
+        self.policy_answerer = policy_answerer
 
         self.config = config or AssistantConfig(
             enable_task_assistance=enable_task_assistance,
@@ -283,6 +323,34 @@ class AssistantOrchestrator:
                 content=(POLICY_MIXED_MESSAGE if mixed else POLICY_UNAVAILABLE_MESSAGE),
                 model="neurolens",
             ),
+        )
+
+    async def _answer_policy(
+        self,
+        message: str,
+        intent: CapabilityIntent | None,
+        source_snapshots: list[ConversationContextSnapshot],
+    ) -> CapabilityResult:
+        # Policy answers require both the organization flag and a
+        # configured knowledge base. Otherwise the employee is referred.
+        if self.policy_answerer is None or not self.config.enable_policy_assistance:
+            return self._policy_result()
+
+        try:
+            answer = await self.policy_answerer.answer(
+                build_policy_query(message, intent, source_snapshots),
+            )
+
+        except EmbeddingError as error:
+            raise TextGenerationError("Knowledge retrieval unavailable") from error
+
+        return CapabilityResult(
+            capability=AICapability.POLICY_QUESTION,
+            response=TextGenerationResponse(
+                content=answer.content,
+                model=answer.model,
+            ),
+            policy_answer=answer,
         )
 
     def _build_source_snapshot(
@@ -367,7 +435,13 @@ class AssistantOrchestrator:
             ]
 
             if not executable:
-                return [self._policy_result()]
+                return [
+                    await self._answer_policy(
+                        message=message,
+                        intent=scoped_intents.get(AICapability.POLICY_QUESTION),
+                        source_snapshots=[],
+                    )
+                ]
 
             # Mixed policy requests must not send unrestricted
             # employee content to specialist providers.
@@ -382,7 +456,17 @@ class AssistantOrchestrator:
 
         for capability in selected:
             if capability == AICapability.POLICY_QUESTION:
-                results.append(self._policy_result())
+                results.append(
+                    await self._answer_policy(
+                        message=message,
+                        intent=scoped_intents.get(AICapability.POLICY_QUESTION),
+                        source_snapshots=[
+                            snapshot
+                            for snapshot in source_snapshots.values()
+                            if snapshot is not None
+                        ],
+                    )
+                )
                 continue
 
             intent = scoped_intents.get(capability)

@@ -18,6 +18,7 @@ from app.schemas.assistant import (
     AssistantMessageRequest,
     AssistantMessageResponse,
 )
+from app.schemas.conversation import PolicyCitationResponse
 from app.services.assistant import AssistantService
 from app.services.orchestrated_assistant import OrchestratedAssistantService
 
@@ -67,7 +68,7 @@ async def send_message(
         )
 
     try:
-        response = await assistant.respond(
+        result = await assistant.execute(
             message=message,
         )
 
@@ -78,6 +79,20 @@ async def send_message(
         ) from error
 
     return AssistantMessageResponse(
-        content=response.content,
-        model=response.model,
+        content=result.response.content,
+        model=result.response.model,
+        citations=[
+            PolicyCitationResponse(
+                number=citation.number,
+                document_id=citation.document_id,
+                document_slug=citation.document_slug,
+                document_title=citation.document_title,
+                document_revision=citation.document_revision,
+                source_version=citation.source_version,
+                effective_date=citation.effective_date,
+                section=citation.section,
+                quotes=list(citation.quotes),
+            )
+            for citation in result.citations
+        ],
     )

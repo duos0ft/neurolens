@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     ai_task_assistance_model: str | None = None
     ai_conversation_title_model: str | None = None
     ai_request_classification_model: str | None = None
+    ai_policy_generation_model: str | None = None
+
+    # Knowledge retrieval (RAG)
+    # "openai" for production; "local" is a deterministic, offline
+    # hashing embedder intended for tests and development.
+    ai_embedding_provider: str = "openai"
+    openai_embedding_model: str = "text-embedding-3-small"
+    knowledge_retrieval_top_k: int = 4
+    knowledge_min_relevance: float = 0.3
 
     model_config = SettingsConfigDict(
         env_file=".env",

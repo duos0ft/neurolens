@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.conversation import PolicyCitationResponse
+
 
 class AssistantMessageRequest(BaseModel):
     message: str = Field(
@@ -11,3 +13,4 @@ class AssistantMessageRequest(BaseModel):
 class AssistantMessageResponse(BaseModel):
     content: str
     model: str
+    citations: list[PolicyCitationResponse] = Field(default_factory=list)

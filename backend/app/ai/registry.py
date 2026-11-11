@@ -1,3 +1,4 @@
+from app.ai.capabilities.embeddings import EmbeddingProvider
 from app.ai.capabilities.text_generation import TextGenerationProvider
 from app.ai.capabilities.types import AICapability
 
@@ -24,6 +25,7 @@ class AIProviderRegistry:
             AICapability,
             TextGenerationProvider,
         ] = {}
+        self._embedding_provider: EmbeddingProvider | None = None
 
     def register_text_generation(
         self,
@@ -50,3 +52,20 @@ class AIProviderRegistry:
             )
 
         return provider
+
+    def register_embeddings(
+        self,
+        provider: EmbeddingProvider,
+    ) -> None:
+        self._embedding_provider = provider
+
+    def get_embeddings(self) -> EmbeddingProvider:
+        if self._embedding_provider is None:
+            raise ProviderNotConfiguredError(
+                f"No provider configured for {AICapability.EMBEDDINGS.value}"
+            )
+
+        return self._embedding_provider
+
+    def has_embeddings(self) -> bool:
+        return self._embedding_provider is not None

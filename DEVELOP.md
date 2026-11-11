@@ -87,6 +87,63 @@ The frontend should only use:
 
 ---
 
+## Policy knowledge base (RAG)
+
+NeuroLens answers policy questions only from **verified** organization documents, and every answer cites its sources.
+If nothing verified supports an answer, NeuroLens abstains and refers the employee to HR.
+
+Policy answers need **all** of the following:
+
+1. The **Policy assistance** flag is enabled in the admin settings (`enable_policy_assistance`). It is off by default.
+2. Documents have been ingested with the same embedding provider that the API uses.
+3. The relevant document is `status: verified`, is the current revision, and is already in effect.
+
+If any of these is missing, the assistant falls back to the HR referral message.
+
+### Documents
+
+The fictional DuoSoft policies live in `backend/resources/knowledge/duosoft/`. Each file is Markdown with front matter:
+
+```markdown
+---
+slug: annual-leave
+title: Annual Leave Policy
+version: 2.1
+owner: People Operations
+effective_date: 2026-01-01
+status: verified            # draft | verified | retired
+verified_by: Priya Raman, Head of People Operations
+verified_on: 2025-12-10
+---
+```
+
+`travel-expenses.md` is deliberately left as a `draft`. It shows that unverified documents are never cited.
+
+### Ingesting
+
+Ingestion writes with the privileged `MIGRATION_DATABASE_URL` connection. The API role can only read the knowledge tables.
+
+```bash
+uv run python -m scripts.ingest_knowledge --dry-run   # validate and chunk only
+uv run python -m scripts.ingest_knowledge             # sync into the database
+```
+
+Re-running the sync is safe:
+
+- **Unchanged files** are skipped.
+- **Changed files** become a new revision. The old revision is kept for provenance.
+- **Removed files** stop being served. Pass `--keep-missing` to keep serving them.
+- **Changing `AI_EMBEDDING_PROVIDER` or the embedding model** re-embeds documents without creating new revisions. Run the sync again whenever you change either.
+
+### Embedding providers
+
+| `AI_EMBEDDING_PROVIDER` | Use for                 | Notes                                                                                                                                         |
+|-------------------------|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `openai`                | Normal use              | Uses `OPENAI_EMBEDDING_MODEL`.                                                                                                                |
+| `local`                 | Tests, offline dev      | Deterministic and needs no API key. Matching is by keyword, not meaning, so scores are lower. Use `KNOWLEDGE_MIN_RELEVANCE=0.15` with it. |
+
+---
+
 ## Frontend setup
 
 From the frontend directory:
