@@ -2,7 +2,7 @@ import uuid
 from math import ceil
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,25 +15,24 @@ from app.models.subtask import Subtask
 from app.models.task import Task
 from app.schemas.pagination import PageResponse
 from app.schemas.task import (
-    SaveTaskSuggestionsRequest,
-    TaskResponse,
-    SubtaskResponse,
-    SaveReviewedTasksRequest,
-    TaskStatsResponse,
-    UpdateTaskStatusRequest,
-    UpdateTaskRequest,
     CreateTaskRequest,
+    SaveReviewedTasksRequest,
+    SaveTaskSuggestionsRequest,
+    SubtaskResponse,
+    TaskResponse,
+    TaskStatsResponse,
     UpdateSubtaskCompletionRequest,
+    UpdateTaskRequest,
+    UpdateTaskStatusRequest,
 )
 from app.services.task import (
+    InvalidSubtaskError,
     InvalidTaskSelectionError,
+    SubtaskNotFoundError,
+    TaskNotFoundError,
     TaskService,
     TaskSuggestionNotFoundError,
-    TaskNotFoundError,
-    SubtaskNotFoundError,
-    InvalidSubtaskError,
 )
-
 
 router = APIRouter(
     prefix="/tasks",

@@ -363,9 +363,7 @@ async def test_saved_task_survives_conversation_deletion(
         subtasks = list(
             (
                 await db.scalars(
-                    select(Subtask)
-                    .where(Subtask.task_id == task_id)
-                    .order_by(Subtask.sort_order)
+                    select(Subtask).where(Subtask.task_id == task_id).order_by(Subtask.sort_order)
                 )
             ).all()
         )

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone, date
+from datetime import date, datetime, timezone
 
 from pydantic import ValidationError
 from sqlalchemy import case, func, select
@@ -11,7 +11,7 @@ from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.subtask import Subtask
 from app.models.task import Task
-from app.schemas.task import ReviewedTask, CreateSubtaskRequest, UpdateSubtaskRequest
+from app.schemas.task import CreateSubtaskRequest, ReviewedTask, UpdateSubtaskRequest
 
 
 class TaskSuggestionNotFoundError(Exception):

@@ -167,6 +167,6 @@ class UpdateTaskRequest(BaseModel):
         max_length=50,
     )
 
+
 class UpdateSubtaskCompletionRequest(BaseModel):
     completed: bool
-    

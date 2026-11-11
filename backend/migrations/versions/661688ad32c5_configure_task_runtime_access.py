@@ -9,9 +9,8 @@ Create Date: 2026-11-08 20:57:18.293093
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
-from migrations.runtime_access import configure_runtime_access, RuntimeAccess
+from migrations.runtime_access import RuntimeAccess, configure_runtime_access
 
 # revision identifiers, used by Alembic.
 revision: str = "661688ad32c5"
@@ -76,4 +75,3 @@ def downgrade() -> None:
         ON public.tasks
         """
     )
-
