@@ -1,0 +1,90 @@
+/* Calendar container */
+
+.neurolens-calendar.react-datepicker {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    background: var(--surface);
+    color: var(--fg);
+    font-family: inherit;
+    box-shadow: var(--shadow-popover, 0 12px 28px rgb(0 0 0 / 0.1));
+}
+
+/* Calendar header */
+
+.neurolens-calendar .react-datepicker__header {
+    padding-top: 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.neurolens-calendar .react-datepicker__current-month {
+    color: var(--fg);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.neurolens-calendar .react-datepicker__day-name {
+    color: var(--fg-muted);
+}
+
+/* Calendar days */
+
+.neurolens-calendar .react-datepicker__month {
+    margin: 8px;
+}
+
+.neurolens-calendar .react-datepicker__day {
+    border-radius: 0.5rem;
+    color: var(--fg-body);
+}
+
+.neurolens-calendar .react-datepicker__day:hover {
+    background: var(--muted);
+    color: var(--fg);
+}
+
+.neurolens-calendar .react-datepicker__day--selected,
+.neurolens-calendar .react-datepicker__day--keyboard-selected {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.neurolens-calendar .react-datepicker__day--selected:hover {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.neurolens-calendar .react-datepicker__day--outside-month {
+    color: var(--fg-muted);
+    opacity: 0.5;
+}
+
+.neurolens-calendar .react-datepicker__day--disabled {
+    opacity: 0.3;
+}
+
+/* Month navigation */
+
+.neurolens-calendar .react-datepicker__navigation {
+    top: 13px;
+}
+
+.neurolens-calendar .react-datepicker__navigation-icon::before {
+    border-color: var(--fg-muted);
+    border-width: 2px 2px 0 0;
+}
+
+/* Popup positioning */
+
+.react-datepicker-popper {
+    z-index: 100;
+}
+
+/* Clear date button */
+
+.react-datepicker__close-icon::after {
+    background: var(--muted);
+    color: var(--fg-muted);
+    font-size: 14px;
+}

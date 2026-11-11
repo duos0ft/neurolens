@@ -1,7 +1,7 @@
 export const dialogStyles = {
     root: [
         "fixed inset-0 m-auto",
-        "w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)]",
+        "w-[calc(100%_-_2rem)] max-h-[calc(100dvh_-_2rem)]",
         "overflow-visible rounded-xl border border-border",
         "bg-surface p-0 text-fg shadow-xl",
         "backdrop:bg-black/40",
