@@ -38,6 +38,7 @@ from app.services.assistant_orchestrator import (
     CapabilityClassificationError,
     CapabilityDisabledError,
 )
+from app.services.calendar.calendar_extraction import CalendarExtractionError
 from app.services.conversation import ConversationService, TaskSourceAmbiguityError
 from app.services.orchestrated_assistant import OrchestratedAssistantService
 from app.services.task_extraction import TaskExtractionError, TaskExtractionService
@@ -281,18 +282,19 @@ async def send_conversation_message(
             conversation_id=conversation_id,
             content=content,
             assistant=assistant,
+            timezone=payload.timezone,
         )
 
     except CapabilityDisabledError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=("This assistant capability is currently unavailable."),
+            detail="This assistant capability is currently unavailable.",
         ) from error
 
     except CapabilityClassificationError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=("NeuroLens couldn't process your message. Please try again."),
+            detail="NeuroLens couldn't process your message. Please try again.",
         ) from error
 
     except TaskSourceAmbiguityError as error:
@@ -309,6 +311,12 @@ async def send_conversation_message(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=("NeuroLens couldn't prepare task suggestions. Please try again."),
+        ) from error
+
+    except CalendarExtractionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't prepare calendar suggestions. Please try again."),
         ) from error
 
     except (TextGenerationError, ProviderNotConfiguredError) as error:

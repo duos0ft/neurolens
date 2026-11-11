@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.ai.capabilities.calendar_extraction import ExtractedCalendarEvent
 from app.ai.capabilities.task_extraction import ExtractedTask
 
 
@@ -26,6 +28,11 @@ class ConversationTaskSuggestionsResponse(BaseModel):
     tasks: list[ExtractedTask] = Field(default_factory=list)
 
 
+class ConversationCalendarSuggestionsResponse(BaseModel):
+    source_message_id: uuid.UUID | None = None
+    events: list[ExtractedCalendarEvent] = Field(default_factory=list)
+
+
 class ConversationMessageResponse(BaseModel):
     id: uuid.UUID
     role: Literal["user", "assistant"]
@@ -33,6 +40,7 @@ class ConversationMessageResponse(BaseModel):
     model: str | None
     created_at: datetime
     task_suggestions: ConversationTaskSuggestionsResponse | None = None
+    calendar_suggestions: ConversationCalendarSuggestionsResponse | None = None
 
 
 class ConversationDetailResponse(ConversationResponse):
@@ -44,6 +52,23 @@ class SendConversationMessageRequest(BaseModel):
         min_length=1,
         max_length=10000,
     )
+
+    timezone: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        timezone = value.strip()
+
+        try:
+            ZoneInfo(timezone)
+        except (ZoneInfoNotFoundError, ValueError) as error:
+            raise ValueError("Invalid calendar timezone") from error
+
+        return timezone
 
 
 class UpdateConversationRequest(BaseModel):

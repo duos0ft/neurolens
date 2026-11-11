@@ -88,3 +88,8 @@ class ConversationMessage(Base):
         JSONB,
         nullable=True,
     )
+
+    calendar_suggestions: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )

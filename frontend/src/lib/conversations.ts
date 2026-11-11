@@ -14,6 +14,7 @@ export interface ConversationMessage {
     model: string | null;
     created_at: string;
     task_suggestions: TaskSuggestions | null;
+    calendar_suggestions: CalendarSuggestions | null;
 }
 
 export interface ConversationDetail extends Conversation {
@@ -36,6 +37,31 @@ export interface ExtractedTask {
 export interface TaskSuggestions {
     source_message_id: string | null;
     tasks: ExtractedTask[];
+}
+
+export type CalendarEventType =
+    | "meeting"
+    | "appointment"
+    | "event"
+    | "deadline";
+
+export interface ExtractedCalendarEvent {
+    title: string;
+    description: string | null;
+    event_type: CalendarEventType;
+    all_day: boolean;
+    start_date: string | null;
+    end_date: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    timezone: string;
+    source_text: string | null;
+    end_time_inferred: boolean;
+}
+
+export interface CalendarSuggestions {
+    source_message_id: string | null;
+    events: ExtractedCalendarEvent[];
 }
 
 export function getConversations(): Promise<Conversation[]> {
@@ -65,12 +91,16 @@ export function sendConversationMessage(
     conversationId: string,
     content: string,
 ): Promise<ConversationMessage[]> {
+    const timezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
     return apiFetch<ConversationMessage[]>(
         `/api/conversations/${conversationId}/messages`,
         {
             method: "POST",
             body: {
                 content,
+                timezone,
             },
         },
     );
@@ -95,7 +125,9 @@ export function renameConversation(
         `/api/conversations/${conversationId}`,
         {
             method: "PATCH",
-            body: { title },
+            body: {
+                title,
+            },
         },
     );
 }

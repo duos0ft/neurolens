@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from app.ai.capabilities.text_generation import (
     GenerationMessage,
@@ -6,11 +7,13 @@ from app.ai.capabilities.text_generation import (
 )
 from app.ai.capabilities.types import AICapability
 from app.services.assistant_execution_result import (
+    AssistantCalendarSuggestions,
     AssistantExecutionResult,
     AssistantTaskSuggestions,
 )
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
+from app.services.calendar_extraction import CalendarExtractionService
 from app.services.capability_classifier import CapabilityClassification
 from app.services.task_extraction import TaskExtractionService
 
@@ -74,6 +77,44 @@ class OrchestratedAssistantService:
             ),
             capabilities=(AICapability.TASK_EXTRACTION,),
             task_suggestions=AssistantTaskSuggestions(
+                source_message_id=source_message_id,
+                extraction=extraction,
+            ),
+        )
+
+    async def extract_calendar(
+        self,
+        source_text: str,
+        reference_datetime: datetime,
+        timezone: str,
+        source_message_id: uuid.UUID | None = None,
+    ) -> AssistantExecutionResult:
+        extraction_service = CalendarExtractionService(
+            registry=self.orchestrator.registry,
+        )
+
+        extraction = await extraction_service.extract(
+            text=source_text,
+            reference_datetime=reference_datetime,
+            timezone=timezone,
+        )
+
+        if extraction.events:
+            content = (
+                f"I found {len(extraction.events)} possible "
+                "calendar suggestions. Review them below "
+                "before adding them to your calendar."
+            )
+        else:
+            content = "I couldn't identify any scheduled events in that message."
+
+        return AssistantExecutionResult(
+            response=TextGenerationResponse(
+                content=content,
+                model="neurolens-calendar-extraction",
+            ),
+            capabilities=(AICapability.CALENDAR_EXTRACTION,),
+            calendar_suggestions=AssistantCalendarSuggestions(
                 source_message_id=source_message_id,
                 extraction=extraction,
             ),

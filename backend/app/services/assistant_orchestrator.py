@@ -535,11 +535,14 @@ class AssistantOrchestrator:
                 history=history,
             )
 
-        # Structured task extraction is handled by the conversation
-        # workflow, not the ordinary assistant response generator.
-        if AICapability.TASK_EXTRACTION in classification.capabilities:
+        structured_capabilities = {
+            AICapability.TASK_EXTRACTION,
+            AICapability.CALENDAR_EXTRACTION,
+        }
+
+        if any(capability in structured_capabilities for capability in classification.capabilities):
             raise CapabilityDisabledError(
-                "Task extraction requires the structured extraction workflow"
+                "Structured extraction requires the dedicated extraction workflow"
             )
 
         permitted_intents: list[CapabilityIntent] = []

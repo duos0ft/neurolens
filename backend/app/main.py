@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.api import application_settings, assistant, contact_persons, conversations, preferences
 from app.api.auth import router as auth_router
 from app.api.calendar.calendar import router as calendar_router
+from app.api.calendar.calendar_suggestions import router as calendar_suggestions_router
 from app.api.employee_invitations import router as employee_invitations_router
 from app.api.employees import router as employees_router
 from app.api.profile import router as profile_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(conversations.router, prefix="/api")
     app.include_router(tasks_router, prefix="/api")
     app.include_router(calendar_router, prefix="/api")
+    app.include_router(calendar_suggestions_router, prefix="/api")
 
     return app
 

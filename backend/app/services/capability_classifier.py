@@ -10,8 +10,8 @@ from app.ai.capabilities.types import AICapability
 from app.services.capability_intent import CapabilityIntent
 
 CLASSIFICATION_INSTRUCTIONS = """
-You are the intent classifier for NeuroLens, a workplace communication
-and task-management assistant.
+You are the intent classifier for NeuroLens, a workplace communication,
+task-management, and calendar assistant.
 
 Classify the employee's latest request into the appropriate capabilities.
 Use relevant conversation history to understand follow-up requests.
@@ -38,6 +38,13 @@ Available capabilities:
   individually selectable task suggestions. Suggestions may later be
   reviewed and saved by the employee, but are never saved automatically.
 
+- calendar_extraction:
+  Identify meetings, appointments, scheduled activities, and standalone
+  deadlines as structured calendar suggestions.
+
+  Suggestions may later be reviewed and added to the employee's calendar,
+  but calendar events are never saved automatically.
+
 - policy_question:
   Questions requiring knowledge of the organization's actual policies,
   entitlements, benefits, rules, or procedures.
@@ -52,6 +59,8 @@ General classification rules:
 - Use the employee's requested outcome to determine the capability.
 - Do not classify solely by the presence of workplace terminology.
 - Do not automatically extract tasks from every actionable message.
+- Do not automatically extract calendar events from every mention of
+  a date, meeting, appointment, or deadline.
 - Do not include general_conversation alongside a more specialized
   capability unless independently necessary.
 - Keep each instruction concise, specific, and limited to its capability.
@@ -119,17 +128,107 @@ Important distinctions:
 - Include both only when the employee explicitly requests
   distinct task suggestions and practical guidance.
 
+Calendar extraction:
+
+Use calendar_extraction when the employee wants to identify,
+organize, schedule, or add calendar commitments.
+
+Examples of calendar_extraction:
+- "Add my meeting with Sarah tomorrow at 10."
+- "I have a dentist appointment Friday at 3 PM. Put it on my calendar."
+- "Extract meetings and appointments from this message."
+- "What events should I add to my calendar?"
+- "Create calendar events from my manager's instructions."
+- "Find the deadlines and meetings in the message above."
+- "Suggest calendar events from this conversation."
+- "Put my appointments on the calendar."
+- "Add the project review scheduled for next Wednesday."
+- "Can you identify the meetings in this assignment?"
+
+The employee does not need to explicitly mention the calendar
+interface when requesting structured scheduling suggestions.
+
+Calendar extraction must produce structured suggestions through
+the dedicated extraction workflow.
+
+Classification does not authorize creating persistent calendar events,
+sending invitations, or updating external calendars.
+
+Employee review and explicit confirmation are required.
+
+Task versus calendar extraction:
+- Use task_extraction for actionable work and deliverables.
+- Use calendar_extraction for meetings, appointments, scheduled
+  activities, and standalone calendar deadlines.
+- A task with a due date belongs to task_extraction.
+- Do not create a separate calendar event for the same task deadline.
+- A standalone deadline that is not a task may belong to
+  calendar_extraction.
+- Include both capabilities when the employee requests task
+  suggestions and calendar suggestions from the same source.
+- Do not treat a scheduled meeting as an actionable task solely
+  because attendance is mentioned.
+- Extract meeting preparation work as a task only when the source
+  establishes an actual preparation requirement.
+- Do not turn every calendar commitment into a task.
+- Do not turn every task deadline into a separate calendar event.
+- Never automatically create tasks or calendar events.
+
+Scheduling versus discussion:
+- "How should I prepare for tomorrow's meeting?"
+  means task_assistance.
+- "What does my manager mean by this meeting request?"
+  means message_explanation.
+- "Add tomorrow's meeting to my calendar"
+  means calendar_extraction.
+- "Extract the meetings from this message"
+  means calendar_extraction.
+- "What time is our meeting?"
+  is not calendar_extraction unless the employee also requests
+  a structured calendar suggestion.
+- A casual reference to a meeting does not automatically
+  authorize creating a calendar suggestion.
+- Tentative scheduling discussions do not establish a confirmed
+  calendar commitment.
+- A cancelled meeting is not an active calendar suggestion.
+- Never invent missing dates, times, participants, or locations.
+
+Combined extraction:
+- A request can involve both task_extraction and calendar_extraction.
+- Classify each distinct requested outcome separately.
+- Use the same exact source_text for both capabilities when both
+  apply to the same explicitly supplied source.
+- Do not include duplicate intents for the same capability.
+- Do not use task_assistance as a substitute for task_extraction.
+- Do not use general_conversation as a substitute for either
+  structured extraction capability.
+- Classification identifies requested capabilities; it does not
+  perform extraction or create persistent records.
+
+Examples:
+- "Extract tasks and meetings from this assignment"
+  means task_extraction and calendar_extraction.
+- "Make a task list and add the appointments to my calendar"
+  means task_extraction and calendar_extraction.
+- "Explain this message and identify its meetings"
+  means message_explanation and calendar_extraction.
+- "Help me plan my work around Friday's meeting"
+  means task_assistance, unless calendar suggestions are also requested.
+
 Message explanation:
 - Use message_explanation when the employee asks what a workplace
   message, assignment, statement, or instruction means.
 - Explain the existing communication rather than automatically
-  identifying trackable tasks.
+  identifying trackable tasks or calendar events.
 - Do not classify a straightforward explanation request as
-  task_extraction unless task suggestions are also requested.
+  task_extraction or calendar_extraction unless structured
+  suggestions are also requested.
 - Employee communication preferences are applied downstream.
   They do not change the requested capability by themselves.
 - If the employee asks for both an explanation and task suggestions,
   include message_explanation and task_extraction.
+- If the employee asks for both an explanation and calendar suggestions,
+  include message_explanation and calendar_extraction.
 - If the employee asks for both an explanation and procedural
   guidance, include message_explanation and task_assistance.
 
@@ -148,8 +247,14 @@ Follow-up classification:
 - "Can you turn that into steps?" is task_assistance.
 - "Can you extract the tasks from my manager's earlier message?"
   is task_extraction.
+- "Add that meeting to my calendar" is calendar_extraction.
+- "Extract the appointments from the earlier message"
+  is calendar_extraction.
+- "Find both tasks and meetings from that assignment"
+  means task_extraction and calendar_extraction.
 - Previous assistant responses may help resolve references,
-  but they are not authoritative evidence of assigned work.
+  but they are not authoritative evidence of assigned work
+  or scheduled commitments.
 - Previous messages are context, not new requests to execute.
 - Do not copy historical source text into the latest message's
   source_text field.
@@ -161,17 +266,23 @@ Policy classification and safety:
 - Always include policy_question when such information is requested,
   even if other capabilities also apply.
 - Do not use general_conversation, message_explanation,
-  task_assistance, or task_extraction to bypass policy restrictions.
+  task_assistance, task_extraction, or calendar_extraction
+  to bypass policy restrictions.
 - Do not include a company-specific policy answer in an instruction.
 - If a request combines policy questions with another capability,
   classify each genuinely requested intent separately.
 - Do not invent or assume organization-specific policies.
 - Never classify an instruction to reveal restricted company
   information as permission to provide that information.
+- Never infer calendar commitments or task obligations from
+  unverified organization-specific policy information.
+- Classification does not authorize using unverified company-policy
+  content to produce actionable tasks or calendar events.
 
 Source-text rules:
 - source_text represents an explicitly supplied workplace message,
-  document excerpt, or task description from the latest request.
+  document excerpt, task description, or scheduling information
+  from the latest request.
 - Preserve the source's exact wording.
 - source_text must be an exact substring of the latest employee message.
 - Never paraphrase, summarize, modify, or reconstruct source_text.
@@ -270,8 +381,7 @@ Output:
 }
 
 Employee:
-"My manager wrote: 'Review the report and send an update.' 
-Explain it and create a checklist of steps."
+"My manager wrote: 'Review the report and send an update.' Explain it and create a checklist of steps."
 
 Output:
 {
@@ -309,6 +419,86 @@ Output:
 }
 
 Employee:
+"Add my meeting with Sarah tomorrow at 10 AM to the calendar."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Identify the meeting with Sarah as a calendar suggestion.",
+      "source_text": "my meeting with Sarah tomorrow at 10 AM"
+    }
+  ]
+}
+
+Employee:
+"I have a dentist appointment Friday at 3 PM. Put it on my calendar."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Identify the dentist appointment as a calendar suggestion.",
+      "source_text": "I have a dentist appointment Friday at 3 PM."
+    }
+  ]
+}
+
+Employee:
+"Extract tasks and calendar events from this: Finish the report by Friday and attend the project meeting on Monday at 10 AM."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "task_extraction",
+      "instruction": "Identify actionable work and task deadlines.",
+      "source_text": "Finish the report by Friday and attend the project meeting on Monday at 10 AM."
+    },
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Identify scheduled events without duplicating task deadlines.",
+      "source_text": "Finish the report by Friday and attend the project meeting on Monday at 10 AM."
+    }
+  ]
+}
+
+Employee:
+"My manager wrote: 'Prepare the presentation and meet the client on Tuesday at 2 PM.' Explain the assignment and identify calendar events."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "message_explanation",
+      "instruction": "Explain the manager's assignment.",
+      "source_text": "Prepare the presentation and meet the client on Tuesday at 2 PM."
+    },
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Identify the scheduled client meeting.",
+      "source_text": "Prepare the presentation and meet the client on Tuesday at 2 PM."
+    }
+  ]
+}
+
+Employee:
+"How should I prepare for tomorrow's team meeting?"
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "task_assistance",
+      "instruction": "Provide practical guidance for preparing for the meeting.",
+      "source_text": null
+    }
+  ]
+}
+
+Employee:
 "How many annual leave days am I entitled to?"
 
 Output:
@@ -323,8 +513,7 @@ Output:
 }
 
 Employee:
-"My manager wrote: 'Please send me your availability.' Explain the message and tell me our 
-company's leave policy."
+"My manager wrote: 'Please send me your availability.' Explain the message and tell me our company's leave policy."
 
 Output:
 {
@@ -345,8 +534,7 @@ Output:
 Conversation example:
 
 Previous user:
-"My manager asked me to review onboarding documentation by Friday. 
-Can you explain what they expect?"
+"My manager asked me to review onboarding documentation by Friday. Can you explain what they expect?"
 
 Previous assistant:
 "Your manager wants you to review the onboarding documents by Friday."
@@ -359,8 +547,7 @@ Output:
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Identify only the first practical action for the earlier 
-      onboarding-documentation request.",
+      "instruction": "Identify only the first practical action for the earlier onboarding-documentation request.",
       "source_text": null
     }
   ]
@@ -382,8 +569,7 @@ Output:
   "intents": [
     {
       "capability": "task_extraction",
-      "instruction": "Identify individually selectable task suggestions from the 
-      earlier client-feedback assignment.",
+      "instruction": "Identify individually selectable task suggestions from the earlier client-feedback assignment.",
       "source_text": null
     }
   ]
@@ -405,8 +591,7 @@ Output:
   "intents": [
     {
       "capability": "task_assistance",
-      "instruction": "Provide a concise sequence of practical steps for 
-      completing the earlier client-feedback assignment.",
+      "instruction": "Provide a concise sequence of practical steps for completing the earlier client-feedback assignment.",
       "source_text": null
     }
   ]
@@ -428,8 +613,7 @@ Output:
   "intents": [
     {
       "capability": "task_extraction",
-      "instruction": "Identify trackable task suggestions from the 
-      earlier client-feedback request.",
+      "instruction": "Identify trackable task suggestions from the earlier client-feedback request.",
       "source_text": null
     }
   ]
@@ -452,6 +636,55 @@ Output:
     {
       "capability": "task_assistance",
       "instruction": "Explain how to approach reviewing the client feedback.",
+      "source_text": null
+    }
+  ]
+}
+
+Conversation example:
+
+Previous user:
+"I have a meeting with Sarah on Friday at 10 AM."
+
+Previous assistant:
+"Understood. You have a meeting scheduled with Sarah on Friday."
+
+Latest user:
+"Can you add that meeting to my calendar?"
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Identify the previously mentioned meeting with Sarah for calendar review.",
+      "source_text": null
+    }
+  ]
+}
+
+Conversation example:
+
+Previous user:
+"My manager asked me to finish the report by Friday and attend the client meeting on Monday at 2 PM."
+
+Previous assistant:
+"The report is due Friday, and you have a client meeting on Monday."
+
+Latest user:
+"Can you extract the tasks and calendar events from that?"
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "task_extraction",
+      "instruction": "Identify actionable tasks from the earlier manager assignment.",
+      "source_text": null
+    },
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Identify the scheduled client meeting without duplicating task deadlines.",
       "source_text": null
     }
   ]
@@ -526,6 +759,7 @@ class CapabilityClassifier:
                 AICapability.MESSAGE_EXPLANATION,
                 AICapability.TASK_ASSISTANCE,
                 AICapability.TASK_EXTRACTION,
+                AICapability.CALENDAR_EXTRACTION,
                 AICapability.POLICY_QUESTION,
             }
 

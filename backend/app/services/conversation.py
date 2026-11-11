@@ -1,5 +1,8 @@
 import logging
 import uuid
+from datetime import datetime
+from datetime import timezone as datetime_timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -118,11 +121,19 @@ class ConversationService:
         conversation_id: uuid.UUID,
         content: str,
         assistant: AssistantProtocol,
+        timezone: str,
     ) -> tuple[ConversationMessage, ConversationMessage] | None:
         content = content.strip()
 
         if not content:
             raise ValueError("Message cannot be empty")
+
+        try:
+            ZoneInfo(timezone)
+        except (ZoneInfoNotFoundError, ValueError) as error:
+            raise ValueError("Invalid calendar timezone") from error
+
+        message_received_at = datetime.now(datetime_timezone.utc)
 
         try:
             conversation = await self.db.scalar(
@@ -161,6 +172,7 @@ class ConversationService:
 
             capability_metadata = None
             task_suggestions = None
+            calendar_suggestions = None
 
             if isinstance(assistant, OrchestratedAssistantService):
                 classification = await assistant.orchestrator.classify(
@@ -168,75 +180,153 @@ class ConversationService:
                     history=history,
                 )
 
-                if AICapability.TASK_EXTRACTION in classification.capabilities:
+                extraction_capabilities = {
+                    AICapability.TASK_EXTRACTION,
+                    AICapability.CALENDAR_EXTRACTION,
+                }
+
+                selected_extractions = [
+                    intent
+                    for intent in classification.intents
+                    if intent.capability in extraction_capabilities
+                ]
+
+                if selected_extractions:
                     if AICapability.POLICY_QUESTION in classification.capabilities:
                         execution_result = AssistantExecutionResult(
                             response=TextGenerationResponse(
                                 content=(
-                                    "I can't extract tasks from a request "
-                                    "mixed with unverified company-policy "
-                                    "information. Please provide the "
-                                    "workplace assignment separately."
+                                    "I can't extract tasks or calendar events "
+                                    "from a request mixed with unverified "
+                                    "company-policy information. Please "
+                                    "provide the assignment or scheduling "
+                                    "details separately."
                                 ),
                                 model="neurolens",
                             ),
                             capabilities=(AICapability.POLICY_QUESTION,),
                         )
+
                     else:
-                        extraction_intent = next(
-                            intent
-                            for intent in classification.intents
-                            if intent.capability == AICapability.TASK_EXTRACTION
+                        extraction_results: list[AssistantExecutionResult] = []
+
+                        candidates = [
+                            message
+                            for message in history_messages
+                            if message.role == "user" and message.content.strip()
+                        ]
+
+                        resolved_sources: dict[
+                            str,
+                            tuple[str, uuid.UUID | None, datetime],
+                        ] = {}
+
+                        for intent in selected_extractions:
+                            source_text = intent.source_text
+                            source_message_id = None
+                            reference_datetime = message_received_at
+
+                            if source_text is None:
+                                if not candidates:
+                                    raise TaskSourceAmbiguityError(
+                                        "No earlier employee message is available"
+                                    )
+
+                                source_key = content
+
+                                if source_key in resolved_sources:
+                                    (
+                                        source_text,
+                                        source_message_id,
+                                        reference_datetime,
+                                    ) = resolved_sources[source_key]
+
+                                else:
+                                    resolver = TaskSourceResolver(
+                                        registry=assistant.orchestrator.registry,
+                                    )
+
+                                    source_message_id = await resolver.resolve(
+                                        request=content,
+                                        messages=candidates,
+                                    )
+
+                                    if source_message_id is None:
+                                        raise TaskSourceAmbiguityError(
+                                            "Unable to identify the earlier message"
+                                        )
+
+                                    source_message = next(
+                                        (
+                                            message
+                                            for message in candidates
+                                            if message.id == source_message_id
+                                        ),
+                                        None,
+                                    )
+
+                                    if source_message is None:
+                                        raise TaskSourceResolutionError(
+                                            "Resolved source is not an authorized message"
+                                        )
+
+                                    source_text = source_message.content
+                                    reference_datetime = source_message.created_at
+
+                                    resolved_sources[source_key] = (
+                                        source_text,
+                                        source_message_id,
+                                        reference_datetime,
+                                    )
+
+                            if intent.capability == AICapability.TASK_EXTRACTION:
+                                extraction_result = await assistant.extract_tasks(
+                                    source_text=source_text,
+                                    source_message_id=source_message_id,
+                                )
+
+                                extraction_results.append(extraction_result)
+
+                            elif intent.capability == AICapability.CALENDAR_EXTRACTION:
+                                extraction_result = await assistant.extract_calendar(
+                                    source_text=source_text,
+                                    reference_datetime=reference_datetime,
+                                    timezone=timezone,
+                                    source_message_id=source_message_id,
+                                )
+
+                                extraction_results.append(extraction_result)
+
+                        response = TextGenerationResponse(
+                            content=" ".join(
+                                result.response.content for result in extraction_results
+                            ),
+                            model="neurolens-structured-extraction",
                         )
 
-                        source_text = extraction_intent.source_text
-                        source_message_id = None
-
-                        if source_text is None:
-                            candidates = [
-                                message
-                                for message in history_messages
-                                if message.role == "user" and message.content.strip()
-                            ]
-
-                            if not candidates:
-                                raise TaskSourceAmbiguityError(
-                                    "No earlier workplace message is available"
-                                )
-
-                            resolver = TaskSourceResolver(
-                                registry=assistant.orchestrator.registry,
-                            )
-
-                            source_message_id = await resolver.resolve(
-                                request=content,
-                                messages=candidates,
-                            )
-
-                            if source_message_id is None:
-                                raise TaskSourceAmbiguityError(
-                                    "Unable to identify the earlier workplace message"
-                                )
-
-                            source_message = next(
+                        execution_result = AssistantExecutionResult(
+                            response=response,
+                            capabilities=tuple(
+                                capability
+                                for result in extraction_results
+                                for capability in result.capabilities
+                            ),
+                            task_suggestions=next(
                                 (
-                                    message
-                                    for message in candidates
-                                    if message.id == source_message_id
+                                    result.task_suggestions
+                                    for result in extraction_results
+                                    if result.task_suggestions is not None
                                 ),
                                 None,
-                            )
-
-                            if source_message is None:
-                                raise TaskSourceResolutionError(
-                                    "Resolved source is not an authorized message"
-                                )
-
-                            source_text = source_message.content
-
-                        execution_result = await assistant.extract_tasks(
-                            source_text=source_text,
-                            source_message_id=source_message_id,
+                            ),
+                            calendar_suggestions=next(
+                                (
+                                    result.calendar_suggestions
+                                    for result in extraction_results
+                                    if result.calendar_suggestions is not None
+                                ),
+                                None,
+                            ),
                         )
 
                 else:
@@ -266,6 +356,21 @@ class ConversationService:
                         ),
                         "tasks": [
                             task.model_dump(mode="json") for task in suggestions.extraction.tasks
+                        ],
+                    }
+
+                if execution_result.calendar_suggestions is not None:
+                    suggestions = execution_result.calendar_suggestions
+
+                    calendar_suggestions = {
+                        "version": 1,
+                        "source_message_id": (
+                            str(suggestions.source_message_id)
+                            if suggestions.source_message_id is not None
+                            else None
+                        ),
+                        "events": [
+                            event.model_dump(mode="json") for event in suggestions.extraction.events
                         ],
                     }
 
@@ -301,6 +406,23 @@ class ConversationService:
                                 for task in suggestions.extraction.tasks
                             ],
                         }
+
+                    if execution_result.calendar_suggestions is not None:
+                        suggestions = execution_result.calendar_suggestions
+
+                        calendar_suggestions = {
+                            "version": 1,
+                            "source_message_id": (
+                                str(suggestions.source_message_id)
+                                if suggestions.source_message_id is not None
+                                else None
+                            ),
+                            "events": [
+                                event.model_dump(mode="json")
+                                for event in suggestions.extraction.events
+                            ],
+                        }
+
                 else:
                     response = await assistant.respond(
                         message=content,
@@ -327,6 +449,7 @@ class ConversationService:
                 sequence_number=next_sequence,
                 role="user",
                 content=content,
+                created_at=message_received_at,
             )
 
             assistant_message = ConversationMessage(
@@ -337,6 +460,7 @@ class ConversationService:
                 model=response.model,
                 capability_metadata=capability_metadata,
                 task_suggestions=task_suggestions,
+                calendar_suggestions=calendar_suggestions,
             )
 
             self.db.add_all(
