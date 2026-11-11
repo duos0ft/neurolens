@@ -45,7 +45,7 @@ export const appLayoutStyles = {
         "flex size-10 items-center justify-center",
         "rounded-lg text-fg-body",
         "transition-colors hover:bg-muted",
-        "focus-visible:outline-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-border-strong",
     ].join(" "),
 
     toggleIcon: "size-5",

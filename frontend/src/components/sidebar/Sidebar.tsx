@@ -21,7 +21,7 @@ import { sidebarStyles as styles } from "./Sidebar.styles";
 
 const navigation = [
     { label: "Assistant", path: "/app/chat", icon: MessageSquare },
-    { label: "Tasks", path: "/tasks", icon: ListTodo },
+    { label: "My Tasks", path: "/app/my-tasks", icon: ListTodo },
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Policies", path: "/policies", icon: BookOpen },
 ];

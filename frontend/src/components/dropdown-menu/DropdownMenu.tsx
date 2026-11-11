@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
 import { cn } from "../../lib/cn";
@@ -10,6 +10,7 @@ export interface DropdownMenuItem {
     icon?: ReactNode;
     disabled?: boolean;
     destructive?: boolean;
+    separatorBefore?: boolean;
 }
 
 interface DropdownMenuProps {
@@ -26,7 +27,7 @@ interface MenuPosition {
     openAbove: boolean;
 }
 
-const MENU_WIDTH = 168;
+const MENU_WIDTH = 200;
 const MENU_MAX_HEIGHT = 240;
 const VIEWPORT_PADDING = 12;
 const MENU_GAP = 6;
@@ -299,43 +300,52 @@ export function DropdownMenu({
                     }
                 }}
             >
+
                 {items.map((item, index) => (
-                    <button
-                        key={`${item.label}-${index}`}
-                        ref={(element) => {
-                            itemRefs.current[index] = element;
-                        }}
-                        type="button"
-                        role="menuitem"
-                        disabled={item.disabled}
-                        className={cn(
-                            styles.item,
-                            item.destructive && styles.destructive,
-                        )}
-                        onClick={() => {
-                            closeMenu(false);
-                            item.onSelect();
-                        }}
-                        onKeyDown={(event) => {
-                            handleItemKeyDown(event, index);
-                        }}
-                    >
-                        {item.icon && (
-                            <span
-                                className={cn(
-                                    styles.itemIcon,
-                                    item.destructive && styles.destructiveIcon,
-                                )}
-                                aria-hidden="true"
-                            >
-                                {item.icon}
-                            </span>
+                    <Fragment key={`${item.label}-${index}`}>
+                        {item.separatorBefore && index > 0 && (
+                            <div
+                                role="separator"
+                                className={styles.separator}
+                            />
                         )}
 
-                        <span className={styles.itemLabel}>
-                            {item.label}
-                        </span>
-                    </button>
+                        <button
+                            ref={(element) => {
+                                itemRefs.current[index] = element;
+                            }}
+                            type="button"
+                            role="menuitem"
+                            disabled={item.disabled}
+                            className={cn(
+                                styles.item,
+                                item.destructive && styles.destructive,
+                            )}
+                            onClick={() => {
+                                closeMenu(false);
+                                item.onSelect();
+                            }}
+                            onKeyDown={(event) => {
+                                handleItemKeyDown(event, index);
+                            }}
+                        >
+                            {item.icon && (
+                                <span
+                                    className={cn(
+                                        styles.itemIcon,
+                                        item.destructive && styles.destructiveIcon,
+                                    )}
+                                    aria-hidden="true"
+                                >
+                                    {item.icon}
+                                </span>
+                            )}
+
+                            <span className={styles.itemLabel}>
+                                {item.label}
+                            </span>
+                        </button>
+                    </Fragment>
                 ))}
             </div>
         </>

@@ -447,9 +447,13 @@
         color: var(--accent-hover);
     }
 
-    /* Respect native focus indication */
     :focus-visible {
-        outline-color: var(--accent);
+        outline-color: var(--border-strong);
+    }
+
+    :where(input, textarea, select, button, [role="combobox"]):focus-visible {
+        outline: 2px solid var(--border-strong);
+        outline-offset: 2px;
     }
 }
 

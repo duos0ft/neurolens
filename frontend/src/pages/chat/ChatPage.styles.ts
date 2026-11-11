@@ -69,7 +69,7 @@ export const chatPageStyles = {
         "bg-surface px-3 py-2",
         "text-sm font-medium text-fg-body",
         "transition-colors hover:bg-muted",
-        "focus-visible:outline-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-border-strong",
     ].join(" "),
 
     messages: [
@@ -162,7 +162,7 @@ export const chatPageStyles = {
         "mb-1 flex !size-9 shrink-0 items-center",
         "justify-center !rounded-xl !p-0",
         "!shadow-none",
-        "focus-visible:outline-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-border-strong",
     ].join(" "),
 
     sendIcon: "size-4",

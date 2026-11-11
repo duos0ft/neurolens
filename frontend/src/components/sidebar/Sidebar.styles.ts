@@ -34,7 +34,7 @@ export const sidebarStyles = {
         "text-sm font-medium text-fg-body",
         "transition-colors",
         "hover:bg-muted hover:text-fg",
-        "focus-visible:outline-2 focus-visible:outline-accent",
+        "focus-visible:outline-2 focus-visible:outline-border-strong",
     ].join(" "),
 
     navLinkActive: [

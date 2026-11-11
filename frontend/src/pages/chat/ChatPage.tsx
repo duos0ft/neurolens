@@ -313,6 +313,7 @@ export function Component() {
 
                                                 {item.task_suggestions && (
                                                     <TaskSuggestions
+                                                        messageId={item.id}
                                                         suggestions={item.task_suggestions}
                                                     />
                                                 )}
