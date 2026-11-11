@@ -355,6 +355,39 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@full-ui/headless-calendar@npm:7.1.4":
+  version: 7.1.4
+  resolution: "@full-ui/headless-calendar@npm:7.1.4"
+  peerDependencies:
+    temporal-polyfill: ^1.0.7
+  checksum: 10c0/1516d2a560870cdefefbaf30d000096f714f744756f1a9cb4ee9d97a5c16ba68160a33528a9008742a48e696585bfa7e6f5f671671f49c7604b3215091127cba
+  languageName: node
+  linkType: hard
+
+"@fullcalendar/core@npm:7.1.4":
+  version: 7.1.4
+  resolution: "@fullcalendar/core@npm:7.1.4"
+  peerDependencies:
+    "@full-ui/headless-calendar": 7.1.4
+    temporal-polyfill: ^1.0.7
+  checksum: 10c0/307e2b0304f9fe7b673632c5a5a96c50a956c4d02d80a2d37bbaba362fb879c012deb71560b05d69812e49c3b438a137591b53e4bf8c02da59c913e18c0a0618
+  languageName: node
+  linkType: hard
+
+"@fullcalendar/react@npm:^7.1.4":
+  version: 7.1.4
+  resolution: "@fullcalendar/react@npm:7.1.4"
+  dependencies:
+    "@full-ui/headless-calendar": "npm:7.1.4"
+    "@fullcalendar/core": "npm:7.1.4"
+  peerDependencies:
+    react: ^17 || ^18 || ^19
+    react-dom: ^17 || ^18 || ^19
+    temporal-polyfill: ^1.0.7
+  checksum: 10c0/3406c095e20cb8f04d83461189016e34d70421b0cf37a6631a7838542286599dbf96c079d2f263db0b49085a86f9e4c67b643ddcab68549a41f581ac8578df37
+  languageName: node
+  linkType: hard
+
 "@hookform/resolvers@npm:^5.9.1":
   version: 5.9.1
   resolution: "@hookform/resolvers@npm:5.9.1"
@@ -1868,6 +1901,7 @@ __metadata:
   resolution: "frontend@workspace:."
   dependencies:
     "@eslint/js": "npm:9"
+    "@fullcalendar/react": "npm:^7.1.4"
     "@hookform/resolvers": "npm:^5.9.1"
     "@rsbuild/core": "npm:^2.2.12"
     "@rsbuild/plugin-react": "npm:^2.1.1"
@@ -1896,6 +1930,7 @@ __metadata:
     sonner: "npm:^2.0.8"
     tailwind-merge: "npm:^3.7.0"
     tailwindcss: "npm:4"
+    temporal-polyfill: "npm:^1.0.8"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.71.1"
     zod: "npm:^4.6.7"
@@ -3378,6 +3413,30 @@ __metadata:
   version: 2.3.3
   resolution: "tapable@npm:2.3.3"
   checksum: 10c0/47992e861053f861154e92fb4a98ac4ab47b6463717e60792dd1e8c755da0c4964cd8bb68c308a9066d6da89000b6310457b4d5d985c30de4ccc29066068cc17
+  languageName: node
+  linkType: hard
+
+"temporal-polyfill@npm:^1.0.8":
+  version: 1.0.8
+  resolution: "temporal-polyfill@npm:1.0.8"
+  dependencies:
+    temporal-spec: "npm:1.0.1"
+    temporal-utils: "npm:1.0.4"
+  checksum: 10c0/91f225c02a39f824ce71b3710e9cbf8e28e9fb40428c42b5ee067263737a34005fa61b87822bce207e6ad4257b0ee40fb29c2cdbf540aba7fda5809f276f7f61
+  languageName: node
+  linkType: hard
+
+"temporal-spec@npm:1.0.1":
+  version: 1.0.1
+  resolution: "temporal-spec@npm:1.0.1"
+  checksum: 10c0/99f6bfe4a8e59cd0664d0e97706798a1e10d42b1b682da9b60778a4cb9a23362da01ea3d83a674ef426ed743bbab835e2e3d1acea5d2d4a9eabe33863237b014
+  languageName: node
+  linkType: hard
+
+"temporal-utils@npm:1.0.4":
+  version: 1.0.4
+  resolution: "temporal-utils@npm:1.0.4"
+  checksum: 10c0/cd5105d49f01794c5adfde697178364a70b56c28be60119922bbb1a96dd4d8de43537fa31883aff85e0c18b39cd2e1d2facfc794750e03621c6983f95b39da1b
   languageName: node
   linkType: hard
 
