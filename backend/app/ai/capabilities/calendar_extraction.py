@@ -1,5 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import StrEnum
+from zoneinfo import ZoneInfoNotFoundError, ZoneInfo
 
 from pydantic import (
     BaseModel,
@@ -15,6 +16,12 @@ class CalendarEventType(StrEnum):
     APPOINTMENT = "appointment"
     EVENT = "event"
     DEADLINE = "deadline"
+
+
+class CalendarEndTimeSource(StrEnum):
+    EXPLICIT = "explicit"
+    DURATION = "duration"
+    DEFAULT = "default"
 
 
 class ExtractedCalendarEvent(BaseModel):
@@ -33,7 +40,7 @@ class ExtractedCalendarEvent(BaseModel):
     starts_at: datetime | None = None
     ends_at: datetime | None = None
 
-    end_time_inferred: bool = False
+    end_time_source: CalendarEndTimeSource | None = None
 
     timezone: str
 
@@ -46,6 +53,11 @@ class ExtractedCalendarEvent(BaseModel):
 
     @model_validator(mode="after")
     def validate_date_range(self):
+        try:
+            zone = ZoneInfo(self.timezone)
+        except (ZoneInfoNotFoundError, ValueError) as error:
+            raise ValueError("Invalid IANA timezone") from error
+
         if self.all_day:
             if (
                 self.start_date is None
@@ -58,20 +70,44 @@ class ExtractedCalendarEvent(BaseModel):
             if self.end_date <= self.start_date:
                 raise ValueError("End date must be after start date")
 
-        else:
-            if (
-                self.starts_at is None
-                or self.ends_at is None
-                or self.start_date is not None
-                or self.end_date is not None
+            if self.end_time_source is not None:
+                raise ValueError("All-day events cannot have an end time source")
+
+            return self
+
+        if (
+            self.starts_at is None
+            or self.ends_at is None
+            or self.start_date is not None
+            or self.end_date is not None
+        ):
+            raise ValueError("Timed events require starts_at and ends_at")
+
+        if self.starts_at.utcoffset() is None or self.ends_at.utcoffset() is None:
+            raise ValueError("Timed events require timezone-aware datetimes")
+
+        if self.ends_at <= self.starts_at:
+            raise ValueError("End time must be after start time")
+
+        if self.end_time_source is None:
+            raise ValueError("Timed events require an end time source")
+
+        for timestamp in (self.starts_at, self.ends_at):
+            actual_offset = timestamp.utcoffset()
+
+            local_timestamp = timestamp.astimezone(
+                timezone.utc,
+            ).astimezone(zone)
+
+            expected_offset = local_timestamp.utcoffset()
+
+            if actual_offset != expected_offset:
+                raise ValueError("Timestamp UTC offset does not match the IANA timezone")
+
+            if timestamp.replace(tzinfo=None) != local_timestamp.replace(
+                tzinfo=None,
             ):
-                raise ValueError("Timed events require starts_at and ends_at")
-
-            if self.ends_at <= self.starts_at:
-                raise ValueError("End time must be after start time")
-
-            if self.starts_at.utcoffset() is None or self.ends_at.utcoffset() is None:
-                raise ValueError("Timed events require timezone-aware datetimes")
+                raise ValueError("Timestamp local time does not match the IANA timezone")
 
         return self
 

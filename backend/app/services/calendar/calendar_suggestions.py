@@ -1,12 +1,17 @@
 import uuid
 
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.capabilities.calendar_extraction import CalendarExtractionResult
 from app.models.calendar_event import CalendarEvent
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.schemas.calendar.calendar_suggestions import ReviewedCalendarEvent
+from app.services.calendar.calendar_extraction import (
+    normalize_calendar_extraction_data,
+)
 
 
 class CalendarSuggestionNotFoundError(Exception):
@@ -64,6 +69,27 @@ class CalendarSuggestionService:
 
         return message
 
+    def _get_original_events(
+        self,
+        message: ConversationMessage,
+    ) -> CalendarExtractionResult:
+        suggestions = message.calendar_suggestions
+
+        normalized = normalize_calendar_extraction_data(
+            {
+                "events": suggestions["events"],
+            }
+        )
+
+        try:
+            return CalendarExtractionResult.model_validate(
+                normalized,
+            )
+        except ValidationError as error:
+            raise InvalidCalendarSelectionError(
+                "Stored calendar suggestions are invalid"
+            ) from error
+
     async def get_saved_suggestions(
         self,
         employee_id: uuid.UUID,
@@ -104,7 +130,9 @@ class CalendarSuggestionService:
                 lock=True,
             )
 
-            original_events = source_message.calendar_suggestions["events"]
+            extraction = self._get_original_events(
+                source_message,
+            )
 
             if not reviewed_events:
                 raise InvalidCalendarSelectionError("At least one calendar event must be selected")
@@ -114,12 +142,13 @@ class CalendarSuggestionService:
             if len(selected_indices) != len(set(selected_indices)):
                 raise InvalidCalendarSelectionError("Duplicate calendar suggestion indices")
 
-            for index in selected_indices:
-                if index < 0 or index >= len(original_events):
-                    raise InvalidCalendarSelectionError("Invalid calendar suggestion index")
+            if any(index < 0 or index >= len(extraction.events) for index in selected_indices):
+                raise InvalidCalendarSelectionError("Invalid calendar suggestion index")
 
             existing = await self.db.scalars(
-                select(CalendarEvent.source_suggestion_index).where(
+                select(
+                    CalendarEvent.source_suggestion_index,
+                ).where(
                     CalendarEvent.employee_id == employee_id,
                     CalendarEvent.source_message_id == message_id,
                     CalendarEvent.source_suggestion_index.in_(

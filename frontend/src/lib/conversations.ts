@@ -46,6 +46,11 @@ export type CalendarEventType =
     | "event"
     | "deadline";
 
+export type CalendarEndTimeSource =
+    | "explicit"
+    | "duration"
+    | "default";
+
 export interface ExtractedCalendarEvent {
     title: string;
     description: string | null;
@@ -57,7 +62,8 @@ export interface ExtractedCalendarEvent {
     ends_at: string | null;
     timezone: string;
     source_text: string | null;
-    end_time_inferred: boolean;
+    end_time_source?: CalendarEndTimeSource | null;
+    end_time_inferred?: boolean;
 }
 
 export interface CalendarSuggestions {

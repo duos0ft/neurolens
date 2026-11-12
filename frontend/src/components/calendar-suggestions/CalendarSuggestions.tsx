@@ -4,7 +4,11 @@ import { CalendarCheck, CalendarClock, CheckCircle2, Clock3, RefreshCw } from "l
 import { toast } from "sonner";
 
 import { cn } from "../../lib/cn";
-import type { CalendarSuggestions as CalendarSuggestionsData, ExtractedCalendarEvent } from "../../lib/conversations";
+import type {
+    CalendarEndTimeSource,
+    CalendarSuggestions as CalendarSuggestionsData,
+    ExtractedCalendarEvent,
+} from "../../lib/conversations";
 import {
     getSavedCalendarSuggestions,
     type ReviewedCalendarEvent,
@@ -18,6 +22,28 @@ import { taskSuggestionsStyles as styles } from "../task-suggestions/TaskSuggest
 interface CalendarSuggestionsProps {
     messageId: string;
     suggestions: CalendarSuggestionsData;
+}
+
+function getEndTimeSource(
+    event: ExtractedCalendarEvent,
+): CalendarEndTimeSource | null {
+    if (event.all_day) {
+        return null;
+    }
+
+    if (event.end_time_source != null) {
+        return event.end_time_source;
+    }
+
+    if (event.end_time_inferred === true) {
+        return "default";
+    }
+
+    if (event.end_time_inferred === false) {
+        return "explicit";
+    }
+
+    return null;
 }
 
 function formatEventSchedule(event: ExtractedCalendarEvent): string {
@@ -122,6 +148,7 @@ export function CalendarSuggestions({
         .map((event, index) => ({
             ...event,
             suggestion_index: index,
+            end_time_source: getEndTimeSource(event),
         }))
         .filter((event) =>
             selectableIndices.includes(event.suggestion_index),
@@ -203,11 +230,7 @@ export function CalendarSuggestions({
     }
 
     if (suggestions.events.length === 0) {
-        return (
-            <div className={styles.empty}>
-                No scheduled calendar events were identified in this message.
-            </div>
-        );
+        return null;
     }
 
     const description = savedCount === totalCount
@@ -310,14 +333,15 @@ export function CalendarSuggestions({
                                         </div>
                                     )}
 
-                                    {event.end_time_inferred && (
+                                    {getEndTimeSource(event) === "default" && (
                                         <p className={styles.itemDescription}>
                                             <span className="inline-flex items-center gap-1.5">
                                                 <Clock3 className="size-3.5 shrink-0"/>
-                                                End time assumed. Review before saving.
+                                                End time estimated. Review before saving.
                                             </span>
                                         </p>
                                     )}
+
                                 </div>
                             </div>
                         );

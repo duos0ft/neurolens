@@ -2,7 +2,7 @@ import { type SyntheticEvent, useId, useState } from "react";
 import { Temporal } from "temporal-polyfill";
 
 import { cn } from "../../lib/cn";
-import type { CalendarEventType } from "../../lib/conversations";
+import type { CalendarEndTimeSource, CalendarEventType } from "../../lib/conversations";
 import type { ReviewedCalendarEvent } from "../../lib/calendar-suggestions";
 
 import { Button } from "../button";
@@ -16,6 +16,7 @@ import { TimePicker } from "../time-picker";
 import { Checkbox } from "../checkbox/Checkbox";
 
 interface CalendarReviewEvent extends ReviewedCalendarEvent {
+    end_time_source?: CalendarEndTimeSource | null;
     end_time_inferred?: boolean;
 }
 
@@ -37,7 +38,7 @@ interface CalendarDraft {
     startTime: string;
     endTime: string;
     timezone: string;
-    end_time_inferred: boolean;
+    end_time_source: CalendarEndTimeSource | null;
 }
 
 const eventTypeOptions: {
@@ -111,6 +112,28 @@ function isValidDate(value: string): boolean {
     }
 }
 
+function getEndTimeSource(
+    event: CalendarReviewEvent,
+): CalendarEndTimeSource | null {
+    if (event.all_day) {
+        return null;
+    }
+
+    if (event.end_time_source !== undefined) {
+        return event.end_time_source;
+    }
+
+    if (event.end_time_inferred === true) {
+        return "default";
+    }
+
+    if (event.end_time_inferred === false) {
+        return "explicit";
+    }
+
+    return null;
+}
+
 function createDraft(event: CalendarReviewEvent): CalendarDraft {
     const start = event.starts_at
         ? zonedDateTimeParts(
@@ -147,7 +170,7 @@ function createDraft(event: CalendarReviewEvent): CalendarDraft {
         endTime: end?.time ?? "10:00",
 
         timezone: event.timezone,
-        end_time_inferred: event.end_time_inferred ?? false,
+        end_time_source: getEndTimeSource(event),
     };
 }
 
@@ -585,11 +608,11 @@ export function ReviewCalendarEventsDialog({
                     )}
 
                     {!activeEvent.all_day
-                        && activeEvent.end_time_inferred && (
+                        && activeEvent.end_time_source === "default" && (
                         <p className={styles.hint}>
-                            NeuroLens assumed the event duration because
-                            the original message did not specify an end time.
-                            Please review it before saving.
+                            NeuroLens estimated a 60-minute duration because
+                            the original message did not specify an end time
+                            or duration. Please review the end time before saving.
                         </p>
                     )}
 
