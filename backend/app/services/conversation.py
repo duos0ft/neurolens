@@ -23,7 +23,11 @@ from app.services.conversation_capability_metadata import (
 )
 from app.services.conversation_title import ConversationTitleService
 from app.services.orchestrated_assistant import OrchestratedAssistantService
-from app.services.task_source_resolver import TaskSourceResolutionError, TaskSourceResolver
+from app.services.task_source_resolver import (
+    TaskSourceResolutionError,
+    TaskSourceResolver,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -171,9 +175,7 @@ class ConversationService:
                 for message in history_messages
             ]
 
-            capability_metadata = None
-            task_suggestions = None
-            calendar_suggestions = None
+            execution_result: AssistantExecutionResult | None = None
 
             if isinstance(assistant, OrchestratedAssistantService):
                 classification = await assistant.orchestrator.classify(
@@ -232,7 +234,9 @@ class ConversationService:
                                 )
 
                                 source_message_id = await resolver.resolve(
-                                    request=f"{content}\n\nRequested information: {intent.instruction}",
+                                    request=(
+                                        f"{content}\n\nRequested information: {intent.instruction}"
+                                    ),
                                     messages=candidates,
                                 )
 
@@ -281,8 +285,6 @@ class ConversationService:
 
                                 extraction_results.append(extraction_result)
 
-                        # Structured extraction and ordinary assistant capabilities
-                        # can contribute to the same assistant response.
                         additional_intents = [
                             intent
                             for intent in classification.intents
@@ -290,7 +292,7 @@ class ConversationService:
                             and intent.capability != AICapability.GENERAL_CONVERSATION
                         ]
 
-                        additional_result = None
+                        additional_result: AssistantExecutionResult | None = None
 
                         if additional_intents:
                             additional_result = await assistant.execute(
@@ -312,6 +314,10 @@ class ConversationService:
                             result.response.content for result in extraction_results
                         )
 
+                        response_content = "\n\n".join(
+                            part.strip() for part in response_parts if part.strip()
+                        )
+
                         capabilities = [
                             capability
                             for result in extraction_results
@@ -321,12 +327,14 @@ class ConversationService:
                         sources = ()
 
                         if additional_result is not None:
-                            capabilities.extend(additional_result.capabilities)
+                            capabilities.extend(
+                                additional_result.capabilities,
+                            )
                             sources = additional_result.sources
 
                         execution_result = AssistantExecutionResult(
                             response=TextGenerationResponse(
-                                content="\n\n".join(response_parts),
+                                content=response_content,
                                 model="neurolens-combined-assistance",
                             ),
                             capabilities=tuple(dict.fromkeys(capabilities)),
@@ -347,6 +355,11 @@ class ConversationService:
                                 ),
                                 None,
                             ),
+                            clarifications=(
+                                additional_result.clarifications
+                                if additional_result is not None
+                                else None
+                            ),
                         )
 
                 else:
@@ -356,6 +369,27 @@ class ConversationService:
                         classification=classification,
                     )
 
+            else:
+                execute = getattr(assistant, "execute", None)
+
+                if callable(execute):
+                    execution_result = await execute(
+                        message=content,
+                        history=history,
+                    )
+
+                else:
+                    response = await assistant.respond(
+                        message=content,
+                        history=history,
+                    )
+
+            capability_metadata = None
+            task_suggestions = None
+            calendar_suggestions = None
+            clarifications = None
+
+            if execution_result is not None:
                 response = execution_result.response
 
                 if execution_result.capabilities:
@@ -394,60 +428,14 @@ class ConversationService:
                         ],
                     }
 
-            else:
-                execute = getattr(assistant, "execute", None)
-
-                if callable(execute):
-                    execution_result: AssistantExecutionResult = await execute(
-                        message=content,
-                        history=history,
-                    )
-
-                    response = execution_result.response
-
-                    if execution_result.capabilities:
-                        capability_metadata = ConversationCapabilityMetadata(
-                            capabilities=execution_result.capabilities,
-                            sources=execution_result.sources,
-                        ).to_dict()
-
-                    if execution_result.task_suggestions is not None:
-                        suggestions = execution_result.task_suggestions
-
-                        task_suggestions = {
-                            "version": 1,
-                            "source_message_id": (
-                                str(suggestions.source_message_id)
-                                if suggestions.source_message_id is not None
-                                else None
-                            ),
-                            "tasks": [
-                                task.model_dump(mode="json")
-                                for task in suggestions.extraction.tasks
-                            ],
-                        }
-
-                    if execution_result.calendar_suggestions is not None:
-                        suggestions = execution_result.calendar_suggestions
-
-                        calendar_suggestions = {
-                            "version": 1,
-                            "source_message_id": (
-                                str(suggestions.source_message_id)
-                                if suggestions.source_message_id is not None
-                                else None
-                            ),
-                            "events": [
-                                event.model_dump(mode="json")
-                                for event in suggestions.extraction.events
-                            ],
-                        }
-
-                else:
-                    response = await assistant.respond(
-                        message=content,
-                        history=history,
-                    )
+                if (
+                    execution_result.clarifications is not None
+                    and execution_result.clarifications.questions
+                ):
+                    clarifications = {
+                        "version": 1,
+                        "questions": list(execution_result.clarifications.questions),
+                    }
 
             last_sequence = await self.db.scalar(
                 select(func.max(ConversationMessage.sequence_number)).where(
@@ -481,6 +469,7 @@ class ConversationService:
                 capability_metadata=capability_metadata,
                 task_suggestions=task_suggestions,
                 calendar_suggestions=calendar_suggestions,
+                clarifications=clarifications,
             )
 
             self.db.add_all(
@@ -600,9 +589,9 @@ class ConversationService:
         return conversation
 
     async def delete(
-        self,
-        employee_id: uuid.UUID,
-        conversation_id: uuid.UUID,
+            self,
+            employee_id: uuid.UUID,
+            conversation_id: uuid.UUID,
     ) -> bool:
         conversation = await self.get(
             employee_id=employee_id,

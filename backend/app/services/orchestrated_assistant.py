@@ -10,6 +10,7 @@ from app.services.assistant_execution_result import (
     AssistantCalendarSuggestions,
     AssistantExecutionResult,
     AssistantTaskSuggestions,
+    AssistantClarifications,
 )
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
@@ -39,6 +40,19 @@ class OrchestratedAssistantService:
             classification=classification,
         )
 
+        questions = tuple(
+            question
+            for result in results
+            if result.structured_explanation is not None
+            for question in result.structured_explanation.clarification_questions
+        )
+
+        clarifications = (
+            AssistantClarifications(questions=tuple(dict.fromkeys(questions)))
+            if questions and self.orchestrator.config.highlight_ambiguity
+            else None
+        )
+
         return AssistantExecutionResult(
             response=self.composer.compose(
                 results,
@@ -46,6 +60,7 @@ class OrchestratedAssistantService:
             ),
             capabilities=tuple(result.capability for result in results),
             sources=tuple(result.source for result in results if result.source is not None),
+            clarifications=clarifications,
         )
 
     async def extract_tasks(

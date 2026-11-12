@@ -6,6 +6,7 @@ class StructuredExplanation(BaseModel):
 
     explanation: str = Field(min_length=1)
     ambiguities: list[str] = Field(default_factory=list)
+    clarification_questions: list[str] = Field(default_factory=list)
     steps: list[str] = Field(default_factory=list)
     next_step: str | None = None
 
@@ -19,7 +20,7 @@ class StructuredExplanation(BaseModel):
 
         return value
 
-    @field_validator("ambiguities", "steps")
+    @field_validator("ambiguities", "clarification_questions", "steps")
     @classmethod
     def validate_items(cls, values: list[str]) -> list[str]:
         validated: list[str] = []

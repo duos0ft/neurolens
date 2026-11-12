@@ -34,18 +34,12 @@ class AssistantResponseComposer:
 
             sections.append(f"**How to approach it**\n\n{steps}")
 
-        if config.always_show_next_step and explanation.next_step:
-            # Avoid repeating the first action when the ordered
-            # guidance already presents the same next step.
-            first_step = (
-                explanation.steps[0] if config.step_by_step_guidance and explanation.steps else None
-            )
-
-            def normalize(value: str) -> str:
-                return value.strip().rstrip(".! ").casefold()
-
-            if first_step is None or normalize(first_step) != normalize(explanation.next_step):
-                sections.append(f"**Next step**\n\n{explanation.next_step}")
+        if (
+            config.always_show_next_step
+            and explanation.next_step
+            and not (config.step_by_step_guidance and explanation.steps)
+        ):
+            sections.append(f"**Next step**\n\n{explanation.next_step}")
 
         return "\n\n".join(sections)
 

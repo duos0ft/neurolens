@@ -93,3 +93,9 @@ class ConversationMessage(Base):
         JSONB,
         nullable=True,
     )
+
+    clarifications: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
