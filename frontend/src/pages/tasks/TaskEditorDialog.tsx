@@ -6,6 +6,7 @@ import { DatePicker } from "../../components/date-picker/DatePicker";
 import { Dialog } from "../../components/dialog";
 import { Input } from "../../components/input";
 import { Select } from "../../components/select/Select";
+import { TimePicker } from "../../components/time-picker/TimePicker";
 import type { SavedTask, TaskInput, TaskPriority } from "../../lib/tasks";
 import { taskEditorDialogStyles as styles } from "./TaskEditorDialog.styles";
 
@@ -33,6 +34,26 @@ const priorityOptions: {
     { label: "High", value: "high" },
 ];
 
+function toPickerTime(value: string | null | undefined): string | null {
+    if (!value) {
+        return null;
+    }
+
+    const match = /^([01]\d|2[0-3]):([0-5]\d)(?::00)?$/.exec(value);
+
+    return match ? `${match[1]}:${match[2]}` : null;
+}
+
+function toApiTime(value: string | null): string | null {
+    if (!value) {
+        return null;
+    }
+
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+        ? `${value}:00`
+        : null;
+}
+
 export function TaskEditorDialog({
     task,
     saving,
@@ -43,18 +64,31 @@ export function TaskEditorDialog({
     const titleId = useId();
     const descriptionId = useId();
     const dueDateId = useId();
+    const dueTimeId = useId();
 
+    const formRef = useRef<HTMLFormElement>(null);
     const nextSubtaskKey = useRef(0);
 
     const [ title, setTitle ] = useState(task?.title ?? "");
+
     const [ description, setDescription ] = useState(
         task?.description ?? "",
     );
+
     const [ priority, setPriority ] = useState<TaskPriority>(
         task?.priority ?? null,
     );
+
     const [ dueDate, setDueDate ] = useState<string | null>(
         task?.due_date ?? null,
+    );
+
+    const [ dueTime, setDueTime ] = useState<string | null>(
+        toPickerTime(task?.due_time),
+    );
+
+    const [ dueTimezone, setDueTimezone ] = useState<string | null>(
+        task?.due_timezone ?? null,
     );
 
     const [ subtasks, setSubtasks ] = useState<DraftSubtask[]>(
@@ -70,6 +104,27 @@ export function TaskEditorDialog({
     const [ validationError, setValidationError ] = useState<string | null>(null);
 
     const editing = Boolean(task);
+
+    function updateDueDate(value: string | null) {
+        setDueDate(value);
+
+        if (!value) {
+            setDueTime(null);
+            setDueTimezone(null);
+        }
+
+        setValidationError(null);
+    }
+
+    function updateDueTime(value: string | null) {
+        setDueTime(value);
+
+        if (!value) {
+            setDueTimezone(null);
+        }
+
+        setValidationError(null);
+    }
 
     function updateSubtask(key: string, title: string) {
         setSubtasks((previous) => previous.map((subtask) =>
@@ -160,6 +215,29 @@ export function TaskEditorDialog({
             return;
         }
 
+        const timeInput = formRef.current?.querySelector<HTMLInputElement>(
+            `input[id="${CSS.escape(dueTimeId)}"]`,
+        );
+
+        const enteredTime = dueDate
+            ? timeInput?.value.trim() ?? dueTime ?? ""
+            : "";
+
+        if (
+            dueDate
+            && enteredTime
+            && !/^([01]\d|2[0-3]):[0-5]\d$/.test(enteredTime)
+        ) {
+            setValidationError(
+                "Enter a valid deadline time between 00:00 and 23:59.",
+            );
+            return;
+        }
+
+        const normalizedDueTime = dueDate
+            ? toApiTime(enteredTime || null)
+            : null;
+
         if (subtasks.length > MAX_SUBTASKS) {
             setValidationError(
                 `A task cannot have more than ${MAX_SUBTASKS} subtasks.`,
@@ -188,10 +266,10 @@ export function TaskEditorDialog({
             description: normalizedDescription,
             priority,
             due_date: dueDate,
+            due_time: normalizedDueTime,
+            due_timezone: normalizedDueTime ? dueTimezone : null,
             subtasks: normalizedSubtasks,
         }).catch(() => {
-            // The parent handles the notification.
-            // Keep the dialog open so the user can retry.
         });
     }
 
@@ -238,6 +316,7 @@ export function TaskEditorDialog({
             footer={footer}
         >
             <form
+                ref={formRef}
                 id={formId}
                 className={styles.form}
                 onSubmit={handleSubmit}
@@ -307,24 +386,45 @@ export function TaskEditorDialog({
                         <DatePicker
                             id={dueDateId}
                             value={dueDate}
-                            onChange={setDueDate}
+                            onChange={updateDueDate}
                             disabled={saving}
                         />
                     </div>
 
                     <div className={styles.field}>
-                        <label className={styles.label}>
-                            Priority
+                        <label
+                            htmlFor={dueTimeId}
+                            className={styles.label}
+                        >
+                            Due time
                         </label>
 
-                        <Select<Exclude<TaskPriority, null>>
-                            options={priorityOptions}
-                            value={priority}
-                            onChange={setPriority}
-                            placeholder="No priority"
-                            disabled={saving}
+                        <TimePicker
+                            id={dueTimeId}
+                            value={dueTime}
+                            onChange={updateDueTime}
+                            disabled={saving || !dueDate}
+                            clearable
+                            interval={15}
                         />
                     </div>
+                </div>
+
+                <div className={styles.field}>
+                    <label className={styles.label}>
+                        Priority
+                    </label>
+
+                    <Select<Exclude<TaskPriority, null>>
+                        options={priorityOptions}
+                        value={priority}
+                        onChange={(value) => {
+                            setPriority(value);
+                            setValidationError(null);
+                        }}
+                        placeholder="No priority"
+                        disabled={saving}
+                    />
                 </div>
 
                 <div className={styles.subtaskSection}>

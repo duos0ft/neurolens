@@ -65,14 +65,15 @@ class OrchestratedAssistantService:
             timezone=timezone,
         )
 
-        if extraction.tasks:
-            content = (
-                f"I found {len(extraction.tasks)} possible "
-                "task suggestions. Review them below and "
-                "choose which ones you'd like to keep."
-            )
-        else:
-            content = "I couldn't identify any actionable tasks in that message."
+        count = len(extraction.tasks)
+
+        content = (
+            "I found a task for you."
+            if count == 1
+            else f"I found {count} tasks for you."
+            if count > 1
+            else ""
+        )
 
         return AssistantExecutionResult(
             response=TextGenerationResponse(
@@ -103,14 +104,15 @@ class OrchestratedAssistantService:
             timezone=timezone,
         )
 
-        if extraction.events:
-            content = (
-                f"I found {len(extraction.events)} possible "
-                "calendar suggestions. Review them below "
-                "before adding them to your calendar."
-            )
-        else:
-            content = "I couldn't identify any scheduled events in that message."
+        count = len(extraction.events)
+
+        content = (
+            "I found a calendar event."
+            if count == 1
+            else f"I found {count} calendar events."
+            if count > 1
+            else ""
+        )
 
         return AssistantExecutionResult(
             response=TextGenerationResponse(

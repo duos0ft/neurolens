@@ -40,6 +40,16 @@ function formatDueDate(value: string): string {
     }).format(date);
 }
 
+function formatDueTime(value: string): string {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)(?::\d{2})?$/.exec(value);
+
+    if (!match) {
+        return value;
+    }
+
+    return `${match[1]}:${match[2]}`;
+}
+
 export function TaskListItem({
     task,
     updating = false,
@@ -198,6 +208,17 @@ export function TaskListItem({
                             <span aria-hidden="true">·</span>
                             <span>
                                 Due {formatDueDate(task.due_date)}
+                                {task.due_time && (
+                                    <>
+                                        {" at "}
+                                        {formatDueTime(task.due_time)}
+                                    </>
+                                )}
+                                {task.due_time && task.due_timezone && (
+                                    <span className="ml-1 text-fg-muted">
+                                        ({task.due_timezone})
+                                    </span>
+                                )}
                             </span>
                         </>
                     )}

@@ -30,6 +30,7 @@ export interface ExtractedTask {
     description: string | null;
     priority: "low" | "medium" | "high" | null;
     due_date: string | null;
+    due_time: string | null;
     source_text: string | null;
     subtasks: ExtractedSubtask[];
 }

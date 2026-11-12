@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import {
     archiveTask,
     createTask,
     deleteTask,
+    getTask,
     getTasks,
     getTaskStats,
     restoreTask,
@@ -25,6 +26,7 @@ import {
 import { TaskEditorDialog } from "./TaskEditorDialog";
 import { TaskListItem } from "./TaskListsItem";
 import { tasksPageStyles as styles } from "./TasksPage.styles";
+import { useLocation, useNavigate } from "react-router";
 
 type TaskFilter = "all" | TaskStatus | "archived";
 
@@ -46,7 +48,18 @@ const sortOptions: { label: string; value: TaskSortBy }[] = [
 ];
 
 export function Component() {
+    const location = useLocation();
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
+
+    const linkedTaskId = (
+        location.state as { taskId?: unknown } | null
+    )?.taskId;
+
+    const taskId = typeof linkedTaskId === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(linkedTaskId)
+        ? linkedTaskId
+        : null;
 
     const [ filter, setFilter ] = useState<TaskFilter>("all");
     const [ page, setPage ] = useState(1);
@@ -55,6 +68,13 @@ export function Component() {
     const [ editorOpen, setEditorOpen ] = useState(false);
     const [ editingTask, setEditingTask ] = useState<SavedTask | null>(null);
     const [ deletingTask, setDeletingTask ] = useState<SavedTask | null>(null);
+
+    const linkedTaskQuery = useQuery({
+        queryKey: [ "tasks", "detail", taskId ],
+        queryFn: () => getTask(taskId!),
+        enabled: taskId !== null,
+        retry: false,
+    });
 
     const tasksQuery = useQuery({
         queryKey: [ "tasks", "list", filter, page, sortBy ],
@@ -341,6 +361,51 @@ export function Component() {
 
         deleteMutation.mutate(deletingTask.id);
     }
+
+    useEffect(() => {
+        if (!taskId) {
+            return;
+        }
+
+        if (linkedTaskQuery.isSuccess) {
+            setEditingTask(linkedTaskQuery.data);
+            setEditorOpen(true);
+
+            void navigate(
+                location.pathname,
+                {
+                    replace: true,
+                    state: null,
+                },
+            );
+
+            return;
+        }
+
+        if (linkedTaskQuery.isError) {
+            toast.error("Unable to open task", {
+                description: linkedTaskQuery.error instanceof Error
+                    ? linkedTaskQuery.error.message
+                    : "The task could not be found.",
+            });
+
+            void navigate(
+                location.pathname,
+                {
+                    replace: true,
+                    state: null,
+                },
+            );
+        }
+    }, [
+        taskId,
+        linkedTaskQuery.isSuccess,
+        linkedTaskQuery.isError,
+        linkedTaskQuery.data,
+        linkedTaskQuery.error,
+        navigate,
+        location.pathname,
+    ]);
 
     return (
         <main className={styles.root}>

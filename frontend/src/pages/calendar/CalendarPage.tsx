@@ -1,121 +1,144 @@
-import { type ComponentRef, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import FullCalendar from "@fullcalendar/react";
-import classicThemePlugin from "@fullcalendar/react/themes/classic";
-import dayGridPlugin from "@fullcalendar/react/daygrid";
-import timeGridPlugin from "@fullcalendar/react/timegrid";
-import interactionPlugin from "@fullcalendar/react/interaction";
-import {
-    CalendarCheck,
-    CalendarDays,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    Clock3,
-    RefreshCw,
-    Users,
-} from "lucide-react";
+import { Temporal } from "temporal-polyfill";
+import { CalendarCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw, Users } from "lucide-react";
 import { useNavigate } from "react-router";
 
-import "@fullcalendar/react/skeleton.css";
-import "@fullcalendar/react/themes/classic/theme.css";
-import "@fullcalendar/react/themes/classic/palette.css";
-import "./CalendarPage.css";
-
 import { Button } from "../../components/button";
+import { CalendarEventDetailsDialog } from "../../components/calendar/CalendarEventDetailsDialog";
+import { CalendarMonthView } from "../../components/calendar/CalendarMonthView";
+import { CalendarTimeGrid } from "../../components/calendar/CalendarTimeGrid";
 import { PageHeader } from "../../components/page-header/PageHeader";
 import { type CalendarEntry, getCalendarEntries } from "../../lib/calendar";
-import { calendarPageStyles as styles } from "./CalendarPage.styles";
 import { getPreferences } from "../../lib/preferences";
+import { calendarPageStyles as styles } from "./CalendarPage.styles";
 
-type CalendarView = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
+type CalendarView = "month" | "week" | "day";
 
 interface DateRange {
     start: string;
     end: string;
 }
 
-const calendarPlugins = [
-    classicThemePlugin,
-    dayGridPlugin,
-    timeGridPlugin,
-    interactionPlugin,
-];
-
 const calendarViews: {
     label: string;
     value: CalendarView;
 }[] = [
-    { label: "Month", value: "dayGridMonth" },
-    { label: "Week", value: "timeGridWeek" },
-    { label: "Day", value: "timeGridDay" },
+    { label: "Month", value: "month" },
+    { label: "Week", value: "week" },
+    { label: "Day", value: "day" },
 ];
 
-function mapCalendarEntry(entry: CalendarEntry) {
+function getToday(timezone: string): string {
+    return Temporal.Now
+        .zonedDateTimeISO(timezone)
+        .toPlainDate()
+        .toString();
+}
+
+function getWeekStart(value: string): Temporal.PlainDate {
+    const date = Temporal.PlainDate.from(value);
+
+    return date.subtract({
+        days: date.dayOfWeek - 1,
+    });
+}
+
+function getRange(value: string, view: CalendarView): DateRange {
+    const date = Temporal.PlainDate.from(value);
+
+    if (view === "day") {
+        return {
+            start: value,
+            end: date.add({ days: 1 }).toString(),
+        };
+    }
+
+    if (view === "week") {
+        const start = getWeekStart(value);
+
+        return {
+            start: start.toString(),
+            end: start.add({ days: 7 }).toString(),
+        };
+    }
+
+    const firstDay = date.with({ day: 1 });
+    const lastDay = firstDay.add({ months: 1 }).subtract({ days: 1 });
+
+    const gridStart = getWeekStart(firstDay.toString());
+    const gridEnd = lastDay.add({
+        days: 8 - lastDay.dayOfWeek,
+    });
+
     return {
-        id: entry.id,
-        title: entry.title,
-        start: entry.all_day
-            ? entry.start_date!
-            : entry.starts_at!,
-        end: entry.all_day
-            ? entry.end_date!
-            : entry.ends_at!,
-        allDay: entry.all_day,
-        extendedProps: {
-            source: entry.source,
-            eventType: entry.event_type,
-            taskId: entry.task_id,
-            status: entry.status,
-            priority: entry.priority,
-        },
+        start: gridStart.toString(),
+        end: gridEnd.toString(),
     };
 }
 
-function CalendarEventContent({
-    title,
-    eventType,
-    completed,
-}: {
-    title: string;
-    eventType: CalendarEntry["event_type"];
-    completed: boolean;
-}) {
-    const Icon = eventType === "task_deadline"
-        ? CheckCircle2
-        : eventType === "meeting"
-            ? Users
-            : eventType === "appointment"
-                ? CalendarCheck
-                : Clock3;
+function getDays(range: DateRange): string[] {
+    const days: string[] = [];
 
-    return (
-        <span
-            className={[
-                styles.eventContent,
-                completed && styles.eventCompleted,
-            ].filter(Boolean).join(" ")}
-            title={title}
-        >
-            <Icon
-                className={styles.eventIcon}
-                aria-hidden="true"
-            />
+    let current = Temporal.PlainDate.from(range.start);
+    const end = Temporal.PlainDate.from(range.end);
 
-            <span className={styles.eventTitle}>
-                {title}
-            </span>
-        </span>
-    );
+    while (Temporal.PlainDate.compare(current, end) < 0) {
+        days.push(current.toString());
+        current = current.add({ days: 1 });
+    }
+
+    return days;
+}
+
+function formatDate(
+    value: string,
+    options: Intl.DateTimeFormatOptions,
+): string {
+    return new Intl.DateTimeFormat("en", {
+        ...options,
+        timeZone: "UTC",
+    }).format(new Date(`${value}T12:00:00Z`));
+}
+
+function getCalendarTitle(
+    value: string,
+    view: CalendarView,
+    range: DateRange,
+): string {
+    if (view === "month") {
+        return formatDate(value, {
+            month: "long",
+            year: "numeric",
+        });
+    }
+
+    if (view === "day") {
+        return formatDate(value, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+        });
+    }
+
+    const lastDay = Temporal.PlainDate
+        .from(range.end)
+        .subtract({ days: 1 })
+        .toString();
+
+    return `${formatDate(range.start, {
+        month: "short",
+        day: "numeric",
+    })} – ${formatDate(lastDay, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    })}`;
 }
 
 export function Component() {
     const navigate = useNavigate();
-    const calendarRef = useRef<ComponentRef<typeof FullCalendar>>(null);
-
-    const [ view, setView ] = useState<CalendarView>("dayGridMonth");
-    const [ calendarTitle, setCalendarTitle ] = useState("");
-    const [ range, setRange ] = useState<DateRange | null>(null);
 
     const preferencesQuery = useQuery({
         queryKey: [ "preferences" ],
@@ -124,42 +147,78 @@ export function Component() {
 
     const timezone = preferencesQuery.data?.effective_timezone;
 
+    const [ view, setView ] = useState<CalendarView>("month");
+    const [ selectedDate, setSelectedDate ] = useState<string | null>(null);
+    const [ selectedEvent, setSelectedEvent ] = useState<CalendarEntry | null>(null);
+
+    const anchorDate = selectedDate ?? getToday(timezone ?? "UTC");
+
+    const range = useMemo(
+        () => getRange(anchorDate, view),
+        [ anchorDate, view ],
+    );
+
+    const days = useMemo(
+        () => getDays(range),
+        [ range ],
+    );
+
     const entriesQuery = useQuery({
         queryKey: [
             "calendar",
             "entries",
-            range?.start,
-            range?.end,
+            range.start,
+            range.end,
             timezone,
         ],
         queryFn: () => getCalendarEntries({
-            start: range!.start,
-            end: range!.end,
+            start: range.start,
+            end: range.end,
             timezone: timezone!,
         }),
-        enabled: range !== null && timezone !== undefined,
+        enabled: timezone !== undefined,
         staleTime: 60_000,
     });
 
-    const entries = useMemo(
-        () => (entriesQuery.data?.entries ?? []).map(mapCalendarEntry),
-        [ entriesQuery.data ],
+    const calendarEntries = entriesQuery.data?.entries ?? [];
+
+    const calendarTitle = getCalendarTitle(
+        anchorDate,
+        view,
+        range,
     );
 
-    function handleViewChange(nextView: CalendarView) {
-        calendarRef.current?.getApi().changeView(nextView);
-    }
+    function navigatePeriod(direction: -1 | 1) {
+        const current = Temporal.PlainDate.from(anchorDate);
 
-    function handlePrevious() {
-        calendarRef.current?.getApi().prev();
-    }
+        const next = view === "month"
+            ? current.add({ months: direction })
+            : current.add({
+                days: view === "week"
+                    ? 7 * direction
+                    : direction,
+            });
 
-    function handleNext() {
-        calendarRef.current?.getApi().next();
+        setSelectedDate(next.toString());
     }
 
     function handleToday() {
-        calendarRef.current?.getApi().today();
+        if (timezone) {
+            setSelectedDate(getToday(timezone));
+        }
+    }
+
+    function handleDayClick(day: string) {
+        setSelectedDate(day);
+        setView("day");
+    }
+
+    function handleViewTask(taskId: string) {
+        setSelectedEvent(null);
+
+        void navigate("/app/my-tasks", {
+            state: { taskId },
+        });
     }
 
     return (
@@ -176,7 +235,7 @@ export function Component() {
                             variant="secondary"
                             size="icon"
                             aria-label="Previous period"
-                            onClick={handlePrevious}
+                            onClick={() => navigatePeriod(-1)}
                         >
                             <ChevronLeft/>
                         </Button>
@@ -185,7 +244,7 @@ export function Component() {
                             variant="secondary"
                             size="icon"
                             aria-label="Next period"
-                            onClick={handleNext}
+                            onClick={() => navigatePeriod(1)}
                         >
                             <ChevronRight/>
                         </Button>
@@ -199,6 +258,7 @@ export function Component() {
                         <Button
                             variant="secondary"
                             size="sm"
+                            disabled={!timezone}
                             onClick={handleToday}
                         >
                             <CalendarDays/>
@@ -213,16 +273,10 @@ export function Component() {
                             {calendarViews.map((option) => (
                                 <Button
                                     key={option.value}
-                                    variant={
-                                        view === option.value
-                                            ? "primary"
-                                            : "ghost"
-                                    }
+                                    variant={view === option.value ? "primary" : "ghost"}
                                     size="sm"
                                     aria-pressed={view === option.value}
-                                    onClick={() => {
-                                        handleViewChange(option.value);
-                                    }}
+                                    onClick={() => setView(option.value)}
                                 >
                                     {option.label}
                                 </Button>
@@ -231,16 +285,27 @@ export function Component() {
                     </div>
                 </div>
 
-                {entriesQuery.isError && (
+                {preferencesQuery.isError && (
                     <div className={styles.error} role="alert">
-                        <span>Unable to load calendar entries.</span>
-
+                        <span>Unable to load calendar preferences.</span>
                         <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => {
-                                void entriesQuery.refetch();
-                            }}
+                            onClick={() => void preferencesQuery.refetch()}
+                        >
+                            <RefreshCw/>
+                            Retry
+                        </Button>
+                    </div>
+                )}
+
+                {entriesQuery.isError && (
+                    <div className={styles.error} role="alert">
+                        <span>Unable to load calendar entries.</span>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => void entriesQuery.refetch()}
                         >
                             <RefreshCw/>
                             Retry
@@ -256,63 +321,23 @@ export function Component() {
 
                 <div className={styles.calendarBody}>
                     {timezone && (
-                        <FullCalendar
-                            ref={calendarRef}
-                            plugins={calendarPlugins}
-                            initialView="dayGridMonth"
-                            headerToolbar={false}
-                            timeZone={timezone}
-                            firstDay={1}
-                            height="auto"
-                            fixedWeekCount={false}
-                            showNonCurrentDates
-                            dayMaxEvents={3}
-                            nowIndicator
-                            navLinks
-                            editable={false}
-                            selectable={false}
-                            events={entries}
-                            datesSet={(info) => {
-                                setCalendarTitle(info.view.title);
-                                setView(info.view.type as CalendarView);
-
-                                const nextRange = {
-                                    start: info.startStr.slice(0, 10),
-                                    end: info.endStr.slice(0, 10),
-                                };
-
-                                setRange((previous) =>
-                                    previous?.start === nextRange.start
-                                    && previous?.end === nextRange.end
-                                        ? previous
-                                        : nextRange,
-                                );
-                            }}
-                            eventContent={(info) => (
-                                <CalendarEventContent
-                                    title={info.event.title}
-                                    eventType={info.event.extendedProps.eventType}
-                                    completed={
-                                        info.event.extendedProps.status === "completed"
-                                    }
-                                />
-                            )}
-                            eventClick={(info) => {
-                                const taskId = info.event.extendedProps.taskId;
-
-                                if (taskId) {
-                                    void navigate("/app/my-tasks");
-                                }
-                            }}
-                            dayHeaderFormat={{
-                                weekday: "short",
-                            }}
-                            slotMinTime="06:00:00"
-                            slotMaxTime="22:00:00"
-                            slotDuration="00:30:00"
-                            allDaySlot
-                            expandRows
-                        />
+                        view === "month" ? (
+                            <CalendarMonthView
+                                date={anchorDate}
+                                entries={calendarEntries}
+                                timezone={timezone}
+                                onDayClick={handleDayClick}
+                                onEventClick={setSelectedEvent}
+                            />
+                        ) : (
+                            <CalendarTimeGrid
+                                days={days}
+                                entries={calendarEntries}
+                                timezone={timezone}
+                                onDayClick={handleDayClick}
+                                onEventClick={setSelectedEvent}
+                            />
+                        )
                     )}
                 </div>
             </section>
@@ -333,6 +358,15 @@ export function Component() {
                     Appointments
                 </span>
             </div>
+
+            {timezone && (
+                <CalendarEventDetailsDialog
+                    entry={selectedEvent}
+                    timezone={timezone}
+                    onClose={() => setSelectedEvent(null)}
+                    onViewTask={handleViewTask}
+                />
+            )}
         </main>
     );
 }

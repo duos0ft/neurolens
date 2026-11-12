@@ -120,4 +120,21 @@ export const reviewTasksDialogStyles = {
     footerCount: "text-sm text-fg-muted",
 
     footerActions: "flex items-center gap-2",
+
+    deadlineSection: [
+        "flex min-w-0 flex-col gap-3",
+    ].join(" "),
+
+    deadlineHeader: [
+        "flex items-center justify-between gap-3",
+    ].join(" "),
+
+    deadlineHeading: [
+        "text-sm font-semibold text-fg",
+    ].join(" "),
+
+    deadlineHint: [
+        "text-xs leading-5 text-fg-muted",
+    ].join(" "),
+
 };

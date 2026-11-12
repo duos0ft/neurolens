@@ -12,16 +12,21 @@ export type TaskSortBy =
 
 export type TaskSortOrder = "asc" | "desc";
 
+export interface TaskDeadline {
+    due_date: string | null;
+    due_time: string | null;
+    due_timezone: string | null;
+}
+
 export interface ReviewedSubtask {
     title: string;
 }
 
-export interface ReviewedTask {
+export interface ReviewedTask extends TaskDeadline {
     suggestion_index: number;
     title: string;
     description: string | null;
     priority: TaskPriority;
-    due_date: string | null;
     subtasks: ReviewedSubtask[];
 }
 
@@ -35,21 +40,25 @@ export interface SavedSubtask {
     updated_at: string;
 }
 
-export interface SavedTask {
+export interface SavedTask extends TaskDeadline {
     id: string;
     employee_id: string;
+
     title: string;
     description: string | null;
+
     status: TaskStatus;
     priority: TaskPriority;
-    due_date: string | null;
+
     source_message_id: string | null;
     source_suggestion_index: number | null;
+
     created_at: string;
     updated_at: string;
     completed_at: string | null;
     archived_at: string | null;
     deleted_at: string | null;
+
     subtasks: SavedSubtask[];
 }
 
@@ -75,10 +84,13 @@ export interface PageResponse<T> {
 export interface TaskFilters {
     page?: number;
     page_size?: number;
+
     status?: TaskStatus;
     priority?: Exclude<TaskPriority, null>;
+
     sort_by?: TaskSortBy;
     sort_order?: TaskSortOrder;
+
     archived?: boolean;
 }
 
@@ -92,7 +104,11 @@ export interface TaskInput {
     title: string;
     description: string | null;
     priority: TaskPriority;
+
     due_date: string | null;
+    due_time?: string | null;
+    due_timezone?: string | null;
+
     subtasks?: {
         id?: string;
         title: string;
@@ -255,5 +271,13 @@ export function updateSubtaskCompletion(
                 completed,
             },
         },
+    );
+}
+
+export function getTask(
+    taskId: string,
+): Promise<SavedTask> {
+    return apiFetch<SavedTask>(
+        `/api/tasks/${encodeURIComponent(taskId)}`,
     );
 }
