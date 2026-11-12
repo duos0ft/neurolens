@@ -20,4 +20,6 @@ export const adminSettingsPageStyles = {
     actions: "flex justify-end",
 
     error: "text-xs text-neg-fg",
+
+    selectWrapper: "w-full max-w-md",
 };

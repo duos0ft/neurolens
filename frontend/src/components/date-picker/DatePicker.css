@@ -1,19 +1,60 @@
-/* Calendar container */
+/* Input layout */
 
-.neurolens-calendar.react-datepicker {
+.neurolens-date-picker .react-datepicker-wrapper,
+.neurolens-date-picker .react-datepicker__input-container {
+    display: block;
+    width: 100%;
+}
+
+.neurolens-date-picker .react-datepicker__input-container {
+    position: relative;
+}
+
+.neurolens-date-picker .react-datepicker__input-container input {
+    padding-right: 4.25rem;
+}
+
+.neurolens-date-picker .react-datepicker__close-icon {
+    position: absolute;
+    top: 0;
+    right: 2.25rem;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 100%;
+    padding: 0;
+    background: transparent;
+    z-index: 1;
+}
+
+.neurolens-date-picker .react-datepicker__close-icon::after {
+    background: var(--muted);
+    color: var(--fg-muted);
+    font-size: 12px;
+}
+
+/* Popup */
+
+.react-datepicker-popper {
+    z-index: 1000;
+}
+
+.react-datepicker.neurolens-calendar {
     overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 0.875rem;
     background: var(--surface);
     color: var(--fg);
     font-family: inherit;
-    box-shadow: var(--shadow-popover, 0 12px 28px rgb(0 0 0 / 0.1));
+    box-shadow: 0 12px 28px rgb(0 0 0 / 0.12);
 }
 
-/* Calendar header */
+/* Header */
 
 .neurolens-calendar .react-datepicker__header {
-    padding-top: 14px;
+    padding: 14px 10px 8px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
 }
@@ -28,7 +69,7 @@
     color: var(--fg-muted);
 }
 
-/* Calendar days */
+/* Days */
 
 .neurolens-calendar .react-datepicker__month {
     margin: 8px;
@@ -64,7 +105,7 @@
     opacity: 0.3;
 }
 
-/* Month navigation */
+/* Navigation */
 
 .neurolens-calendar .react-datepicker__navigation {
     top: 13px;
@@ -75,16 +116,6 @@
     border-width: 2px 2px 0 0;
 }
 
-/* Popup positioning */
-
-.react-datepicker-popper {
-    z-index: 100;
-}
-
-/* Clear date button */
-
-.react-datepicker__close-icon::after {
-    background: var(--muted);
-    color: var(--fg-muted);
-    font-size: 14px;
+.neurolens-calendar .react-datepicker__triangle {
+    display: none;
 }

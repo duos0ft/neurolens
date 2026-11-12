@@ -1,13 +1,19 @@
 import { type SyntheticEvent, useId, useState } from "react";
+import { Temporal } from "temporal-polyfill";
 
+import { cn } from "../../lib/cn";
 import type { CalendarEventType } from "../../lib/conversations";
 import type { ReviewedCalendarEvent } from "../../lib/calendar-suggestions";
+
 import { Button } from "../button";
 import { DatePicker } from "../date-picker/DatePicker";
 import { Dialog } from "../dialog";
 import { Input } from "../input";
 import { Select } from "../select/Select";
-import { reviewTasksDialogStyles as styles } from "../task-suggestions/ReviewTasksDialog.styles";
+
+import { reviewCalendarEventsDialogStyles as styles } from "./ReviewCalendarEventsDialog.styles";
+import { TimePicker } from "../time-picker";
+import { Checkbox } from "../checkbox/Checkbox";
 
 interface CalendarReviewEvent extends ReviewedCalendarEvent {
     end_time_inferred?: boolean;
@@ -34,72 +40,90 @@ interface CalendarDraft {
     end_time_inferred: boolean;
 }
 
+const eventTypeOptions: {
+    label: string;
+    value: CalendarEventType;
+}[] = [
+    { label: "Meeting", value: "meeting" },
+    { label: "Appointment", value: "appointment" },
+    { label: "Event", value: "event" },
+    { label: "Deadline", value: "deadline" },
+];
+
 function addDays(value: string, days: number): string {
-    const date = new Date(`${value}T12:00:00Z`);
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
+    return Temporal.PlainDate.from(value)
+        .add({ days })
+        .toString();
 }
 
-function localDateTime(value: string): {
+function zonedDateTimeParts(
+    value: string,
+    timezone: string,
+): {
     date: string;
     time: string;
 } {
-    const date = new Date(value);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hour = String(date.getHours()).padStart(2, "0");
-    const minute = String(date.getMinutes()).padStart(2, "0");
+    const instant = Temporal.Instant.from(value);
+    const zoned = instant.toZonedDateTimeISO(timezone);
 
     return {
-        date: `${year}-${month}-${day}`,
-        time: `${hour}:${minute}`,
+        date: zoned.toPlainDate().toString(),
+        time: zoned.toPlainTime().toString().slice(0, 5),
     };
 }
 
 function toIsoDateTime(
     dateValue: string,
     timeValue: string,
+    timezone: string,
 ): string | null {
-    if (
-        !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)
-        || !/^\d{2}:\d{2}$/.test(timeValue)
-    ) {
+    try {
+        const date = Temporal.PlainDate.from(dateValue);
+        const time = Temporal.PlainTime.from(timeValue);
+
+        const zoned = Temporal.ZonedDateTime.from(
+            {
+                timeZone: timezone,
+                year: date.year,
+                month: date.month,
+                day: date.day,
+                hour: time.hour,
+                minute: time.minute,
+            },
+            {
+                disambiguation: "reject",
+            },
+        );
+
+        return zoned.toInstant().toString();
+    } catch {
+        // Invalid dates and ambiguous or nonexistent local times
+        // require correction before the event can be saved.
         return null;
     }
+}
 
-    const [ year, month, day ] = dateValue.split("-").map(Number);
-    const [ hour, minute ] = timeValue.split(":").map(Number);
-
-    const date = new Date(
-        year,
-        month - 1,
-        day,
-        hour,
-        minute,
-    );
-
-    if (
-        date.getFullYear() !== year
-        || date.getMonth() !== month - 1
-        || date.getDate() !== day
-        || date.getHours() !== hour
-        || date.getMinutes() !== minute
-    ) {
-        return null;
+function isValidDate(value: string): boolean {
+    try {
+        return Temporal.PlainDate.from(value).toString() === value;
+    } catch {
+        return false;
     }
-
-    return date.toISOString();
 }
 
 function createDraft(event: CalendarReviewEvent): CalendarDraft {
     const start = event.starts_at
-        ? localDateTime(event.starts_at)
+        ? zonedDateTimeParts(
+            event.starts_at,
+            event.timezone,
+        )
         : null;
 
     const end = event.ends_at
-        ? localDateTime(event.ends_at)
+        ? zonedDateTimeParts(
+            event.ends_at,
+            event.timezone,
+        )
         : null;
 
     return {
@@ -108,16 +132,20 @@ function createDraft(event: CalendarReviewEvent): CalendarDraft {
         description: event.description,
         event_type: event.event_type,
         all_day: event.all_day,
+
         startDate: event.all_day
             ? event.start_date ?? ""
             : start?.date ?? "",
+
         endDate: event.all_day
             ? event.end_date
                 ? addDays(event.end_date, -1)
                 : ""
             : end?.date ?? "",
+
         startTime: start?.time ?? "09:00",
         endTime: end?.time ?? "10:00",
+
         timezone: event.timezone,
         end_time_inferred: event.end_time_inferred ?? false,
     };
@@ -142,19 +170,22 @@ export function ReviewCalendarEventsDialog({
     );
 
     const [ activeIndex, setActiveIndex ] = useState(0);
-    const [ validationError, setValidationError ] = useState<string | null>(null);
+
+    const [
+        validationError,
+        setValidationError,
+    ] = useState<string | null>(null);
 
     const activeEvent = drafts[activeIndex];
 
-    const browserTimezone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
     function updateEvent(changes: Partial<CalendarDraft>) {
-        setDrafts((previous) => previous.map((event, index) =>
-            index === activeIndex
-                ? { ...event, ...changes }
-                : event,
-        ));
+        setDrafts((previous) =>
+            previous.map((event, index) =>
+                index === activeIndex
+                    ? { ...event, ...changes }
+                    : event,
+            ),
+        );
 
         setValidationError(null);
     }
@@ -162,6 +193,14 @@ export function ReviewCalendarEventsDialog({
     function selectEvent(index: number) {
         setActiveIndex(index);
         setValidationError(null);
+    }
+
+    function showValidationError(
+        index: number,
+        message: string,
+    ) {
+        setActiveIndex(index);
+        setValidationError(message);
     }
 
     function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
@@ -181,20 +220,29 @@ export function ReviewCalendarEventsDialog({
                 !title
                 || title.length > 200
                 || (description?.length ?? 0) > 2000
-                || !draft.startDate
-                || !draft.endDate
             ) {
-                setActiveIndex(index);
-                setValidationError(
-                    "Please check the event title, description and dates.",
+                showValidationError(
+                    index,
+                    "Please check the event title and description.",
+                );
+                return;
+            }
+
+            if (
+                !isValidDate(draft.startDate)
+                || !isValidDate(draft.endDate)
+            ) {
+                showValidationError(
+                    index,
+                    "Please enter valid start and end dates.",
                 );
                 return;
             }
 
             if (draft.all_day) {
                 if (draft.endDate < draft.startDate) {
-                    setActiveIndex(index);
-                    setValidationError(
+                    showValidationError(
+                        index,
                         "The end date cannot be before the start date.",
                     );
                     return;
@@ -216,32 +264,38 @@ export function ReviewCalendarEventsDialog({
                 continue;
             }
 
-            if (draft.timezone !== browserTimezone) {
-                setActiveIndex(index);
-                setValidationError(
-                    `This event uses ${draft.timezone}, but your browser uses ${browserTimezone}. Time editing in another timezone is not supported yet.`,
-                );
-                return;
-            }
-
             const startsAt = toIsoDateTime(
                 draft.startDate,
                 draft.startTime,
+                draft.timezone,
             );
 
             const endsAt = toIsoDateTime(
                 draft.endDate,
                 draft.endTime,
+                draft.timezone,
             );
 
+            if (!startsAt || !endsAt) {
+                showValidationError(
+                    index,
+                    "The date or time is invalid or falls within a daylight-saving transition. Please choose an unambiguous local time.",
+                );
+                return;
+            }
+
+            const startInstant = Temporal.Instant.from(startsAt);
+            const endInstant = Temporal.Instant.from(endsAt);
+
             if (
-                !startsAt
-                || !endsAt
-                || new Date(endsAt).getTime() <= new Date(startsAt).getTime()
+                Temporal.Instant.compare(
+                    endInstant,
+                    startInstant,
+                ) <= 0
             ) {
-                setActiveIndex(index);
-                setValidationError(
-                    "Please enter valid start and end times. The end must be after the start.",
+                showValidationError(
+                    index,
+                    "The end time must be after the start time.",
                 );
                 return;
             }
@@ -263,8 +317,8 @@ export function ReviewCalendarEventsDialog({
         setValidationError(null);
 
         void onSave(reviewedEvents).catch(() => {
-            // The parent handles the notification.
-            // Keep the dialog open so the user can retry.
+            // Parent handles the notification.
+            // Keep the dialog open so the employee can retry.
         });
     }
 
@@ -275,7 +329,8 @@ export function ReviewCalendarEventsDialog({
     const footer = (
         <div className={styles.footer}>
             <span className={styles.footerCount}>
-                {drafts.length} {drafts.length === 1 ? "event" : "events"} to add
+                {drafts.length}{" "}
+                {drafts.length === 1 ? "event" : "events"} to add
             </span>
 
             <div className={styles.footerActions}>
@@ -306,7 +361,7 @@ export function ReviewCalendarEventsDialog({
             onClose={onClose}
             title="Review calendar events"
             description="Review the details before adding events to your calendar."
-            size="lg"
+            size="xl"
             closeDisabled={saving}
             footer={footer}
         >
@@ -317,7 +372,7 @@ export function ReviewCalendarEventsDialog({
                 noValidate
             >
                 <nav
-                    className={styles.taskNavigation}
+                    className={styles.navigation}
                     aria-label="Events to review"
                 >
                     {drafts.map((event, index) => (
@@ -325,22 +380,24 @@ export function ReviewCalendarEventsDialog({
                             key={event.suggestion_index}
                             type="button"
                             variant="ghost"
-                            className={
+                            className={cn(
+                                styles.eventTab,
                                 index === activeIndex
-                                    ? styles.taskTabActive
-                                    : styles.taskTab
-                            }
+                                && styles.eventTabActive,
+                            )}
                             aria-current={
-                                index === activeIndex ? "step" : undefined
+                                index === activeIndex
+                                    ? "step"
+                                    : undefined
                             }
                             onClick={() => selectEvent(index)}
                             disabled={saving}
                         >
-                            <span className={styles.taskNumber}>
+                            <span className={styles.eventNumber}>
                                 {index + 1}
                             </span>
 
-                            <span className={styles.taskTabTitle}>
+                            <span className={styles.eventTitle}>
                                 {event.title.trim() || "Untitled event"}
                             </span>
                         </Button>
@@ -348,11 +405,9 @@ export function ReviewCalendarEventsDialog({
                 </nav>
 
                 <div className={styles.editor}>
-                    <div className={styles.editorHeader}>
-                        <span className={styles.taskIndicator}>
-                            Event {activeIndex + 1} of {drafts.length}
-                        </span>
-                    </div>
+                    <span className={styles.indicator}>
+                        Event {activeIndex + 1} of {drafts.length}
+                    </span>
 
                     {validationError && (
                         <p
@@ -413,39 +468,35 @@ export function ReviewCalendarEventsDialog({
                             </label>
 
                             <Select<CalendarEventType>
-                                options={[
-                                    { label: "Meeting", value: "meeting" },
-                                    { label: "Appointment", value: "appointment" },
-                                    { label: "Event", value: "event" },
-                                    { label: "Deadline", value: "deadline" },
-                                ]}
+                                options={eventTypeOptions}
                                 value={activeEvent.event_type}
-                                onChange={(event_type) => {
-                                    if (event_type) {
-                                        updateEvent({ event_type });
+                                onChange={(eventType) => {
+                                    if (eventType !== null) {
+                                        updateEvent({
+                                            event_type: eventType,
+                                        });
                                     }
                                 }}
+                                placeholder="Select event type"
                                 disabled={saving}
                             />
                         </div>
 
                         <div className={styles.field}>
-                            <label className={styles.label}>
+                            <span className={styles.label}>
                                 All-day event
-                            </label>
+                            </span>
 
-                            <label className="flex min-h-10 items-center gap-2 text-sm text-fg">
-                                <input
-                                    type="checkbox"
+                            <div className={styles.checkboxField}>
+                                <Checkbox
+                                    label="No specific time"
                                     checked={activeEvent.all_day}
                                     onChange={(event) => updateEvent({
                                         all_day: event.target.checked,
                                     })}
                                     disabled={saving}
-                                    className="size-4 accent-primary"
                                 />
-                                No specific time
-                            </label>
+                            </div>
                         </div>
                     </div>
 
@@ -465,6 +516,7 @@ export function ReviewCalendarEventsDialog({
                                     startDate: date ?? "",
                                 })}
                                 disabled={saving}
+                                clearable={false}
                             />
                         </div>
 
@@ -483,6 +535,7 @@ export function ReviewCalendarEventsDialog({
                                     endDate: date ?? "",
                                 })}
                                 disabled={saving}
+                                clearable={false}
                             />
                         </div>
                     </div>
@@ -497,15 +550,15 @@ export function ReviewCalendarEventsDialog({
                                     Start time
                                 </label>
 
-                                <input
+                                <TimePicker
                                     id={startTimeId}
-                                    type="time"
-                                    className={styles.select}
                                     value={activeEvent.startTime}
-                                    onChange={(event) => updateEvent({
-                                        startTime: event.target.value,
+                                    onChange={(time) => updateEvent({
+                                        startTime: time ?? "",
                                     })}
                                     disabled={saving}
+                                    clearable={false}
+                                    interval={15}
                                 />
                             </div>
 
@@ -517,30 +570,34 @@ export function ReviewCalendarEventsDialog({
                                     End time
                                 </label>
 
-                                <input
+                                <TimePicker
                                     id={endTimeId}
-                                    type="time"
-                                    className={styles.select}
                                     value={activeEvent.endTime}
-                                    onChange={(event) => updateEvent({
-                                        endTime: event.target.value,
+                                    onChange={(time) => updateEvent({
+                                        endTime: time ?? "",
                                     })}
                                     disabled={saving}
+                                    clearable={false}
+                                    interval={15}
                                 />
                             </div>
                         </div>
                     )}
 
-                    {!activeEvent.all_day && activeEvent.end_time_inferred && (
-                        <p className="text-xs leading-5 text-fg-muted">
-                            NeuroLens assumed the meeting duration because
+                    {!activeEvent.all_day
+                        && activeEvent.end_time_inferred && (
+                        <p className={styles.hint}>
+                            NeuroLens assumed the event duration because
                             the original message did not specify an end time.
                             Please review it before saving.
                         </p>
                     )}
 
-                    <p className="text-xs text-fg-muted">
-                        Timezone: {activeEvent.timezone}
+                    <p className={styles.hint}>
+                        Times are shown in{" "}
+                        <strong className="font-medium text-fg">
+                            {activeEvent.timezone}
+                        </strong>
                     </p>
                 </div>
             </form>

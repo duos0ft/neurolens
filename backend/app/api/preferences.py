@@ -15,11 +15,46 @@ from app.schemas.preferences import (
     EmployeePreferencesResponse,
     UpdateEmployeePreferencesRequest,
 )
+from app.services.timezone import TimezoneService
+
 
 router = APIRouter(
     prefix="/preferences",
     tags=["Preferences"],
 )
+
+
+async def build_preferences_response(
+    employee_id,
+    profile: EmployeeProfile | None,
+    db: AsyncSession,
+) -> EmployeePreferencesResponse:
+    timezone_service = TimezoneService(db=db)
+
+    effective_timezone = await timezone_service.get_effective_timezone(
+        employee_id=employee_id,
+    )
+
+    if profile is None:
+        return EmployeePreferencesResponse(
+            directness="balanced",
+            response_length="medium",
+            highlight_ambiguity=True,
+            step_by_step_guidance=True,
+            always_show_next_step=True,
+            timezone=None,
+            effective_timezone=effective_timezone,
+        )
+
+    return EmployeePreferencesResponse(
+        directness=profile.directness,
+        response_length=profile.response_length,
+        highlight_ambiguity=profile.highlight_ambiguity,
+        step_by_step_guidance=profile.step_by_step_guidance,
+        always_show_next_step=profile.always_show_next_step,
+        timezone=profile.timezone,
+        effective_timezone=effective_timezone,
+    )
 
 
 @router.get(
@@ -36,16 +71,11 @@ async def get_preferences(
         )
     )
 
-    if profile is None:
-        return EmployeePreferencesResponse(
-            directness="balanced",
-            response_length="medium",
-            highlight_ambiguity=True,
-            step_by_step_guidance=True,
-            always_show_next_step=True,
-        )
-
-    return EmployeePreferencesResponse.model_validate(profile)
+    return await build_preferences_response(
+        employee_id=employee.user_id,
+        profile=profile,
+        db=db,
+    )
 
 
 @router.patch(
@@ -71,7 +101,9 @@ async def update_preferences(
 
     changes = payload.model_dump(exclude_unset=True)
 
-    if any(value is None for value in changes.values()):
+    # All preferences except timezone must remain non-null.
+    # timezone=None means inherit the organization default.
+    if any(value is None for field, value in changes.items() if field != "timezone"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Preferences cannot be null",
@@ -84,7 +116,9 @@ async def update_preferences(
     )
 
     if profile is None:
-        profile = EmployeeProfile(user_id=employee.user_id)
+        profile = EmployeeProfile(
+            user_id=employee.user_id,
+        )
         db.add(profile)
 
     for field, value in changes.items():
@@ -93,4 +127,8 @@ async def update_preferences(
     await db.commit()
     await db.refresh(profile)
 
-    return EmployeePreferencesResponse.model_validate(profile)
+    return await build_preferences_response(
+        employee_id=employee.user_id,
+        profile=profile,
+        db=db,
+    )

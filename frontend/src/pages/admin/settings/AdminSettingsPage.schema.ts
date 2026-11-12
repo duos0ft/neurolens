@@ -6,6 +6,11 @@ export const adminSettingsSchema = z.object({
         .min(1, "Organization name is required.")
         .max(150, "Organization name cannot exceed 150 characters."),
 
+    default_timezone: z.string()
+        .trim()
+        .min(1, "Organization timezone is required.")
+        .max(100, "Invalid timezone."),
+
     enable_task_assistance: z.boolean(),
     enable_policy_assistance: z.boolean(),
     enable_sentiment_analysis: z.boolean(),
@@ -15,6 +20,7 @@ export type AdminSettingsFormValues = z.infer<typeof adminSettingsSchema>;
 
 export const defaultAdminSettings: AdminSettingsFormValues = {
     organization_name: "NeuroLens",
+    default_timezone: "UTC",
     enable_task_assistance: true,
     enable_policy_assistance: true,
     enable_sentiment_analysis: false,

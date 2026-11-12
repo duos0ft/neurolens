@@ -53,23 +53,6 @@ class SendConversationMessageRequest(BaseModel):
         max_length=10000,
     )
 
-    timezone: str = Field(
-        min_length=1,
-        max_length=100,
-    )
-
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str) -> str:
-        timezone = value.strip()
-
-        try:
-            ZoneInfo(timezone)
-        except (ZoneInfoNotFoundError, ValueError) as error:
-            raise ValueError("Invalid calendar timezone") from error
-
-        return timezone
-
 
 class UpdateConversationRequest(BaseModel):
     title: str = Field(

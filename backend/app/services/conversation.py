@@ -17,6 +17,7 @@ from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.services.assistant_execution_result import AssistantExecutionResult
 from app.services.assistant_protocol import AssistantProtocol
+from app.services.capability_classifier import CapabilityClassification
 from app.services.conversation_capability_metadata import (
     ConversationCapabilityMetadata,
 )
@@ -280,20 +281,56 @@ class ConversationService:
 
                                 extraction_results.append(extraction_result)
 
-                        response = TextGenerationResponse(
-                            content=" ".join(
-                                result.response.content for result in extraction_results
-                            ),
-                            model="neurolens-structured-extraction",
+                        # Structured extraction and ordinary assistant capabilities
+                        # can contribute to the same assistant response.
+                        additional_intents = [
+                            intent
+                            for intent in classification.intents
+                            if intent.capability not in extraction_capabilities
+                            and intent.capability != AICapability.GENERAL_CONVERSATION
+                        ]
+
+                        additional_result = None
+
+                        if additional_intents:
+                            additional_result = await assistant.execute(
+                                message=content,
+                                history=history,
+                                classification=CapabilityClassification(
+                                    intents=additional_intents,
+                                ),
+                            )
+
+                        response_parts: list[str] = []
+
+                        if additional_result is not None:
+                            response_parts.append(
+                                additional_result.response.content,
+                            )
+
+                        response_parts.extend(
+                            result.response.content for result in extraction_results
                         )
 
+                        capabilities = [
+                            capability
+                            for result in extraction_results
+                            for capability in result.capabilities
+                        ]
+
+                        sources = ()
+
+                        if additional_result is not None:
+                            capabilities.extend(additional_result.capabilities)
+                            sources = additional_result.sources
+
                         execution_result = AssistantExecutionResult(
-                            response=response,
-                            capabilities=tuple(
-                                capability
-                                for result in extraction_results
-                                for capability in result.capabilities
+                            response=TextGenerationResponse(
+                                content="\n\n".join(response_parts),
+                                model="neurolens-combined-assistance",
                             ),
+                            capabilities=tuple(dict.fromkeys(capabilities)),
+                            sources=sources,
                             task_suggestions=next(
                                 (
                                     result.task_suggestions

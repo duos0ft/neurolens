@@ -6,9 +6,14 @@ export interface EmployeePreferences {
     highlight_ambiguity: boolean;
     step_by_step_guidance: boolean;
     always_show_next_step: boolean;
+
+    timezone: string | null;
+    effective_timezone: string;
 }
 
-export type UpdateEmployeePreferences = Partial<EmployeePreferences>;
+export type UpdateEmployeePreferences = Partial<
+    Omit<EmployeePreferences, "effective_timezone">
+>;
 
 export function getPreferences(): Promise<EmployeePreferences> {
     return apiFetch<EmployeePreferences>("/api/preferences");

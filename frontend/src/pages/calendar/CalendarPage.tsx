@@ -26,6 +26,7 @@ import { Button } from "../../components/button";
 import { PageHeader } from "../../components/page-header/PageHeader";
 import { type CalendarEntry, getCalendarEntries } from "../../lib/calendar";
 import { calendarPageStyles as styles } from "./CalendarPage.styles";
+import { getPreferences } from "../../lib/preferences";
 
 type CalendarView = "dayGridMonth" | "timeGridWeek" | "timeGridDay";
 
@@ -49,12 +50,6 @@ const calendarViews: {
     { label: "Week", value: "timeGridWeek" },
     { label: "Day", value: "timeGridDay" },
 ];
-
-function getCalendarTimezone(): string {
-    return Intl.DateTimeFormat()
-        .resolvedOptions()
-        .timeZone || "UTC";
-}
 
 function mapCalendarEntry(entry: CalendarEntry) {
     return {
@@ -122,10 +117,12 @@ export function Component() {
     const [ calendarTitle, setCalendarTitle ] = useState("");
     const [ range, setRange ] = useState<DateRange | null>(null);
 
-    const timezone = useMemo(
-        () => getCalendarTimezone(),
-        [],
-    );
+    const preferencesQuery = useQuery({
+        queryKey: [ "preferences" ],
+        queryFn: getPreferences,
+    });
+
+    const timezone = preferencesQuery.data?.effective_timezone;
 
     const entriesQuery = useQuery({
         queryKey: [
@@ -138,9 +135,9 @@ export function Component() {
         queryFn: () => getCalendarEntries({
             start: range!.start,
             end: range!.end,
-            timezone,
+            timezone: timezone!,
         }),
-        enabled: range !== null,
+        enabled: range !== null && timezone !== undefined,
         staleTime: 60_000,
     });
 
@@ -258,63 +255,65 @@ export function Component() {
                 )}
 
                 <div className={styles.calendarBody}>
-                    <FullCalendar
-                        ref={calendarRef}
-                        plugins={calendarPlugins}
-                        initialView="dayGridMonth"
-                        headerToolbar={false}
-                        timeZone={timezone}
-                        firstDay={1}
-                        height="auto"
-                        fixedWeekCount={false}
-                        showNonCurrentDates
-                        dayMaxEvents={3}
-                        nowIndicator
-                        navLinks
-                        editable={false}
-                        selectable={false}
-                        events={entries}
-                        datesSet={(info) => {
-                            setCalendarTitle(info.view.title);
-                            setView(info.view.type as CalendarView);
+                    {timezone && (
+                        <FullCalendar
+                            ref={calendarRef}
+                            plugins={calendarPlugins}
+                            initialView="dayGridMonth"
+                            headerToolbar={false}
+                            timeZone={timezone}
+                            firstDay={1}
+                            height="auto"
+                            fixedWeekCount={false}
+                            showNonCurrentDates
+                            dayMaxEvents={3}
+                            nowIndicator
+                            navLinks
+                            editable={false}
+                            selectable={false}
+                            events={entries}
+                            datesSet={(info) => {
+                                setCalendarTitle(info.view.title);
+                                setView(info.view.type as CalendarView);
 
-                            const nextRange = {
-                                start: info.startStr.slice(0, 10),
-                                end: info.endStr.slice(0, 10),
-                            };
+                                const nextRange = {
+                                    start: info.startStr.slice(0, 10),
+                                    end: info.endStr.slice(0, 10),
+                                };
 
-                            setRange((previous) =>
-                                previous?.start === nextRange.start
-                                && previous?.end === nextRange.end
-                                    ? previous
-                                    : nextRange,
-                            );
-                        }}
-                        eventContent={(info) => (
-                            <CalendarEventContent
-                                title={info.event.title}
-                                eventType={info.event.extendedProps.eventType}
-                                completed={
-                                    info.event.extendedProps.status === "completed"
+                                setRange((previous) =>
+                                    previous?.start === nextRange.start
+                                    && previous?.end === nextRange.end
+                                        ? previous
+                                        : nextRange,
+                                );
+                            }}
+                            eventContent={(info) => (
+                                <CalendarEventContent
+                                    title={info.event.title}
+                                    eventType={info.event.extendedProps.eventType}
+                                    completed={
+                                        info.event.extendedProps.status === "completed"
+                                    }
+                                />
+                            )}
+                            eventClick={(info) => {
+                                const taskId = info.event.extendedProps.taskId;
+
+                                if (taskId) {
+                                    void navigate("/app/my-tasks");
                                 }
-                            />
-                        )}
-                        eventClick={(info) => {
-                            const taskId = info.event.extendedProps.taskId;
-
-                            if (taskId) {
-                                void navigate("/app/my-tasks");
-                            }
-                        }}
-                        dayHeaderFormat={{
-                            weekday: "short",
-                        }}
-                        slotMinTime="06:00:00"
-                        slotMaxTime="22:00:00"
-                        slotDuration="00:30:00"
-                        allDaySlot
-                        expandRows
-                    />
+                            }}
+                            dayHeaderFormat={{
+                                weekday: "short",
+                            }}
+                            slotMinTime="06:00:00"
+                            slotMaxTime="22:00:00"
+                            slotDuration="00:30:00"
+                            allDaySlot
+                            expandRows
+                        />
+                    )}
                 </div>
             </section>
 

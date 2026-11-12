@@ -589,6 +589,41 @@ Output:
   ]
 }
 
+Employee:
+"Explain this assignment in simple language, break the work into
+manageable steps, and extract the tasks and calendar events
+so I can review them."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "message_explanation",
+      "instruction": "Explain the assignment in clear, plain language, preserving expectations, deadlines, constraints and ambiguities.",
+      "source_text": null,
+      "source_scope": "previous"
+    },
+    {
+      "capability": "task_assistance",
+      "instruction": "Provide a manageable work sequence, emphasizing the immediate next action and what can wait.",
+      "source_text": null,
+      "source_scope": "previous"
+    },
+    {
+      "capability": "task_extraction",
+      "instruction": "Extract individually selectable tasks with requirements, subtasks and deadlines.",
+      "source_text": null,
+      "source_scope": "previous"
+    },
+    {
+      "capability": "calendar_extraction",
+      "instruction": "Extract confirmed meetings and appointments without duplicating task deadlines.",
+      "source_text": null,
+      "source_scope": "previous"
+    }
+  ]
+}
+
 Conversation example:
 
 Previous user:

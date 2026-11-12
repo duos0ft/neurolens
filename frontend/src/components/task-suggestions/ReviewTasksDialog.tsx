@@ -175,7 +175,7 @@ export function ReviewTasksDialog({
             onClose={onClose}
             title="Review tasks"
             description="Make any changes before saving to My Tasks."
-            size="lg"
+            size="xl"
             closeDisabled={saving}
             footer={footer}
         >

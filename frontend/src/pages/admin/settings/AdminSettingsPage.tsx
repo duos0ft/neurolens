@@ -12,6 +12,8 @@ import { getApplicationSettings, updateApplicationSettings } from "../../../lib/
 import { type AdminSettingsFormValues, adminSettingsSchema, defaultAdminSettings } from "./AdminSettingsPage.schema";
 import { adminSettingsPageStyles as styles } from "./AdminSettingsPage.styles";
 import { PageHeader } from "../../../components/page-header/PageHeader";
+import { Select } from "../../../components/select/Select";
+import { getTimezoneOptions } from "../../../lib/timezones";
 
 export function Component() {
     const queryClient = useQueryClient();
@@ -37,6 +39,7 @@ export function Component() {
         if (settingsQuery.data && !isDirty) {
             reset({
                 organization_name: settingsQuery.data.organization_name,
+                default_timezone: settingsQuery.data.default_timezone,
                 enable_task_assistance: settingsQuery.data.enable_task_assistance,
                 enable_policy_assistance: settingsQuery.data.enable_policy_assistance,
                 enable_sentiment_analysis: settingsQuery.data.enable_sentiment_analysis,
@@ -51,6 +54,7 @@ export function Component() {
 
             reset({
                 organization_name: settings.organization_name,
+                default_timezone: settings.default_timezone,
                 enable_task_assistance: settings.enable_task_assistance,
                 enable_policy_assistance: settings.enable_policy_assistance,
                 enable_sentiment_analysis: settings.enable_sentiment_analysis,
@@ -164,6 +168,45 @@ export function Component() {
                                 </p>
                             )}
                         </div>
+
+                        <div className={styles.field}>
+                            <label className={styles.label}>
+                                Organization default timezone
+                            </label>
+
+                            <p className={styles.hint}>
+                                Used for employees who haven't selected their own timezone.
+                                This also affects how NeuroLens interprets new meetings
+                                and deadlines.
+                            </p>
+
+                            <div className={styles.selectWrapper}>
+                                <Controller
+                                    name="default_timezone"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select<string>
+                                            options={getTimezoneOptions(field.value)}
+                                            value={field.value}
+                                            onChange={(value) => {
+                                                if (value !== null) {
+                                                    field.onChange(value);
+                                                }
+                                            }}
+                                            placeholder="Select organization timezone"
+                                            disabled={mutation.isPending}
+                                        />
+                                    )}
+                                />
+                            </div>
+
+                            {errors.default_timezone && (
+                                <p className={styles.error} role="alert">
+                                    {errors.default_timezone.message}
+                                </p>
+                            )}
+                        </div>
+
                     </section>
 
                     <div className={styles.divider}/>

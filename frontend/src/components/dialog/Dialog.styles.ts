@@ -11,6 +11,7 @@ export const dialogStyles = {
         sm: "max-w-sm",
         md: "max-w-lg",
         lg: "max-w-2xl",
+        xl: "w-[min(850px,calc(100vw-2rem))] max-w-full",
     },
 
     content: "flex flex-col text-left",

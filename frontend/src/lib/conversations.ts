@@ -91,16 +91,12 @@ export function sendConversationMessage(
     conversationId: string,
     content: string,
 ): Promise<ConversationMessage[]> {
-    const timezone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
     return apiFetch<ConversationMessage[]>(
         `/api/conversations/${conversationId}/messages`,
         {
             method: "POST",
             body: {
                 content,
-                timezone,
             },
         },
     );
