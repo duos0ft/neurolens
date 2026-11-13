@@ -310,9 +310,10 @@ class ConversationService:
                                 additional_result.response.content,
                             )
 
-                        response_parts.extend(
-                            result.response.content for result in extraction_results
-                        )
+                        if additional_result is None:
+                            response_parts.extend(
+                                result.response.content for result in extraction_results
+                            )
 
                         response_content = "\n\n".join(
                             part.strip() for part in response_parts if part.strip()

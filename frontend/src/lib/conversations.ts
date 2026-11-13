@@ -7,6 +7,11 @@ export interface Conversation {
     updated_at: string;
 }
 
+export interface ConversationClarifications {
+    version: 1;
+    questions: string[];
+}
+
 export interface ConversationMessage {
     id: string;
     role: "user" | "assistant";
@@ -15,6 +20,7 @@ export interface ConversationMessage {
     created_at: string;
     task_suggestions: TaskSuggestions | null;
     calendar_suggestions: CalendarSuggestions | null;
+    clarifications: ConversationClarifications | null;
 }
 
 export interface ConversationDetail extends Conversation {

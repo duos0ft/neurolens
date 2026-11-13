@@ -9,6 +9,7 @@ from app.api.employees import router as employees_router
 from app.api.profile import router as profile_router
 from app.api.tasks import router as tasks_router
 from app.core.csrf_config import configure_csrf
+from app.api.calendar_integrations import router as calendar_integrations_router
 
 
 def create_app() -> FastAPI:
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(tasks_router, prefix="/api")
     app.include_router(calendar_router, prefix="/api")
     app.include_router(calendar_suggestions_router, prefix="/api")
+    app.include_router(calendar_integrations_router, prefix="/api")
 
     return app
 

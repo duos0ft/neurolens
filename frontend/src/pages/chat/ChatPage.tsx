@@ -15,6 +15,7 @@ import {
 import { ChatMessageContent } from "./ChatMessageContent";
 import { chatPageStyles as styles } from "./ChatPage.styles";
 import { CalendarSuggestions } from "../../components/calendar-suggestions/CalendarSuggestions";
+import { SuggestedClarifications } from "../../components/suggested-clarifications/SuggestedClarifications";
 
 export function Component() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -311,6 +312,14 @@ export function Component() {
                                                 </div>
 
                                                 <ChatMessageContent content={item.content}/>
+
+                                                {item.clarifications
+                                                    && item.clarifications.questions.length > 0 && (
+                                                    <SuggestedClarifications
+                                                        key={item.id}
+                                                        clarifications={item.clarifications}
+                                                    />
+                                                )}
 
                                                 {item.task_suggestions && (
                                                     <TaskSuggestions

@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     invitation_lifetime_days: int = 7
     invitation_provisioning_lease_seconds: int = 300
 
+    # Google Calendar
+    google_calendar_client_id: str | None = None
+    google_calendar_client_secret: str | None = None
+    google_calendar_redirect_uri: str = (
+        "http://localhost:8000/api/integrations/google-calendar/callback"
+    )
+    google_calendar_scopes: str = "https://www.googleapis.com/auth/calendar.events"
+    google_calendar_token_encryption_key: str | None = None
+
     # Email
     resend_api_key: str
     resend_from_email: EmailStr = "onboarding@resend.dev"

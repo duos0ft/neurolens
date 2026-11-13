@@ -171,11 +171,7 @@ export function TaskSuggestions({
     }
 
     if (suggestions.tasks.length === 0) {
-        return (
-            <div className={styles.empty}>
-                No actionable tasks were identified in this message.
-            </div>
-        );
+        return null;
     }
 
     const description = savedCount === totalCount

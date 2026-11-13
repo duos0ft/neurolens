@@ -69,6 +69,11 @@ class ConversationCalendarSuggestionsResponse(BaseModel):
         }
 
 
+class ConversationClarificationsResponse(BaseModel):
+    version: Literal[1] = 1
+    questions: list[str] = Field(default_factory=list)
+
+
 class ConversationMessageResponse(BaseModel):
     id: uuid.UUID
     role: Literal["user", "assistant"]
@@ -77,6 +82,7 @@ class ConversationMessageResponse(BaseModel):
     created_at: datetime
     task_suggestions: ConversationTaskSuggestionsResponse | None = None
     calendar_suggestions: ConversationCalendarSuggestionsResponse | None = None
+    clarifications: ConversationClarificationsResponse | None = None
 
 
 class ConversationDetailResponse(ConversationResponse):
