@@ -12,6 +12,7 @@ from app.schemas.calendar.calendar_suggestions import ReviewedCalendarEvent
 from app.services.calendar.calendar_extraction import (
     normalize_calendar_extraction_data,
 )
+from app.services.calendar_sync import CalendarSyncService
 
 
 class CalendarSuggestionNotFoundError(Exception):
@@ -181,6 +182,16 @@ class CalendarSuggestionService:
             ]
 
             self.db.add_all(events)
+            await self.db.flush()
+
+            sync_service = CalendarSyncService(self.db)
+
+            for event in events:
+                await sync_service.enqueue_upsert(
+                    employee_id=employee_id,
+                    source_type="calendar_event",
+                    source_id=event.id,
+                )
 
             await self.db.commit()
 
@@ -188,6 +199,7 @@ class CalendarSuggestionService:
                 await self.db.refresh(event)
 
             return events
+
 
         except Exception:
             await self.db.rollback()

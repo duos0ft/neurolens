@@ -13,6 +13,7 @@ from app.models.conversation_message import ConversationMessage
 from app.models.subtask import Subtask
 from app.models.task import Task
 from app.schemas.task import CreateSubtaskRequest, ReviewedTask, UpdateSubtaskRequest
+from app.services.calendar_sync import CalendarSyncService
 
 
 class TaskSuggestionNotFoundError(Exception):
@@ -124,6 +125,8 @@ class TaskService:
         if len(selected_indices) != len(set(selected_indices)):
             raise InvalidTaskSelectionError("Duplicate task suggestion indices are not allowed")
 
+        sync_service = CalendarSyncService(self.db)
+
         try:
             result = await self.db.execute(
                 select(ConversationMessage)
@@ -198,6 +201,7 @@ class TaskService:
                 )
 
                 task_id = await self.db.scalar(statement)
+                was_created = task_id is not None
 
                 if task_id is not None:
                     for sort_order, subtask in enumerate(suggestion.subtasks):
@@ -225,6 +229,13 @@ class TaskService:
 
                 if task is None:
                     raise RuntimeError("Unable to retrieve saved task")
+
+                if was_created and task.due_date is not None:
+                    await sync_service.enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
 
                 saved_tasks.append(task)
 
@@ -257,6 +268,8 @@ class TaskService:
 
         if any(index < 0 for index in indices):
             raise InvalidTaskSelectionError("Invalid task suggestion index")
+
+        sync_service = CalendarSyncService(self.db)
 
         try:
             result = await self.db.execute(
@@ -332,6 +345,7 @@ class TaskService:
                 )
 
                 task_id = await self.db.scalar(statement)
+                was_created = task_id is not None
 
                 if task_id is not None:
                     for sort_order, subtask in enumerate(reviewed_task.subtasks):
@@ -359,6 +373,13 @@ class TaskService:
 
                 if task is None:
                     raise RuntimeError("Unable to retrieve saved task")
+
+                if was_created and task.due_date is not None:
+                    await sync_service.enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
 
                 saved_tasks.append(task)
 
@@ -557,6 +578,13 @@ class TaskService:
                 else:
                     task.completed_at = None
 
+                if task.due_date is not None:
+                    await CalendarSyncService(self.db).enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
+
                 await self.db.commit()
                 await self.db.refresh(task)
 
@@ -611,6 +639,13 @@ class TaskService:
                     )
                 )
 
+            if task.due_date is not None:
+                await CalendarSyncService(self.db).enqueue_upsert(
+                    employee_id=employee_id,
+                    source_type="task",
+                    source_id=task.id,
+                )
+
             await self.db.commit()
             await self.db.refresh(task)
 
@@ -655,6 +690,14 @@ class TaskService:
 
             if task is None:
                 raise TaskNotFoundError("Task not found")
+
+            calendar_details_changed = (
+                task.title != title
+                or task.description != description
+                or task.due_date != due_date
+                or task.due_time != due_time
+                or task.due_timezone != due_timezone
+            )
 
             existing_subtasks = {}
 
@@ -702,6 +745,22 @@ class TaskService:
                         existing.title = subtask.title
                         existing.sort_order = sort_order
 
+            if calendar_details_changed:
+                sync_service = CalendarSyncService(self.db)
+
+                if task.due_date is not None:
+                    await sync_service.enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
+                else:
+                    await sync_service.enqueue_delete(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
+
             await self.db.commit()
             await self.db.refresh(task)
 
@@ -732,6 +791,12 @@ class TaskService:
 
             if task.archived_at is None:
                 task.archived_at = datetime.now(timezone.utc)
+
+                await CalendarSyncService(self.db).enqueue_delete(
+                    employee_id=employee_id,
+                    source_type="task",
+                    source_id=task.id,
+                )
 
                 await self.db.commit()
                 await self.db.refresh(task)
@@ -764,6 +829,13 @@ class TaskService:
 
             task.archived_at = None
 
+            if task.due_date is not None:
+                await CalendarSyncService(self.db).enqueue_upsert(
+                    employee_id=employee_id,
+                    source_type="task",
+                    source_id=task.id,
+                )
+
             await self.db.commit()
             await self.db.refresh(task)
 
@@ -793,6 +865,12 @@ class TaskService:
                 raise TaskNotFoundError("Task not found")
 
             task.deleted_at = datetime.now(timezone.utc)
+
+            await CalendarSyncService(self.db).enqueue_delete(
+                employee_id=employee_id,
+                source_type="task",
+                source_id=task.id,
+            )
 
             await self.db.commit()
 
