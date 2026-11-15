@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Temporal } from "temporal-polyfill";
 import { CalendarCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw, Users } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -12,6 +12,8 @@ import { PageHeader } from "../../components/page-header/PageHeader";
 import { type CalendarEntry, getCalendarEntries } from "../../lib/calendar";
 import { getPreferences } from "../../lib/preferences";
 import { calendarPageStyles as styles } from "./CalendarPage.styles";
+import { getGoogleCalendarStatus, syncGoogleCalendar } from "../../lib/calendar-integrations";
+import { toast } from "sonner";
 
 type CalendarView = "month" | "week" | "day";
 
@@ -145,6 +147,64 @@ export function Component() {
         queryFn: getPreferences,
     });
 
+    const queryClient = useQueryClient();
+
+    const googleCalendarQuery = useQuery({
+        queryKey: [ "calendar-integrations", "google" ],
+        queryFn: getGoogleCalendarStatus,
+        refetchInterval: (query) => {
+            const status = query.state.data;
+
+            if (status?.pending_count || status?.syncing_count) {
+                return 3_000;
+            }
+
+            return 30_000;
+        },
+    });
+
+    const syncMutation = useMutation({
+        mutationFn: syncGoogleCalendar,
+
+        onSuccess: (result) => {
+            void queryClient.invalidateQueries({
+                queryKey: [ "calendar-integrations", "google" ],
+            });
+
+            toast.success("Calendar synchronization queued", {
+                description: `${result.task_count} tasks and ${result.event_count} calendar events queued for synchronization.`,
+            });
+        },
+
+        onError: (error) => {
+            toast.error("Unable to synchronize calendar", {
+                description: error instanceof Error
+                    ? error.message
+                    : "Please try again.",
+            });
+        },
+    });
+
+    const googleStatus = googleCalendarQuery.data;
+
+    const syncInProgress = Boolean(
+        googleStatus?.pending_count || googleStatus?.syncing_count,
+    );
+
+    const canSync = Boolean(
+        googleStatus?.connected
+        && !googleCalendarQuery.isError
+        && !syncMutation.isPending
+        && !syncInProgress,
+    );
+
+    const lastSynced = googleStatus?.last_synced_at
+        ? new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(new Date(googleStatus.last_synced_at))
+        : null;
+
     const timezone = preferencesQuery.data?.effective_timezone;
 
     const [ view, setView ] = useState<CalendarView>("month");
@@ -223,9 +283,49 @@ export function Component() {
 
     return (
         <main className={styles.root}>
+
             <PageHeader
                 title="Calendar"
                 description="View your tasks, deadlines, meetings and appointments."
+                actions={
+                    googleStatus?.connected ? (
+                        <div className={styles.syncActions}>
+                            <div className={styles.syncInformation}>
+                                <span className={styles.syncDetails}>
+                                    {syncInProgress
+                                        ? `Synchronizing ${googleStatus.pending_count + googleStatus.syncing_count} changes...`
+                                        : googleStatus.failed_count > 0
+                                            ? `${googleStatus.failed_count} synchronization failures`
+                                            : lastSynced
+                                                ? `Last synced: ${lastSynced}`
+                                                : "Not synchronized yet"}
+                                </span>
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={!canSync}
+                                onClick={() => syncMutation.mutate()}
+                            >
+                                <RefreshCw
+                                    className={
+                                        syncInProgress || syncMutation.isPending
+                                            ? "animate-spin"
+                                            : undefined
+                                    }
+                                />
+
+                                {syncMutation.isPending
+                                    ? "Queueing..."
+                                    : syncInProgress
+                                        ? "Syncing..."
+                                        : "Sync calendar"}
+                            </Button>
+                        </div>
+                    ) : null
+                }
             />
 
             <section className={styles.calendar}>

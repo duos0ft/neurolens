@@ -25,7 +25,7 @@ class CalendarSyncMapper:
             raise CalendarSyncMappingError("Task title cannot be empty")
 
         if task.status == "completed":
-            title = f"✓ {title}"
+            title = f"✅ {title}"
 
         title = f"Deadline: {title}"
 

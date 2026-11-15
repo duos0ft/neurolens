@@ -54,4 +54,13 @@ export const calendarPageStyles = {
         "flex items-center gap-2 text-xs text-fg-muted",
         "[&_svg]:size-4",
     ].join(" "),
+
+    syncActions: [
+        "flex flex-wrap items-center justify-end gap-3",
+    ].join(" "),
+
+    syncInformation: "flex flex-col items-end",
+
+    syncDetails: "text-xs text-fg-muted",
+
 };

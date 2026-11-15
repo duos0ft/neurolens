@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import RedirectResponse
 
@@ -19,10 +19,14 @@ from app.core.auth import get_current_employee, get_current_employee_read_only
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db
 from app.core.settings import settings
+from app.models.calendar_event import CalendarEvent
 from app.models.calendar_integration import CalendarIntegration
 from app.models.calendar_oauth_flow import CalendarOAuthFlow
+from app.models.calendar_sync_record import CalendarSyncRecord
 from app.models.employee import Employee
 from app.models.employee_session import EmployeeSession
+from app.models.task import Task
+from app.services.calendar_sync import CalendarSyncService
 from app.services.calendar_token_encryption import (
     CalendarTokenEncryption,
     CalendarTokenEncryptionError,
@@ -59,11 +63,22 @@ class CalendarIntegrationStatusResponse(BaseModel):
     integration_id: UUID | None = None
     account_email: str | None = None
     connected_at: datetime | None = None
+    last_synced_at: datetime | None = None
+    pending_count: int = 0
+    syncing_count: int = 0
+    failed_count: int = 0
 
 
 class CalendarDisconnectResponse(BaseModel):
     provider: str
     disconnected: bool
+
+
+class CalendarSyncRequestResponse(BaseModel):
+    queued: bool
+    task_count: int
+    event_count: int
+    deletion_count: int
 
 
 @router.post(
@@ -490,12 +505,35 @@ async def get_google_calendar_status(
             connected=False,
         )
 
+    result = await db.execute(
+        select(
+            func.max(CalendarSyncRecord.last_synced_at),
+            func.count(CalendarSyncRecord.id).filter(
+                CalendarSyncRecord.status == "pending",
+            ),
+            func.count(CalendarSyncRecord.id).filter(
+                CalendarSyncRecord.status == "syncing",
+            ),
+            func.count(CalendarSyncRecord.id).filter(
+                CalendarSyncRecord.status == "failed",
+            ),
+        ).where(
+            CalendarSyncRecord.integration_id == connection.id,
+        )
+    )
+
+    last_synced_at, pending_count, syncing_count, failed_count = result.one()
+
     return CalendarIntegrationStatusResponse(
         provider="google",
         connected=True,
         integration_id=connection.id,
         account_email=connection.account_email,
         connected_at=connection.connected_at,
+        last_synced_at=last_synced_at,
+        pending_count=pending_count,
+        syncing_count=syncing_count,
+        failed_count=failed_count,
     )
 
 
@@ -582,3 +620,129 @@ async def disconnect_google_calendar(
         provider="google",
         disconnected=True,
     )
+
+
+@router.post(
+    "/sync",
+    response_model=CalendarSyncRequestResponse,
+    dependencies=[Depends(validate_request_origin)],
+)
+async def sync_google_calendar(
+    request: Request,
+    employee: Annotated[Employee, Depends(get_current_employee)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    csrf_protect: Annotated[CsrfProtect, Depends()],
+) -> CalendarSyncRequestResponse:
+    try:
+        await csrf_protect.validate_csrf(request)
+    except CsrfProtectError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing CSRF token",
+        ) from error
+
+    integration = await db.scalar(
+        select(CalendarIntegration).where(
+            CalendarIntegration.employee_id == employee.user_id,
+            CalendarIntegration.provider == "google",
+        )
+    )
+
+    if integration is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Connect Google Calendar before synchronizing",
+        )
+
+    try:
+        task_ids = list(
+            (
+                await db.scalars(
+                    select(Task.id).where(
+                        Task.employee_id == employee.user_id,
+                        Task.due_date.is_not(None),
+                        Task.deleted_at.is_(None),
+                        Task.archived_at.is_(None),
+                    )
+                )
+            ).all()
+        )
+
+        event_ids = list(
+            (
+                await db.scalars(
+                    select(CalendarEvent.id).where(
+                        CalendarEvent.employee_id == employee.user_id,
+                    )
+                )
+            ).all()
+        )
+
+        eligible_sources = {("task", task_id) for task_id in task_ids}
+
+        eligible_sources.update(("calendar_event", event_id) for event_id in event_ids)
+
+        existing_records = list(
+            (
+                await db.scalars(
+                    select(CalendarSyncRecord).where(
+                        CalendarSyncRecord.integration_id == integration.id,
+                    )
+                )
+            ).all()
+        )
+
+        sync_service = CalendarSyncService(db)
+
+        for task_id in task_ids:
+            await sync_service.enqueue_upsert(
+                employee_id=employee.user_id,
+                source_type="task",
+                source_id=task_id,
+            )
+
+        for event_id in event_ids:
+            await sync_service.enqueue_upsert(
+                employee_id=employee.user_id,
+                source_type="calendar_event",
+                source_id=event_id,
+            )
+
+        deletion_count = 0
+
+        for record in existing_records:
+            source = (
+                record.source_type,
+                record.source_id,
+            )
+
+            if source in eligible_sources:
+                continue
+
+            if (
+                record.operation == "delete"
+                and record.status == "synced"
+                and record.external_event_id is None
+            ):
+                continue
+
+            await sync_service.enqueue_delete(
+                employee_id=employee.user_id,
+                source_type=record.source_type,
+                source_id=record.source_id,
+            )
+
+            deletion_count += 1
+
+        await db.commit()
+
+        return CalendarSyncRequestResponse(
+            queued=True,
+            task_count=len(task_ids),
+            event_count=len(event_ids),
+            deletion_count=deletion_count,
+        )
+
+    except Exception:
+        await db.rollback()
+        raise

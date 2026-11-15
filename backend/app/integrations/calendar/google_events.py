@@ -300,6 +300,7 @@ class GoogleCalendarEventService:
             "location": event.location,
             "start": self._serialize_time(event.start),
             "end": self._serialize_time(event.end),
+            "status": "confirmed",
         }
 
         try:
