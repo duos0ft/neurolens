@@ -12,7 +12,7 @@ export interface DialogProps {
     description?: string;
     children: ReactNode;
     footer?: ReactNode;
-    size?: "sm" | "md" | "lg";
+    size?: "sm" | "md" | "lg" | "xl";
     closeDisabled?: boolean;
     className?: string;
 }
@@ -29,13 +29,8 @@ export function Dialog({
     className,
 }: DialogProps) {
     const dialogRef = useRef<HTMLDialogElement>(null);
-    const onCloseRef = useRef(onClose);
     const titleId = useId();
     const descriptionId = useId();
-
-    useEffect(() => {
-        onCloseRef.current = onClose;
-    }, [ onClose ]);
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -60,7 +55,11 @@ export function Dialog({
             ref={dialogRef}
             aria-labelledby={titleId}
             aria-describedby={description ? descriptionId : undefined}
-            className={cn(styles.root, styles.sizes[size], className)}
+            className={cn(
+                styles.root,
+                styles.sizes[size],
+                className,
+            )}
             onCancel={(event) => {
                 event.preventDefault();
                 requestClose();
@@ -79,7 +78,10 @@ export function Dialog({
                         </h2>
 
                         {description && (
-                            <p id={descriptionId} className={styles.description}>
+                            <p
+                                id={descriptionId}
+                                className={styles.description}
+                            >
                                 {description}
                             </p>
                         )}

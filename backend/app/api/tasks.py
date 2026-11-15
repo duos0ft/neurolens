@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.conversations import validate_mutation_csrf
@@ -33,6 +33,7 @@ from app.services.task import (
     TaskService,
     TaskSuggestionNotFoundError,
 )
+from app.services.timezone import TimezoneService
 
 router = APIRouter(
     prefix="/tasks",
@@ -57,6 +58,17 @@ def get_task_service(
     return TaskService(db=db)
 
 
+async def resolve_effective_timezone(
+    db: AsyncSession,
+    employee: Employee,
+) -> str:
+    timezone_service = TimezoneService(db=db)
+
+    return await timezone_service.get_effective_timezone(
+        employee_id=employee.user_id,
+    )
+
+
 async def build_task_responses(
     db: AsyncSession,
     tasks: list[Task],
@@ -69,10 +81,13 @@ async def build_task_responses(
     result = await db.scalars(
         select(Subtask)
         .where(Subtask.task_id.in_(task_ids))
-        .order_by(Subtask.task_id, Subtask.sort_order)
+        .order_by(
+            Subtask.task_id,
+            Subtask.sort_order,
+        )
     )
 
-    subtasks_by_task = {task_id: [] for task_id in task_ids}
+    subtasks_by_task: dict[uuid.UUID, list[SubtaskResponse]] = {task_id: [] for task_id in task_ids}
 
     for subtask in result.all():
         subtasks_by_task[subtask.task_id].append(SubtaskResponse.model_validate(subtask))
@@ -86,6 +101,8 @@ async def build_task_responses(
             status=task.status,
             priority=task.priority,
             due_date=task.due_date,
+            due_time=task.due_time,
+            due_timezone=task.due_timezone,
             source_message_id=task.source_message_id,
             source_suggestion_index=task.source_suggestion_index,
             created_at=task.created_at,
@@ -111,11 +128,17 @@ async def save_task_suggestions(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> list[TaskResponse]:
+    effective_timezone = await resolve_effective_timezone(
+        db=db,
+        employee=employee,
+    )
+
     try:
         saved_tasks = await service.save_suggestions(
             employee_id=employee.user_id,
             message_id=payload.message_id,
             selected_indices=payload.selected_indices,
+            effective_timezone=effective_timezone,
         )
 
     except TaskSuggestionNotFoundError as error:
@@ -124,13 +147,16 @@ async def save_task_suggestions(
             detail="Task suggestions not found",
         ) from error
 
-    except InvalidTaskSelectionError as error:
+    except (InvalidTaskSelectionError, ValueError) as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),
         ) from error
 
-    return await build_task_responses(db=db, tasks=saved_tasks)
+    return await build_task_responses(
+        db=db,
+        tasks=saved_tasks,
+    )
 
 
 @router.post(
@@ -145,11 +171,17 @@ async def save_reviewed_task_suggestions(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> list[TaskResponse]:
+    effective_timezone = await resolve_effective_timezone(
+        db=db,
+        employee=employee,
+    )
+
     try:
         saved_tasks = await service.save_reviewed_suggestions(
             employee_id=employee.user_id,
             message_id=payload.message_id,
             reviewed_tasks=payload.tasks,
+            effective_timezone=effective_timezone,
         )
 
     except TaskSuggestionNotFoundError as error:
@@ -158,7 +190,7 @@ async def save_reviewed_task_suggestions(
             detail="Task suggestions not found",
         ) from error
 
-    except InvalidTaskSelectionError as error:
+    except (InvalidTaskSelectionError, ValueError) as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),
@@ -200,7 +232,12 @@ async def get_saved_task_suggestions(
                 archived=archived,
                 deleted=deleted,
             )
-            for suggestion_index, task_id, archived, deleted in saved_suggestions
+            for (
+                suggestion_index,
+                task_id,
+                archived,
+                deleted,
+            ) in saved_suggestions
         ],
     )
 
@@ -273,6 +310,37 @@ async def get_task_stats(
     return TaskStatsResponse(**counts)
 
 
+@router.get(
+    "/{task_id}",
+    response_model=TaskResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_task(
+    task_id: uuid.UUID,
+    employee: Annotated[Employee, Depends(get_current_employee)],
+    service: Annotated[TaskService, Depends(get_task_service)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TaskResponse:
+    try:
+        task = await service.get_task(
+            employee_id=employee.user_id,
+            task_id=task_id,
+        )
+
+    except TaskNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found",
+        ) from error
+
+    responses = await build_task_responses(
+        db=db,
+        tasks=[task],
+    )
+
+    return responses[0]
+
+
 @router.patch(
     "/{task_id}/status",
     response_model=TaskResponse,
@@ -319,14 +387,29 @@ async def create_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> TaskResponse:
-    task = await service.create_task(
-        employee_id=employee.user_id,
-        title=payload.title.strip(),
-        description=payload.description,
-        priority=payload.priority,
-        due_date=payload.due_date,
-        subtasks=payload.subtasks,
+    effective_timezone = await resolve_effective_timezone(
+        db=db,
+        employee=employee,
     )
+
+    try:
+        task = await service.create_task(
+            employee_id=employee.user_id,
+            title=payload.title.strip(),
+            description=payload.description,
+            priority=payload.priority,
+            due_date=payload.due_date,
+            due_time=payload.due_time,
+            due_timezone=payload.due_timezone,
+            effective_timezone=effective_timezone,
+            subtasks=payload.subtasks,
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
 
     responses = await build_task_responses(
         db=db,
@@ -349,6 +432,11 @@ async def update_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[None, Depends(validate_mutation_csrf)],
 ) -> TaskResponse:
+    effective_timezone = await resolve_effective_timezone(
+        db=db,
+        employee=employee,
+    )
+
     try:
         task = await service.update_task(
             employee_id=employee.user_id,
@@ -357,6 +445,9 @@ async def update_task(
             description=payload.description,
             priority=payload.priority,
             due_date=payload.due_date,
+            due_time=payload.due_time,
+            due_timezone=payload.due_timezone,
+            effective_timezone=effective_timezone,
             subtasks=payload.subtasks,
         )
 
@@ -366,7 +457,7 @@ async def update_task(
             detail="Task not found",
         ) from error
 
-    except InvalidSubtaskError as error:
+    except (InvalidSubtaskError, ValueError) as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),

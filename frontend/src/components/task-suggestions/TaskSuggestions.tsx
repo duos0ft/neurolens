@@ -83,6 +83,8 @@ export function TaskSuggestions({
             description: task.description,
             priority: task.priority,
             due_date: task.due_date,
+            due_time: task.due_time ?? null,
+            due_timezone: null,
             subtasks: task.subtasks.map((subtask) => ({
                 title: subtask.title,
             })),
@@ -169,11 +171,7 @@ export function TaskSuggestions({
     }
 
     if (suggestions.tasks.length === 0) {
-        return (
-            <div className={styles.empty}>
-                No actionable tasks were identified in this message.
-            </div>
-        );
+        return null;
     }
 
     const description = savedCount === totalCount
@@ -292,6 +290,7 @@ export function TaskSuggestions({
                                             {task.due_date && (
                                                 <span>
                                                     Due: {task.due_date}
+                                                    {task.due_time && ` at ${task.due_time.slice(0, 5)}`}
                                                 </span>
                                             )}
                                         </div>

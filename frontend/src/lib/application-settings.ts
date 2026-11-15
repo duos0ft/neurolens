@@ -2,6 +2,7 @@ import { apiFetch } from "./api";
 
 export interface ApplicationSettings {
     organization_name: string;
+    default_timezone: string;
     enable_task_assistance: boolean;
     enable_policy_assistance: boolean;
     enable_sentiment_analysis: boolean;
@@ -13,6 +14,7 @@ export type UpdateApplicationSettings = Partial<
     Pick<
         ApplicationSettings,
         | "organization_name"
+        | "default_timezone"
         | "enable_task_assistance"
         | "enable_policy_assistance"
         | "enable_sentiment_analysis"

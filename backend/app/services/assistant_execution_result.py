@@ -1,14 +1,11 @@
 import uuid
 from dataclasses import dataclass
 
-from app.ai.capabilities.task_extraction import (
-    TaskExtractionResult,
-)
+from app.ai.capabilities.calendar_extraction import CalendarExtractionResult
+from app.ai.capabilities.task_extraction import TaskExtractionResult
 from app.ai.capabilities.text_generation import TextGenerationResponse
 from app.ai.capabilities.types import AICapability
-from app.services.conversation_context_snapshot import (
-    ConversationContextSnapshot,
-)
+from app.services.conversation_context_snapshot import ConversationContextSnapshot
 
 
 @dataclass(frozen=True)
@@ -18,8 +15,21 @@ class AssistantTaskSuggestions:
 
 
 @dataclass(frozen=True)
+class AssistantCalendarSuggestions:
+    source_message_id: uuid.UUID | None
+    extraction: CalendarExtractionResult
+
+
+@dataclass(frozen=True)
+class AssistantClarifications:
+    questions: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class AssistantExecutionResult:
     response: TextGenerationResponse
     capabilities: tuple[AICapability, ...]
     sources: tuple[ConversationContextSnapshot, ...] = ()
     task_suggestions: AssistantTaskSuggestions | None = None
+    calendar_suggestions: AssistantCalendarSuggestions | None = None
+    clarifications: AssistantClarifications | None = None

@@ -1,0 +1,141 @@
+/* Popover */
+
+.neurolens-time-popover {
+    width: 184px;
+    max-width: calc(100vw - 16px);
+    padding: 0;
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    background: var(--surface);
+    color: var(--fg);
+    font-family: inherit;
+    box-shadow: 0 12px 28px rgb(0 0 0 / 0.12);
+}
+
+/* React DatePicker container */
+
+.neurolens-time-popover .react-datepicker {
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0 !important;
+    overflow: hidden;
+
+    border: 0;
+    border-radius: 0;
+    background: var(--surface);
+    color: var(--fg);
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+/* Time container */
+
+.neurolens-time-popover .react-datepicker__time-container {
+    float: none;
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0 !important;
+    border: 0;
+    box-sizing: border-box;
+}
+
+/* Header */
+
+.neurolens-time-popover .react-datepicker__header {
+    padding: 14px 10px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.neurolens-time-popover .react-datepicker-time__header {
+    color: var(--fg);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* Time body */
+
+.neurolens-time-popover .react-datepicker__time,
+.neurolens-time-popover .react-datepicker__time-box {
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0 !important;
+    background: var(--surface);
+    box-sizing: border-box;
+}
+
+/* Scrollable time list */
+
+.neurolens-time-popover .react-datepicker__time-list {
+    width: 100% !important;
+    height: 220px !important;
+    margin: 0 !important;
+    padding: 4px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Individual time option */
+
+
+/* Time options — leave room for rounded corners */
+
+.neurolens-time-popover .react-datepicker__time-list-item {
+    display: flex !important;
+    width: auto !important;
+    min-width: 0;
+    height: 36px !important;
+
+    align-items: center;
+    justify-content: center;
+
+    margin: 0 10px 0 4px !important;
+    padding: 0 8px !important;
+
+    border-radius: 8px;
+
+    background: transparent;
+    color: var(--fg-body);
+    font-size: 0.875rem;
+
+    box-sizing: border-box;
+}
+
+
+/* Hover */
+
+.neurolens-time-popover .react-datepicker__time-list-item:hover {
+    background: var(--muted) !important;
+    color: var(--fg) !important;
+}
+
+/* Selected time — same colors as DatePicker */
+
+.neurolens-time-popover .react-datepicker__time-list-item--selected,
+.neurolens-time-popover .react-datepicker__time-list-item--selected:hover {
+    background: var(--primary) !important;
+    color: var(--on-primary) !important;
+    font-weight: 600;
+}
+
+/* Disabled time */
+
+.neurolens-time-popover .react-datepicker__time-list-item--disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+/* Hide unused calendar elements */
+
+.neurolens-time-popover .react-datepicker__triangle,
+.neurolens-time-popover .react-datepicker__navigation {
+    display: none;
+}

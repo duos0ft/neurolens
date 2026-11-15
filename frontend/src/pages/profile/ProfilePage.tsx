@@ -12,6 +12,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import { type ProfileFormValues, profileSchema } from "./ProfilePage.schema";
 import { profilePageStyles as styles } from "./ProfilePage.styles";
 import { PageHeader } from "../../components/page-header/PageHeader";
+import { CalendarIntegrationsCard } from "../../components/calendar-integrations/CalendarIntegrationsCard";
 
 export function Component() {
     const { employee, updateEmployee } = useAuth();
@@ -187,6 +188,8 @@ export function Component() {
                     </div>
                 </form>
             </Card>
+
+            <CalendarIntegrationsCard/>
         </div>
     );
 }

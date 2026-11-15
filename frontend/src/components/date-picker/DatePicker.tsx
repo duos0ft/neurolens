@@ -11,6 +11,7 @@ interface DatePickerProps {
     value: string | null;
     onChange: (value: string | null) => void;
     disabled?: boolean;
+    clearable?: boolean;
     id?: string;
 }
 
@@ -63,7 +64,7 @@ const DatePickerInput = forwardRef<
         ref={ref}
         inputSize="md"
         readOnly
-        className="cursor-pointer pr-10"
+        className="w-full cursor-pointer pr-16"
     />
 ));
 
@@ -73,10 +74,11 @@ export function DatePicker({
     value,
     onChange,
     disabled = false,
+    clearable = true,
     id,
 }: DatePickerProps) {
     return (
-        <div className="relative w-full min-w-0">
+        <div className="neurolens-date-picker relative w-full min-w-0">
             <ReactDatePicker
                 id={id}
                 selected={parseDate(value)}
@@ -86,9 +88,12 @@ export function DatePicker({
                 dateFormat="dd MMM yyyy"
                 placeholderText="Choose a date"
                 disabled={disabled}
-                isClearable
+                isClearable={clearable && !disabled}
                 showPopperArrow={false}
-                popperPlacement="top-start"
+                popperPlacement="bottom-start"
+                popperProps={{
+                    strategy: "fixed",
+                }}
                 customInput={<DatePickerInput/>}
                 calendarClassName="neurolens-calendar"
                 wrapperClassName="w-full"

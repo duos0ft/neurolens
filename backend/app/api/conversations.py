@@ -38,10 +38,24 @@ from app.services.assistant_orchestrator import (
     CapabilityClassificationError,
     CapabilityDisabledError,
 )
-from app.services.conversation import ConversationService, TaskSourceAmbiguityError
+from app.services.calendar.calendar_extraction import (
+    CalendarExtractionError,
+)
+from app.services.conversation import (
+    ConversationService,
+    TaskSourceAmbiguityError,
+)
 from app.services.orchestrated_assistant import OrchestratedAssistantService
-from app.services.task_extraction import TaskExtractionError, TaskExtractionService
-from app.services.task_source_resolver import TaskSourceResolutionError, TaskSourceResolver
+from app.services.task_extraction import (
+    TaskExtractionError,
+    TaskExtractionService,
+)
+from app.services.task_source_resolver import (
+    TaskSourceResolutionError,
+    TaskSourceResolver,
+)
+from app.services.timezone import TimezoneService
+
 
 router = APIRouter(
     prefix="/conversations",
@@ -83,6 +97,25 @@ def get_messaging_conversation_service(
     return service
 
 
+async def get_employee_effective_timezone(
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
+    db: Annotated[
+        AsyncSession,
+        Depends(get_db),
+    ],
+) -> str:
+    timezone_service = TimezoneService(
+        db=db,
+    )
+
+    return await timezone_service.get_effective_timezone(
+        employee_id=employee.user_id,
+    )
+
+
 async def validate_mutation_csrf(
     request: Request,
     csrf_protect: Annotated[CsrfProtect, Depends()],
@@ -105,12 +138,18 @@ async def validate_mutation_csrf(
 )
 async def create_conversation(
     payload: CreateConversationRequest,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
     ],
-    _: Annotated[None, Depends(validate_mutation_csrf)],
+    _: Annotated[
+        None,
+        Depends(validate_mutation_csrf),
+    ],
 ) -> ConversationResponse:
     conversation = await service.create(
         employee_id=employee.user_id,
@@ -128,13 +167,18 @@ async def create_conversation(
     response_model=list[ConversationResponse],
 )
 async def list_conversations(
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
     ],
 ) -> list[ConversationResponse]:
-    conversations = await service.list(employee.user_id)
+    conversations = await service.list(
+        employee.user_id,
+    )
 
     return [
         ConversationResponse.model_validate(
@@ -151,7 +195,10 @@ async def list_conversations(
 )
 async def get_conversation(
     conversation_id: uuid.UUID,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
@@ -196,12 +243,18 @@ async def get_conversation(
 async def rename_conversation(
     conversation_id: uuid.UUID,
     payload: UpdateConversationRequest,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
     ],
-    _: Annotated[None, Depends(validate_mutation_csrf)],
+    _: Annotated[
+        None,
+        Depends(validate_mutation_csrf),
+    ],
 ) -> ConversationResponse:
     conversation = await service.rename(
         employee_id=employee.user_id,
@@ -228,12 +281,18 @@ async def rename_conversation(
 )
 async def delete_conversation(
     conversation_id: uuid.UUID,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
     ],
-    _: Annotated[None, Depends(validate_mutation_csrf)],
+    _: Annotated[
+        None,
+        Depends(validate_mutation_csrf),
+    ],
 ) -> None:
     deleted = await service.delete(
         employee_id=employee.user_id,
@@ -256,7 +315,10 @@ async def delete_conversation(
 async def send_conversation_message(
     conversation_id: uuid.UUID,
     payload: SendConversationMessageRequest,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_messaging_conversation_service),
@@ -265,7 +327,14 @@ async def send_conversation_message(
         OrchestratedAssistantService,
         Depends(get_orchestrated_assistant),
     ],
-    _: Annotated[None, Depends(validate_mutation_csrf)],
+    effective_timezone: Annotated[
+        str,
+        Depends(get_employee_effective_timezone),
+    ],
+    _: Annotated[
+        None,
+        Depends(validate_mutation_csrf),
+    ],
 ) -> list[ConversationMessageResponse]:
     content = payload.content.strip()
 
@@ -281,12 +350,13 @@ async def send_conversation_message(
             conversation_id=conversation_id,
             content=content,
             assistant=assistant,
+            timezone=effective_timezone,
         )
 
     except CapabilityDisabledError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=("This assistant capability is currently unavailable."),
+            detail="This assistant capability is currently unavailable.",
         ) from error
 
     except CapabilityClassificationError as error:
@@ -305,10 +375,22 @@ async def send_conversation_message(
             ),
         ) from error
 
-    except (TaskSourceResolutionError, TaskExtractionError) as error:
+    except TaskSourceResolutionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't identify the source message. Please try again."),
+        ) from error
+
+    except TaskExtractionError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=("NeuroLens couldn't prepare task suggestions. Please try again."),
+        ) from error
+
+    except CalendarExtractionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=("NeuroLens couldn't prepare calendar suggestions. Please try again."),
         ) from error
 
     except (TextGenerationError, ProviderNotConfiguredError) as error:
@@ -340,7 +422,10 @@ async def send_conversation_message(
 async def extract_conversation_message_tasks(
     conversation_id: uuid.UUID,
     message_id: uuid.UUID,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
@@ -349,7 +434,14 @@ async def extract_conversation_message_tasks(
         TaskExtractionService,
         Depends(get_task_extraction_service),
     ],
-    _: Annotated[None, Depends(validate_mutation_csrf)],
+    effective_timezone: Annotated[
+        str,
+        Depends(get_employee_effective_timezone),
+    ],
+    _: Annotated[
+        None,
+        Depends(validate_mutation_csrf),
+    ],
 ) -> TaskExtractionResponse:
     messages = await service.get_messages(
         employee_id=employee.user_id,
@@ -376,6 +468,8 @@ async def extract_conversation_message_tasks(
     try:
         result = await extraction_service.extract(
             text=source_message.content,
+            reference_datetime=source_message.created_at,
+            timezone=effective_timezone,
         )
 
     except ProviderNotConfiguredError as error:
@@ -403,7 +497,10 @@ async def extract_conversation_message_tasks(
 async def extract_conversation_tasks(
     conversation_id: uuid.UUID,
     payload: ConversationTaskExtractionRequest,
-    employee: Annotated[Employee, Depends(get_current_employee)],
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
     service: Annotated[
         ConversationService,
         Depends(get_conversation_service),
@@ -416,7 +513,14 @@ async def extract_conversation_tasks(
         TaskExtractionService,
         Depends(get_task_extraction_service),
     ],
-    _: Annotated[None, Depends(validate_mutation_csrf)],
+    effective_timezone: Annotated[
+        str,
+        Depends(get_employee_effective_timezone),
+    ],
+    _: Annotated[
+        None,
+        Depends(validate_mutation_csrf),
+    ],
 ) -> ResolvedTaskExtractionResponse:
     messages = await service.get_messages(
         employee_id=employee.user_id,
@@ -436,7 +540,7 @@ async def extract_conversation_tasks(
     if not candidates:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No previous employee messages are available for task extraction.",
+            detail=("No previous employee messages are available for task extraction."),
         )
 
     resolver = TaskSourceResolver(
@@ -470,8 +574,8 @@ async def extract_conversation_tasks(
             ),
         )
 
-    # The resolver's output must correspond to a user-authored
-    # message in this employee-owned conversation.
+    # Only use an employee-authored message belonging to the
+    # authenticated employee's conversation.
     source_message = next(
         (message for message in candidates if message.id == source_message_id),
         None,
@@ -486,6 +590,8 @@ async def extract_conversation_tasks(
     try:
         result = await extraction_service.extract(
             text=source_message.content,
+            reference_datetime=source_message.created_at,
+            timezone=effective_timezone,
         )
 
     except ProviderNotConfiguredError as error:

@@ -59,10 +59,9 @@ class EmployeeProfile(Base):
         nullable=True,
     )
 
-    timezone: Mapped[str] = mapped_column(
+    timezone: Mapped[str | None] = mapped_column(
         Text,
-        nullable=False,
-        server_default="UTC",
+        nullable=True,
     )
 
     directness: Mapped[str] = mapped_column(

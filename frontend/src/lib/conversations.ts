@@ -7,6 +7,11 @@ export interface Conversation {
     updated_at: string;
 }
 
+export interface ConversationClarifications {
+    version: 1;
+    questions: string[];
+}
+
 export interface ConversationMessage {
     id: string;
     role: "user" | "assistant";
@@ -14,6 +19,8 @@ export interface ConversationMessage {
     model: string | null;
     created_at: string;
     task_suggestions: TaskSuggestions | null;
+    calendar_suggestions: CalendarSuggestions | null;
+    clarifications: ConversationClarifications | null;
 }
 
 export interface ConversationDetail extends Conversation {
@@ -29,6 +36,7 @@ export interface ExtractedTask {
     description: string | null;
     priority: "low" | "medium" | "high" | null;
     due_date: string | null;
+    due_time: string | null;
     source_text: string | null;
     subtasks: ExtractedSubtask[];
 }
@@ -36,6 +44,37 @@ export interface ExtractedTask {
 export interface TaskSuggestions {
     source_message_id: string | null;
     tasks: ExtractedTask[];
+}
+
+export type CalendarEventType =
+    | "meeting"
+    | "appointment"
+    | "event"
+    | "deadline";
+
+export type CalendarEndTimeSource =
+    | "explicit"
+    | "duration"
+    | "default";
+
+export interface ExtractedCalendarEvent {
+    title: string;
+    description: string | null;
+    event_type: CalendarEventType;
+    all_day: boolean;
+    start_date: string | null;
+    end_date: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    timezone: string;
+    source_text: string | null;
+    end_time_source?: CalendarEndTimeSource | null;
+    end_time_inferred?: boolean;
+}
+
+export interface CalendarSuggestions {
+    source_message_id: string | null;
+    events: ExtractedCalendarEvent[];
 }
 
 export function getConversations(): Promise<Conversation[]> {
@@ -95,7 +134,9 @@ export function renameConversation(
         `/api/conversations/${conversationId}`,
         {
             method: "PATCH",
-            body: { title },
+            body: {
+                title,
+            },
         },
     );
 }

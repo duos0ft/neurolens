@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from app.ai.capabilities.text_generation import (
     GenerationMessage,
@@ -6,11 +7,14 @@ from app.ai.capabilities.text_generation import (
 )
 from app.ai.capabilities.types import AICapability
 from app.services.assistant_execution_result import (
+    AssistantCalendarSuggestions,
     AssistantExecutionResult,
     AssistantTaskSuggestions,
+    AssistantClarifications,
 )
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
+from app.services.calendar.calendar_extraction import CalendarExtractionService
 from app.services.capability_classifier import CapabilityClassification
 from app.services.task_extraction import TaskExtractionService
 
@@ -36,6 +40,19 @@ class OrchestratedAssistantService:
             classification=classification,
         )
 
+        questions = tuple(
+            question
+            for result in results
+            if result.structured_explanation is not None
+            for question in result.structured_explanation.clarification_questions
+        )
+
+        clarifications = (
+            AssistantClarifications(questions=tuple(dict.fromkeys(questions)))
+            if questions and self.orchestrator.config.highlight_ambiguity
+            else None
+        )
+
         return AssistantExecutionResult(
             response=self.composer.compose(
                 results,
@@ -43,12 +60,15 @@ class OrchestratedAssistantService:
             ),
             capabilities=tuple(result.capability for result in results),
             sources=tuple(result.source for result in results if result.source is not None),
+            clarifications=clarifications,
         )
 
     async def extract_tasks(
         self,
         source_text: str,
         source_message_id: uuid.UUID | None = None,
+        reference_datetime: datetime | None = None,
+        timezone: str | None = None,
     ) -> AssistantExecutionResult:
         extraction_service = TaskExtractionService(
             registry=self.orchestrator.registry,
@@ -56,16 +76,19 @@ class OrchestratedAssistantService:
 
         extraction = await extraction_service.extract(
             text=source_text,
+            reference_datetime=reference_datetime,
+            timezone=timezone,
         )
 
-        if extraction.tasks:
-            content = (
-                f"I found {len(extraction.tasks)} possible "
-                "task suggestions. Review them below and "
-                "choose which ones you'd like to keep."
-            )
-        else:
-            content = "I couldn't identify any actionable tasks in that message."
+        count = len(extraction.tasks)
+
+        content = (
+            "I found a task for you."
+            if count == 1
+            else f"I found {count} tasks for you."
+            if count > 1
+            else ""
+        )
 
         return AssistantExecutionResult(
             response=TextGenerationResponse(
@@ -74,6 +97,45 @@ class OrchestratedAssistantService:
             ),
             capabilities=(AICapability.TASK_EXTRACTION,),
             task_suggestions=AssistantTaskSuggestions(
+                source_message_id=source_message_id,
+                extraction=extraction,
+            ),
+        )
+
+    async def extract_calendar(
+        self,
+        source_text: str,
+        reference_datetime: datetime,
+        timezone: str,
+        source_message_id: uuid.UUID | None = None,
+    ) -> AssistantExecutionResult:
+        extraction_service = CalendarExtractionService(
+            registry=self.orchestrator.registry,
+        )
+
+        extraction = await extraction_service.extract(
+            text=source_text,
+            reference_datetime=reference_datetime,
+            timezone=timezone,
+        )
+
+        count = len(extraction.events)
+
+        content = (
+            "I found a calendar event."
+            if count == 1
+            else f"I found {count} calendar events."
+            if count > 1
+            else ""
+        )
+
+        return AssistantExecutionResult(
+            response=TextGenerationResponse(
+                content=content,
+                model="neurolens-calendar-extraction",
+            ),
+            capabilities=(AICapability.CALENDAR_EXTRACTION,),
+            calendar_suggestions=AssistantCalendarSuggestions(
                 source_message_id=source_message_id,
                 extraction=extraction,
             ),

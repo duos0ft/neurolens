@@ -13,3 +13,4 @@ class AICapability(StrEnum):
     CONVERSATION_TITLE = "conversation_title"
     GENERAL_CONVERSATION = "general_conversation"
     POLICY_QUESTION = "policy_question"
+    CALENDAR_EXTRACTION = "calendar_extraction"

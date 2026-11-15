@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (
     CheckConstraint,
@@ -11,6 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     text,
+    Time,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -39,6 +40,21 @@ class Task(Base):
             "source_message_id",
             "source_suggestion_index",
             name="tasks_employee_source_suggestion_unique",
+        ),
+        CheckConstraint(
+            """
+            (
+                due_time IS NULL
+                AND due_timezone IS NULL
+            )
+            OR
+            (
+                due_date IS NOT NULL
+                AND due_time IS NOT NULL
+                AND due_timezone IS NOT NULL
+            )
+            """,
+            name="tasks_due_time_timezone_check",
         ),
         {"schema": "public"},
     )
@@ -82,6 +98,16 @@ class Task(Base):
 
     due_date: Mapped[date | None] = mapped_column(
         Date,
+        nullable=True,
+    )
+
+    due_time: Mapped[time | None] = mapped_column(
+        Time(timezone=False),
+        nullable=True,
+    )
+
+    due_timezone: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 

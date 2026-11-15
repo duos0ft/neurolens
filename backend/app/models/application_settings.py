@@ -39,6 +39,12 @@ class ApplicationSettings(Base):
         server_default="NeuroLens",
     )
 
+    default_timezone: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default="UTC",
+    )
+
     enable_task_assistance: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

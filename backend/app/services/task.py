@@ -1,5 +1,6 @@
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, time
+from zoneinfo import ZoneInfoNotFoundError, ZoneInfo
 
 from pydantic import ValidationError
 from sqlalchemy import case, func, select
@@ -12,6 +13,7 @@ from app.models.conversation_message import ConversationMessage
 from app.models.subtask import Subtask
 from app.models.task import Task
 from app.schemas.task import CreateSubtaskRequest, ReviewedTask, UpdateSubtaskRequest
+from app.services.calendar_sync import CalendarSyncService
 
 
 class TaskSuggestionNotFoundError(Exception):
@@ -34,6 +36,71 @@ class InvalidSubtaskError(Exception):
     pass
 
 
+def resolve_task_deadline(
+    due_date: date | None,
+    due_time: time | None,
+    due_timezone: str | None,
+    effective_timezone: str,
+) -> tuple[date | None, time | None, str | None]:
+    """
+    Normalize a task deadline before database persistence.
+
+    Date-only deadlines remain date-only.
+    Timed deadlines always have an IANA timezone.
+    """
+    if due_date is None:
+        if due_time is not None or due_timezone is not None:
+            raise ValueError("A deadline time and timezone require a due date")
+
+        return None, None, None
+
+    if due_time is None:
+        if due_timezone is not None:
+            raise ValueError("A deadline timezone requires a time")
+
+        return due_date, None, None
+
+    if due_time.utcoffset() is not None:
+        raise ValueError("Deadline time must not contain a UTC offset")
+
+    if due_time.second != 0 or due_time.microsecond != 0:
+        raise ValueError("Deadline time must have minute precision")
+
+    resolved_timezone = due_timezone or effective_timezone
+
+    try:
+        zone = ZoneInfo(resolved_timezone)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise ValueError("Invalid deadline timezone") from error
+
+    # Reject nonexistent and ambiguous local wall-clock times.
+    # These can occur during daylight-saving transitions.
+    valid_instants = set()
+
+    for fold in (0, 1):
+        local_datetime = datetime.combine(
+            due_date,
+            due_time,
+        ).replace(
+            tzinfo=zone,
+            fold=fold,
+        )
+
+        utc_datetime = local_datetime.astimezone(timezone.utc)
+        round_trip = utc_datetime.astimezone(zone)
+
+        if round_trip.date() == due_date and round_trip.time().replace(tzinfo=None) == due_time:
+            valid_instants.add(utc_datetime)
+
+    if not valid_instants:
+        raise ValueError("Deadline time does not exist in the selected timezone")
+
+    if len(valid_instants) > 1:
+        raise ValueError("Deadline time is ambiguous in the selected timezone")
+
+    return due_date, due_time, resolved_timezone
+
+
 class TaskService:
     def __init__(
         self,
@@ -46,6 +113,8 @@ class TaskService:
         employee_id: uuid.UUID,
         message_id: uuid.UUID,
         selected_indices: list[int],
+        *,
+        effective_timezone: str,
     ) -> list[Task]:
         if not selected_indices:
             raise InvalidTaskSelectionError("At least one task suggestion must be selected")
@@ -55,6 +124,8 @@ class TaskService:
 
         if len(selected_indices) != len(set(selected_indices)):
             raise InvalidTaskSelectionError("Duplicate task suggestion indices are not allowed")
+
+        sync_service = CalendarSyncService(self.db)
 
         try:
             result = await self.db.execute(
@@ -102,6 +173,13 @@ class TaskService:
             for index in selected_indices:
                 suggestion = extraction.tasks[index]
 
+                due_date, due_time, due_timezone = resolve_task_deadline(
+                    due_date=suggestion.due_date,
+                    due_time=suggestion.due_time,
+                    due_timezone=None,
+                    effective_timezone=effective_timezone,
+                )
+
                 statement = (
                     insert(Task)
                     .values(
@@ -110,7 +188,9 @@ class TaskService:
                         description=suggestion.description,
                         status="todo",
                         priority=suggestion.priority,
-                        due_date=suggestion.due_date,
+                        due_date=due_date,
+                        due_time=due_time,
+                        due_timezone=due_timezone,
                         source_message_id=source_message.id,
                         source_suggestion_index=index,
                     )
@@ -121,6 +201,7 @@ class TaskService:
                 )
 
                 task_id = await self.db.scalar(statement)
+                was_created = task_id is not None
 
                 if task_id is not None:
                     for sort_order, subtask in enumerate(suggestion.subtasks):
@@ -149,6 +230,13 @@ class TaskService:
                 if task is None:
                     raise RuntimeError("Unable to retrieve saved task")
 
+                if was_created and task.due_date is not None:
+                    await sync_service.enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
+
                 saved_tasks.append(task)
 
             await self.db.commit()
@@ -167,6 +255,8 @@ class TaskService:
         employee_id: uuid.UUID,
         message_id: uuid.UUID,
         reviewed_tasks: list[ReviewedTask],
+        *,
+        effective_timezone: str,
     ) -> list[Task]:
         if not reviewed_tasks:
             raise InvalidTaskSelectionError("At least one reviewed task must be provided")
@@ -178,6 +268,8 @@ class TaskService:
 
         if any(index < 0 for index in indices):
             raise InvalidTaskSelectionError("Invalid task suggestion index")
+
+        sync_service = CalendarSyncService(self.db)
 
         try:
             result = await self.db.execute(
@@ -225,6 +317,13 @@ class TaskService:
             for reviewed_task in reviewed_tasks:
                 index = reviewed_task.suggestion_index
 
+                due_date, due_time, due_timezone = resolve_task_deadline(
+                    due_date=reviewed_task.due_date,
+                    due_time=reviewed_task.due_time,
+                    due_timezone=reviewed_task.due_timezone,
+                    effective_timezone=effective_timezone,
+                )
+
                 statement = (
                     insert(Task)
                     .values(
@@ -233,7 +332,9 @@ class TaskService:
                         description=reviewed_task.description,
                         status="todo",
                         priority=reviewed_task.priority,
-                        due_date=reviewed_task.due_date,
+                        due_date=due_date,
+                        due_time=due_time,
+                        due_timezone=due_timezone,
                         source_message_id=source_message.id,
                         source_suggestion_index=index,
                     )
@@ -244,6 +345,7 @@ class TaskService:
                 )
 
                 task_id = await self.db.scalar(statement)
+                was_created = task_id is not None
 
                 if task_id is not None:
                     for sort_order, subtask in enumerate(reviewed_task.subtasks):
@@ -271,6 +373,13 @@ class TaskService:
 
                 if task is None:
                     raise RuntimeError("Unable to retrieve saved task")
+
+                if was_created and task.due_date is not None:
+                    await sync_service.enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
 
                 saved_tasks.append(task)
 
@@ -330,6 +439,25 @@ class TaskService:
             )
             for suggestion_index, task_id, archived_at, deleted_at in result.all()
         ]
+
+    async def get_task(
+        self,
+        employee_id: uuid.UUID,
+        task_id: uuid.UUID,
+    ) -> Task:
+        task = await self.db.scalar(
+            select(Task).where(
+                Task.id == task_id,
+                Task.employee_id == employee_id,
+                Task.archived_at.is_(None),
+                Task.deleted_at.is_(None),
+            )
+        )
+
+        if task is None:
+            raise TaskNotFoundError("Task not found")
+
+        return task
 
     async def get_tasks(
         self,
@@ -450,6 +578,13 @@ class TaskService:
                 else:
                     task.completed_at = None
 
+                if task.due_date is not None:
+                    await CalendarSyncService(self.db).enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
+
                 await self.db.commit()
                 await self.db.refresh(task)
 
@@ -467,7 +602,18 @@ class TaskService:
         priority: str | None,
         due_date: date | None,
         subtasks: list[CreateSubtaskRequest],
+        *,
+        due_time: time | None = None,
+        due_timezone: str | None = None,
+        effective_timezone: str,
     ) -> Task:
+        due_date, due_time, due_timezone = resolve_task_deadline(
+            due_date=due_date,
+            due_time=due_time,
+            due_timezone=due_timezone,
+            effective_timezone=effective_timezone,
+        )
+
         try:
             task = Task(
                 employee_id=employee_id,
@@ -476,6 +622,8 @@ class TaskService:
                 status="todo",
                 priority=priority,
                 due_date=due_date,
+                due_time=due_time,
+                due_timezone=due_timezone,
             )
 
             self.db.add(task)
@@ -489,6 +637,13 @@ class TaskService:
                         completed=False,
                         sort_order=sort_order,
                     )
+                )
+
+            if task.due_date is not None:
+                await CalendarSyncService(self.db).enqueue_upsert(
+                    employee_id=employee_id,
+                    source_type="task",
+                    source_id=task.id,
                 )
 
             await self.db.commit()
@@ -509,7 +664,18 @@ class TaskService:
         priority: str | None,
         due_date: date | None,
         subtasks: list[UpdateSubtaskRequest] | None,
+        *,
+        due_time: time | None = None,
+        due_timezone: str | None = None,
+        effective_timezone: str,
     ) -> Task:
+        due_date, due_time, due_timezone = resolve_task_deadline(
+            due_date=due_date,
+            due_time=due_time,
+            due_timezone=due_timezone,
+            effective_timezone=effective_timezone,
+        )
+
         try:
             task = await self.db.scalar(
                 select(Task)
@@ -524,6 +690,14 @@ class TaskService:
 
             if task is None:
                 raise TaskNotFoundError("Task not found")
+
+            calendar_details_changed = (
+                task.title != title
+                or task.description != description
+                or task.due_date != due_date
+                or task.due_time != due_time
+                or task.due_timezone != due_timezone
+            )
 
             existing_subtasks = {}
 
@@ -546,6 +720,8 @@ class TaskService:
             task.description = description
             task.priority = priority
             task.due_date = due_date
+            task.due_time = due_time
+            task.due_timezone = due_timezone
 
             if subtasks is not None:
                 submitted_ids_set = set(submitted_ids)
@@ -568,6 +744,22 @@ class TaskService:
                         existing = existing_subtasks[subtask.id]
                         existing.title = subtask.title
                         existing.sort_order = sort_order
+
+            if calendar_details_changed:
+                sync_service = CalendarSyncService(self.db)
+
+                if task.due_date is not None:
+                    await sync_service.enqueue_upsert(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
+                else:
+                    await sync_service.enqueue_delete(
+                        employee_id=employee_id,
+                        source_type="task",
+                        source_id=task.id,
+                    )
 
             await self.db.commit()
             await self.db.refresh(task)
@@ -600,6 +792,12 @@ class TaskService:
             if task.archived_at is None:
                 task.archived_at = datetime.now(timezone.utc)
 
+                await CalendarSyncService(self.db).enqueue_delete(
+                    employee_id=employee_id,
+                    source_type="task",
+                    source_id=task.id,
+                )
+
                 await self.db.commit()
                 await self.db.refresh(task)
 
@@ -631,6 +829,13 @@ class TaskService:
 
             task.archived_at = None
 
+            if task.due_date is not None:
+                await CalendarSyncService(self.db).enqueue_upsert(
+                    employee_id=employee_id,
+                    source_type="task",
+                    source_id=task.id,
+                )
+
             await self.db.commit()
             await self.db.refresh(task)
 
@@ -660,6 +865,12 @@ class TaskService:
                 raise TaskNotFoundError("Task not found")
 
             task.deleted_at = datetime.now(timezone.utc)
+
+            await CalendarSyncService(self.db).enqueue_delete(
+                employee_id=employee_id,
+                source_type="task",
+                source_id=task.id,
+            )
 
             await self.db.commit()
 
