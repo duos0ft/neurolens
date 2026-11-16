@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.providers.embedding_factory import create_embedding_provider
 from app.ai.registry import AIProviderRegistry, ProviderNotConfiguredError
 from app.ai.resolver import resolve_ai_provider_registry
 from app.core.auth import get_current_employee
@@ -12,6 +13,7 @@ from app.services.assistant_config_service import AssistantConfigService
 from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.orchestrated_assistant import OrchestratedAssistantService
+from app.services.policy_questions import PolicyQuestionService
 from app.services.task_extraction import TaskExtractionService
 
 
@@ -40,9 +42,24 @@ async def get_assistant_orchestrator(
         employee_id=employee.user_id,
     )
 
+    policy_question_service = None
+
+    if config.enable_policy_assistance:
+        try:
+            embedding_provider = create_embedding_provider()
+
+            policy_question_service = PolicyQuestionService(
+                db=db,
+                embedding_provider=embedding_provider,
+            )
+
+        except ProviderNotConfiguredError:
+            policy_question_service = None
+
     return AssistantOrchestrator(
         registry=registry,
         config=config,
+        policy_question_service=policy_question_service,
     )
 
 

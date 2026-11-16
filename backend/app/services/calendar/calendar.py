@@ -9,7 +9,6 @@ from app.models.calendar_event import CalendarEvent
 from app.models.task import Task
 from app.schemas.calendar.calendar import CalendarEntryResponse
 
-
 TASK_DEADLINE_DURATION = timedelta(minutes=1)
 
 

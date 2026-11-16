@@ -9,7 +9,6 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.services.capability_intent import CapabilityIntent
 
-
 CLASSIFICATION_INSTRUCTIONS = """
 You are the intent classifier for NeuroLens, a workplace communication,
 task-management, and calendar assistant.
@@ -707,9 +706,7 @@ class CapabilityClassifier:
                     )
 
         except (ValueError, TypeError, KeyError) as error:
-            raise ValueError(
-                "Unable to interpret capability classification"
-            ) from error
+            raise ValueError("Unable to interpret capability classification") from error
 
         return CapabilityClassification(
             intents=intents,

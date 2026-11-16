@@ -16,6 +16,7 @@ import { ChatMessageContent } from "./ChatMessageContent";
 import { chatPageStyles as styles } from "./ChatPage.styles";
 import { CalendarSuggestions } from "../../components/calendar-suggestions/CalendarSuggestions";
 import { SuggestedClarifications } from "../../components/suggested-clarifications/SuggestedClarifications";
+import { PolicySources } from "../../components/policy-sources/PolicySources";
 
 export function Component() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -311,7 +312,16 @@ export function Component() {
                                                     NeuroLens
                                                 </div>
 
-                                                <ChatMessageContent content={item.content}/>
+                                                <ChatMessageContent
+                                                    content={item.content}
+                                                    citations={item.policy_citations}
+                                                />
+
+                                                {item.policy_citations && item.policy_citations.length > 0 && (
+                                                    <PolicySources
+                                                        citations={item.policy_citations}
+                                                    />
+                                                )}
 
                                                 {item.clarifications
                                                     && item.clarifications.questions.length > 0 && (

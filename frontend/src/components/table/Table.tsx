@@ -43,6 +43,7 @@ export interface TableProps<T> {
     rows: T[];
     rowKey: (row: T) => Key;
     rowActions?: TableRowAction<T>[];
+    onRowClick?: (row: T) => void;
     onRowActionSuccess?: (
         row: T,
         action: TableRowAction<T>,
@@ -62,6 +63,7 @@ export function Table<T>({
     rows,
     rowKey,
     rowActions = [],
+    onRowClick,
     onRowActionSuccess,
     onRowActionError,
     loading = false,
@@ -133,8 +135,24 @@ export function Table<T>({
                             rows.map((row) => (
                                 <tr
                                     key={rowKey(row)}
-                                    className={styles.row}
+                                    className={cn(
+                                        styles.row,
+                                        onRowClick && "cursor-pointer hover:bg-surface-hover",
+                                    )}
+                                    onClick={() => onRowClick?.(row)}
+                                    onKeyDown={(event) => {
+                                        if (
+                                            onRowClick
+                                        && event.target === event.currentTarget
+                                        && (event.key === "Enter" || event.key === " ")
+                                        ) {
+                                            event.preventDefault();
+                                            onRowClick(row);
+                                        }
+                                    }}
+                                    tabIndex={onRowClick ? 0 : undefined}
                                 >
+
                                     {columns.map((column) => (
                                         <td
                                             key={column.key}
@@ -153,6 +171,8 @@ export function Table<T>({
                                                 styles.cell,
                                                 "w-14 text-right",
                                             )}
+                                            onClick={(event) => event.stopPropagation()}
+                                            onKeyDown={(event) => event.stopPropagation()}
                                         >
                                             <TableRowActions
                                                 row={row}
@@ -162,6 +182,7 @@ export function Table<T>({
                                             />
                                         </td>
                                     )}
+
                                 </tr>
                             ))
                         )}

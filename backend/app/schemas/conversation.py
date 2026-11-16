@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from typing import Literal
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -83,6 +82,7 @@ class ConversationMessageResponse(BaseModel):
     task_suggestions: ConversationTaskSuggestionsResponse | None = None
     calendar_suggestions: ConversationCalendarSuggestionsResponse | None = None
     clarifications: ConversationClarificationsResponse | None = None
+    policy_citations: list[PolicyCitationResponse] | None = None
 
 
 class ConversationDetailResponse(ConversationResponse):
@@ -111,3 +111,13 @@ class UpdateConversationRequest(BaseModel):
             raise ValueError("Conversation title cannot be empty")
 
         return title
+
+
+class PolicyCitationResponse(BaseModel):
+    reference: str
+    document_id: uuid.UUID
+    version_id: uuid.UUID
+    document_title: str
+    version_number: int
+    page_number: int | None
+    chunk_id: uuid.UUID

@@ -72,6 +72,10 @@ export const router = createBrowserRouter([
                         lazy: () => import("../pages/chat/ChatPage"),
                     },
                     {
+                        path: "policies",
+                        lazy: () => import("../pages/policies/PoliciesPage"),
+                    },
+                    {
                         Component: RequireAdmin,
                         children: [
                             {

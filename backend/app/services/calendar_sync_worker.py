@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.calendar_sync_record import CalendarSyncRecord
 
-
 CALENDAR_SYNC_LEASE_SECONDS = 120
 CALENDAR_SYNC_BATCH_SIZE = 20
 

@@ -6,6 +6,7 @@ from app.ai.capabilities.task_extraction import TaskExtractionResult
 from app.ai.capabilities.text_generation import TextGenerationResponse
 from app.ai.capabilities.types import AICapability
 from app.services.conversation_context_snapshot import ConversationContextSnapshot
+from app.services.policy_context import PolicyCitation
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,7 @@ class AssistantExecutionResult:
     response: TextGenerationResponse
     capabilities: tuple[AICapability, ...]
     sources: tuple[ConversationContextSnapshot, ...] = ()
+    policy_citations: tuple[PolicyCitation, ...] = ()
     task_suggestions: AssistantTaskSuggestions | None = None
     calendar_suggestions: AssistantCalendarSuggestions | None = None
     clarifications: AssistantClarifications | None = None

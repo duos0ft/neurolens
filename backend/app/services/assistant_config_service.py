@@ -32,7 +32,7 @@ class AssistantConfigService:
 
         return AssistantConfig(
             enable_task_assistance=settings.enable_task_assistance,
-            enable_policy_assistance=False,
+            enable_policy_assistance=settings.enable_policy_assistance,
             enable_sentiment_analysis=settings.enable_sentiment_analysis,
             directness=profile.directness if profile else "balanced",
             response_length=profile.response_length if profile else "medium",

@@ -11,7 +11,6 @@ from pydantic import (
     model_validator,
 )
 
-
 TaskPriority = Literal["low", "medium", "high"]
 TaskStatus = Literal["todo", "in_progress", "completed"]
 

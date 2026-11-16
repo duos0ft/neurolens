@@ -8,15 +8,16 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.services.assistant_execution_result import (
     AssistantCalendarSuggestions,
+    AssistantClarifications,
     AssistantExecutionResult,
     AssistantTaskSuggestions,
-    AssistantClarifications,
 )
-from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_orchestrator import AssistantOrchestrator, extract_policy_references
 from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.calendar.calendar_extraction import CalendarExtractionService
 from app.services.capability_classifier import CapabilityClassification
 from app.services.task_extraction import TaskExtractionService
+import re
 
 
 class OrchestratedAssistantService:
@@ -48,18 +49,37 @@ class OrchestratedAssistantService:
         )
 
         clarifications = (
-            AssistantClarifications(questions=tuple(dict.fromkeys(questions)))
+            AssistantClarifications(
+                questions=tuple(dict.fromkeys(questions)),
+            )
             if questions and self.orchestrator.config.highlight_ambiguity
             else None
         )
 
+        response = self.composer.compose(
+            results,
+            config=self.orchestrator.config,
+        )
+
+        referenced_ids = extract_policy_references(response.content)
+
+        citations_by_reference = {
+            citation.reference: citation
+            for result in results
+            for citation in result.policy_citations
+        }
+
+        policy_citations = tuple(
+            citation
+            for reference, citation in citations_by_reference.items()
+            if reference in referenced_ids
+        )
+
         return AssistantExecutionResult(
-            response=self.composer.compose(
-                results,
-                config=self.orchestrator.config,
-            ),
+            response=response,
             capabilities=tuple(result.capability for result in results),
             sources=tuple(result.source for result in results if result.source is not None),
+            policy_citations=policy_citations,
             clarifications=clarifications,
         )
 

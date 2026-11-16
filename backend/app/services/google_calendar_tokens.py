@@ -12,7 +12,6 @@ from app.services.calendar_token_encryption import (
     CalendarTokenEncryptionError,
 )
 
-
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 

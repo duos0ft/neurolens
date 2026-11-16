@@ -326,12 +326,14 @@ class ConversationService:
                         ]
 
                         sources = ()
+                        policy_citations = ()
 
                         if additional_result is not None:
                             capabilities.extend(
                                 additional_result.capabilities,
                             )
                             sources = additional_result.sources
+                            policy_citations = additional_result.policy_citations
 
                         execution_result = AssistantExecutionResult(
                             response=TextGenerationResponse(
@@ -340,6 +342,7 @@ class ConversationService:
                             ),
                             capabilities=tuple(dict.fromkeys(capabilities)),
                             sources=sources,
+                            policy_citations=policy_citations,
                             task_suggestions=next(
                                 (
                                     result.task_suggestions
@@ -389,6 +392,7 @@ class ConversationService:
             task_suggestions = None
             calendar_suggestions = None
             clarifications = None
+            policy_citations = None
 
             if execution_result is not None:
                 response = execution_result.response
@@ -398,6 +402,20 @@ class ConversationService:
                         capabilities=execution_result.capabilities,
                         sources=execution_result.sources,
                     ).to_dict()
+
+                if execution_result.policy_citations:
+                    policy_citations = [
+                        {
+                            "reference": citation.reference,
+                            "document_id": citation.document_id,
+                            "version_id": citation.version_id,
+                            "document_title": citation.document_title,
+                            "version_number": citation.version_number,
+                            "page_number": citation.page_number,
+                            "chunk_id": citation.chunk_id,
+                        }
+                        for citation in execution_result.policy_citations
+                    ]
 
                 if execution_result.task_suggestions is not None:
                     suggestions = execution_result.task_suggestions
@@ -471,6 +489,7 @@ class ConversationService:
                 task_suggestions=task_suggestions,
                 calendar_suggestions=calendar_suggestions,
                 clarifications=clarifications,
+                policy_citations=policy_citations,
             )
 
             self.db.add_all(

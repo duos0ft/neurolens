@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -6,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.calendar_sync_record import CalendarSyncRecord
 from app.services.calendar_sync_worker import ClaimedCalendarSyncJob
-
 
 MAX_RETRY_ATTEMPTS = 8
 INITIAL_RETRY_DELAY_SECONDS = 15

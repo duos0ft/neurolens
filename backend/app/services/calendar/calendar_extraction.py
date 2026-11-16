@@ -12,7 +12,6 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 
-
 CALENDAR_EXTRACTION_INSTRUCTIONS = """\
 You are NeuroLens, a precise workplace calendar-extraction assistant.
 
@@ -341,10 +340,7 @@ class CalendarExtractionService:
             ) from error
 
         for event in result.events:
-            if (
-                    event.source_text is not None
-                    and event.source_text not in text
-            ):
+            if event.source_text is not None and event.source_text not in text:
                 event.source_text = None
 
         return result

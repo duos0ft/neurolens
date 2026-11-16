@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from dataclasses import dataclass
 
 from pydantic import ValidationError
@@ -12,6 +13,7 @@ from app.ai.capabilities.text_generation import (
     TextGenerationResponse,
 )
 from app.ai.capabilities.types import AICapability
+from app.ai.prompts.policy_answering import POLICY_ANSWERING_INSTRUCTIONS
 from app.ai.registry import AIProviderRegistry
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_instructions import build_preference_instructions
@@ -19,6 +21,8 @@ from app.services.capability_classifier import CapabilityClassification, Capabil
 from app.services.capability_intent import CapabilityIntent
 from app.services.conversation_context_snapshot import ConversationContextSnapshot
 from app.services.conversation_snapshot_builder import ConversationSnapshotBuilder
+from app.services.policy_context import PolicyCitation
+from app.services.policy_questions import PolicyQuestionService
 
 logger = logging.getLogger(__name__)
 
@@ -289,6 +293,7 @@ class CapabilityResult:
     response: TextGenerationResponse
     source: ConversationContextSnapshot | None = None
     structured_explanation: StructuredExplanation | None = None
+    policy_citations: tuple[PolicyCitation, ...] = ()
 
 
 class CapabilityDisabledError(Exception):
@@ -303,6 +308,18 @@ MAX_GENERATION_HISTORY = 6
 MAX_CLASSIFICATION_ATTEMPTS = 2
 
 
+def extract_policy_references(content: str) -> set[str]:
+    references: set[str] = set()
+
+    for group in re.findall(
+        r"\[((?:P\d+\s*,\s*)*P\d+)\]",
+        content,
+    ):
+        references.update(re.findall(r"P\d+", group))
+
+    return references
+
+
 class AssistantOrchestrator:
     def __init__(
         self,
@@ -310,6 +327,7 @@ class AssistantOrchestrator:
         enable_task_assistance: bool = True,
         config: AssistantConfig | None = None,
         snapshot_builder: ConversationSnapshotBuilder | None = None,
+        policy_question_service: PolicyQuestionService | None = None,
     ) -> None:
         self.registry = registry
 
@@ -319,17 +337,92 @@ class AssistantOrchestrator:
 
         self.enable_task_assistance = self.config.enable_task_assistance
         self.snapshot_builder = snapshot_builder or ConversationSnapshotBuilder()
+        self.policy_question_service = policy_question_service
 
     def _policy_result(
         self,
         mixed: bool = False,
     ) -> CapabilityResult:
+        import traceback
+
+        logger.warning(
+            "POLICY_FALLBACK_CALLED mixed=%s service_available=%s\n%s",
+            mixed,
+            self.policy_question_service is not None,
+            "".join(traceback.format_stack(limit=8)),
+        )
+
         return CapabilityResult(
             capability=AICapability.POLICY_QUESTION,
             response=TextGenerationResponse(
                 content=(POLICY_MIXED_MESSAGE if mixed else POLICY_UNAVAILABLE_MESSAGE),
                 model="neurolens",
             ),
+        )
+
+    async def _answer_policy_question(
+        self,
+        question: str,
+    ) -> CapabilityResult:
+        if self.policy_question_service is None:
+            return self._policy_result()
+
+        prepared = await self.policy_question_service.prepare(
+            question=question,
+            limit=5,
+        )
+
+        if not prepared.has_evidence:
+            return CapabilityResult(
+                capability=AICapability.POLICY_QUESTION,
+                response=TextGenerationResponse(
+                    content=(
+                        "I couldn't find information about that in "
+                        "the available company policies. Please contact "
+                        "your HR representative or policy administrator "
+                        "to confirm."
+                    ),
+                    model="neurolens-policy-retrieval",
+                ),
+            )
+
+        provider = self.registry.get_text_generation(
+            AICapability.GENERAL_CONVERSATION,
+        )
+
+        instructions = (
+            f"{POLICY_ANSWERING_INSTRUCTIONS}\n\n{build_preference_instructions(self.config)}"
+        )
+
+        request = TextGenerationRequest(
+            system_instructions=instructions,
+            messages=[
+                GenerationMessage(
+                    role="user",
+                    content=(
+                        f"Employee question:\n{prepared.question}\n\n"
+                        "Retrieved company policy passages:\n"
+                        f"{prepared.context}\n\n"
+                        "Answer the employee question using only "
+                        "the retrieved passages. Cite relevant "
+                        "passages using their reference identifiers."
+                    ),
+                ),
+            ],
+        )
+
+        response = await provider.generate(request)
+
+        cited_references = extract_policy_references(response.content)
+
+        citations = tuple(
+            citation for citation in prepared.citations if citation.reference in cited_references
+        )
+
+        return CapabilityResult(
+            capability=AICapability.POLICY_QUESTION,
+            response=response,
+            policy_citations=citations,
         )
 
     def _build_source_snapshot(
@@ -414,10 +507,8 @@ class AssistantOrchestrator:
             ]
 
             if not executable:
-                return [self._policy_result()]
+                return [await self._answer_policy_question(message)]
 
-            # Mixed policy requests must not send unrestricted
-            # employee content to specialist providers.
             for capability in executable:
                 if (
                     capability not in SPECIALIST_CAPABILITIES
@@ -429,7 +520,11 @@ class AssistantOrchestrator:
 
         for capability in selected:
             if capability == AICapability.POLICY_QUESTION:
-                results.append(self._policy_result())
+                if len(selected) == 1:
+                    results.append(await self._answer_policy_question(message))
+                else:
+                    results.append(self._policy_result())
+
                 continue
 
             intent = scoped_intents.get(capability)

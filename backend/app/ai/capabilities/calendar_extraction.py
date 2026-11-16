@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 from enum import StrEnum
-from zoneinfo import ZoneInfoNotFoundError, ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
     BaseModel,

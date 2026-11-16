@@ -1,15 +1,18 @@
 from fastapi import FastAPI
 
+import app.models
 from app.api import application_settings, assistant, contact_persons, conversations, preferences
+from app.api.admin_policies import router as admin_policies_router
 from app.api.auth import router as auth_router
 from app.api.calendar.calendar import router as calendar_router
 from app.api.calendar.calendar_suggestions import router as calendar_suggestions_router
+from app.api.calendar_integrations import router as calendar_integrations_router
 from app.api.employee_invitations import router as employee_invitations_router
 from app.api.employees import router as employees_router
+from app.api.policies import router as policies_router
 from app.api.profile import router as profile_router
 from app.api.tasks import router as tasks_router
 from app.core.csrf_config import configure_csrf
-from app.api.calendar_integrations import router as calendar_integrations_router
 
 
 def create_app() -> FastAPI:
@@ -33,6 +36,8 @@ def create_app() -> FastAPI:
     app.include_router(calendar_router, prefix="/api")
     app.include_router(calendar_suggestions_router, prefix="/api")
     app.include_router(calendar_integrations_router, prefix="/api")
+    app.include_router(admin_policies_router, prefix="/api")
+    app.include_router(policies_router, prefix="/api")
 
     return app
 
