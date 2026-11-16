@@ -200,7 +200,6 @@ class CalendarSuggestionService:
 
             return events
 
-
         except Exception:
             await self.db.rollback()
             raise

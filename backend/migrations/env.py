@@ -26,6 +26,7 @@ from app.models.task import Task  # noqa: F401
 config = context.config
 migration_url = settings.migration_database_url or settings.database_url
 
+
 MANAGED_TABLES = {
     "employees",
     "employee_profiles",
@@ -39,7 +40,15 @@ MANAGED_TABLES = {
     "contact_persons",
     "tasks",
     "subtasks",
+    "calendar_events",
+    "calendar_integrations",
+    "calendar_oauth_flows",
+    "calendar_sync_records",
+    "policy_documents",
+    "policy_versions",
+    "policy_chunks",
 }
+
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

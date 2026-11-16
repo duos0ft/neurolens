@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_publishable_key: str
     supabase_secret_key: str
+    supabase_policy_bucket: str = "company-policies"
 
     # PostgreSQL
     database_url: str
@@ -52,6 +53,7 @@ class Settings(BaseSettings):
 
     # AI providers
     ai_text_generation_provider: str = "openai"
+    ai_embedding_provider: str = "openai"
 
     # OpenAI
     openai_api_key: str | None = None
@@ -62,6 +64,8 @@ class Settings(BaseSettings):
     ai_task_assistance_model: str | None = None
     ai_conversation_title_model: str | None = None
     ai_request_classification_model: str | None = None
+    openai_embedding_model: str = "text-embedding-3-small"
+    ai_embedding_dimensions: int = 1536
 
     model_config = SettingsConfigDict(
         env_file=".env",

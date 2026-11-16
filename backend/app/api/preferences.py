@@ -17,7 +17,6 @@ from app.schemas.preferences import (
 )
 from app.services.timezone import TimezoneService
 
-
 router = APIRouter(
     prefix="/preferences",
     tags=["Preferences"],

@@ -12,7 +12,6 @@ from app.ai.capabilities.text_generation import (
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 
-
 TASK_EXTRACTION_INSTRUCTIONS = """\
 You are NeuroLens, a precise workplace task-extraction assistant.
 
@@ -296,10 +295,7 @@ class TaskExtractionService:
         # Only exact substrings of the workplace text
         # are accepted as source provenance.
         for task in result.tasks:
-            if (
-                    task.source_text is not None
-                    and task.source_text not in text
-            ):
+            if task.source_text is not None and task.source_text not in text:
                 task.source_text = None
 
         return result

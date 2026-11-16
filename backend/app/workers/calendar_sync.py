@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.database import async_session_factory, engine
 from app.services.calendar_sync_processor import CalendarSyncProcessor
 
-
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 5

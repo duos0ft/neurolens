@@ -34,7 +34,6 @@ from app.services.google_calendar_tokens import (
     GoogleCalendarTokenService,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

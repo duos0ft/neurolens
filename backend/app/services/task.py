@@ -1,6 +1,6 @@
 import uuid
-from datetime import date, datetime, timezone, time
-from zoneinfo import ZoneInfoNotFoundError, ZoneInfo
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import ValidationError
 from sqlalchemy import case, func, select

@@ -9,7 +9,6 @@ from app.integrations.calendar.provider import (
     ExternalEventStatus,
 )
 
-
 GOOGLE_CALENDAR_API_URL = "https://www.googleapis.com/calendar/v3"
 
 
@@ -404,13 +403,9 @@ class GoogleCalendarEventService:
                     return
 
                 if response.status_code == 412:
-                    raise GoogleCalendarRetryableError(
-                        "Google event changed during deletion"
-                    )
+                    raise GoogleCalendarRetryableError("Google event changed during deletion")
 
                 self._check_response(response)
 
         except httpx.TransportError as error:
-            raise GoogleCalendarRetryableError(
-                "Unable to reach Google Calendar"
-            ) from error
+            raise GoogleCalendarRetryableError("Unable to reach Google Calendar") from error

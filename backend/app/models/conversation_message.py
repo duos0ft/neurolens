@@ -99,3 +99,8 @@ class ConversationMessage(Base):
         nullable=True,
     )
 
+    policy_citations: Mapped[list[dict] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+

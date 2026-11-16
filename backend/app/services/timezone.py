@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.application_settings import ApplicationSettings
 from app.models.employee_profile import EmployeeProfile
 
-
 DEFAULT_TIMEZONE = "UTC"
 
 
