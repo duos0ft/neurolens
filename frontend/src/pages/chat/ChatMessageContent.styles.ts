@@ -40,4 +40,14 @@ export const chatMessageContentStyles = {
         "rounded-md bg-slate-100 px-1.5 py-0.5",
         "font-mono text-xs text-slate-900",
     ].join(" "),
+
+    citationLink: [
+        "inline-flex items-center rounded-md",
+        "bg-accent-soft px-1.5 py-0.5",
+        "text-xs font-semibold text-accent",
+        "no-underline transition-colors",
+        "hover:underline",
+        "focus-visible:outline-2",
+        "focus-visible:outline-border-strong",
+    ].join(" "),
 };

@@ -10,12 +10,51 @@ import {
     getPublishedPolicies,
     getPublishedPolicyFileUrl,
     type PolicyCategory,
+    type PolicyDirectoryStatus,
     type PolicyDocument,
 } from "../../lib/policies";
 import { useAuth } from "../../providers/AuthProvider";
 import { CreatePolicyDialog } from "./CreatePolicyDialog";
 import { PolicyDetailsDialog } from "./PolicyDetailsDialog";
 import { policiesPageStyles as styles } from "./PoliciesPage.styles";
+import { Badge, type BadgeVariant } from "../../components/badge/Badge";
+
+const policyStatusPresentation: Record<
+    PolicyDirectoryStatus,
+    {
+        label: string;
+        variant: BadgeVariant;
+    }
+> = {
+    no_document: {
+        label: "No PDF",
+        variant: "neutral",
+    },
+    pending: {
+        label: "Pending",
+        variant: "neutral",
+    },
+    processing: {
+        label: "Processing",
+        variant: "neutral",
+    },
+    ready: {
+        label: "Ready to publish",
+        variant: "warning",
+    },
+    failed: {
+        label: "Failed",
+        variant: "danger",
+    },
+    published: {
+        label: "Published",
+        variant: "success",
+    },
+    archived: {
+        label: "Archived",
+        variant: "neutral",
+    },
+};
 
 interface PolicyRow {
     id: string;
@@ -24,6 +63,7 @@ interface PolicyRow {
     category: PolicyCategory;
     updatedAt: string | null;
     versionNumber: number | null;
+    status: PolicyDirectoryStatus;
 }
 
 const categoryLabels: Record<PolicyCategory, string> = {
@@ -92,6 +132,21 @@ const columns: TableColumn<PolicyRow>[] = [
             </span>
         ),
     },
+
+    {
+        key: "status",
+        title: "Status",
+        render: (policy) => {
+            const presentation = policyStatusPresentation[policy.status];
+
+            return (
+                <Badge variant={presentation.variant}>
+                    {presentation.label}
+                </Badge>
+            );
+        },
+    },
+
 ];
 
 export function Component() {
@@ -122,7 +177,8 @@ export function Component() {
             description: policy.description,
             category: policy.category,
             updatedAt: policy.updated_at,
-            versionNumber: null,
+            versionNumber: policy.latest_version_number,
+            status: policy.status,
         }))
         : (publishedPoliciesQuery.data?.documents ?? []).map((policy) => ({
             id: policy.id,
@@ -131,6 +187,7 @@ export function Component() {
             category: policy.category,
             updatedAt: policy.published_at,
             versionNumber: policy.version_number,
+            status: "published",
         }));
 
     const loading = isAdmin

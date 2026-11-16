@@ -20,6 +20,15 @@ export type PolicyPublicationStatus =
     | "published"
     | "archived";
 
+export type PolicyDirectoryStatus =
+    | "no_document"
+    | "pending"
+    | "processing"
+    | "ready"
+    | "failed"
+    | "published"
+    | "archived";
+
 export interface PolicyDocument {
     id: string;
     title: string;
@@ -28,6 +37,11 @@ export interface PolicyDocument {
     created_by: string | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface AdminPolicyDocument extends PolicyDocument {
+    latest_version_number: number | null;
+    status: PolicyDirectoryStatus;
 }
 
 export interface PolicyVersion {
@@ -49,7 +63,7 @@ export interface PolicyVersion {
 }
 
 export interface PolicyDocumentListResponse {
-    documents: PolicyDocument[];
+    documents: AdminPolicyDocument[];
 }
 
 export interface PolicyVersionListResponse {
@@ -60,12 +74,6 @@ export interface CreatePolicyDocumentRequest {
     title: string;
     description: string | null;
     category: PolicyCategory;
-}
-
-export function getPolicyDocuments(): Promise<PolicyDocumentListResponse> {
-    return apiFetch<PolicyDocumentListResponse>(
-        "/api/admin/policies",
-    );
 }
 
 export interface PublishedPolicy {
@@ -81,6 +89,18 @@ export interface PublishedPolicy {
 
 export interface PublishedPolicyListResponse {
     documents: PublishedPolicy[];
+}
+
+export interface UploadPolicyVersionInput {
+    documentId: string;
+    file: File;
+    effectiveDate: string | null;
+}
+
+export function getPolicyDocuments(): Promise<PolicyDocumentListResponse> {
+    return apiFetch<PolicyDocumentListResponse>(
+        "/api/admin/policies",
+    );
 }
 
 export function createPolicyDocument(
@@ -122,12 +142,6 @@ export function getPublishedPolicies(): Promise<PublishedPolicyListResponse> {
     );
 }
 
-export interface UploadPolicyVersionInput {
-    documentId: string;
-    file: File;
-    effectiveDate: string | null;
-}
-
 export function uploadPolicyVersion({
     documentId,
     file,
@@ -146,18 +160,6 @@ export function uploadPolicyVersion({
         {
             method: "POST",
             body: formData,
-        },
-    );
-}
-
-export function processPolicyVersion(
-    documentId: string,
-    versionId: string,
-): Promise<PolicyVersion> {
-    return apiFetch<PolicyVersion>(
-        `/api/admin/policies/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/process`,
-        {
-            method: "POST",
         },
     );
 }
@@ -181,4 +183,19 @@ export function getPublishedPolicyFileUrl(
     const path = `/api/policies/${encodeURIComponent(documentId)}/file`;
 
     return download ? `${path}?download=true` : path;
+}
+
+export function getCitedPolicyFileUrl(
+    documentId: string,
+    versionId: string,
+    pageNumber: number | null,
+): string {
+    const path = (
+        `/api/policies/${encodeURIComponent(documentId)}`
+        + `/versions/${encodeURIComponent(versionId)}/file`
+    );
+
+    return pageNumber !== null && pageNumber > 0
+        ? `${path}#page=${pageNumber}`
+        : path;
 }

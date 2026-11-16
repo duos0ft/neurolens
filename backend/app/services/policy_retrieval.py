@@ -22,6 +22,9 @@ class PolicySearchResult:
     distance: float
 
 
+MAX_COSINE_DISTANCE = 0.45
+
+
 class PolicyRetrievalService:
     def __init__(
         self,
@@ -101,7 +104,11 @@ class PolicyRetrievalService:
             },
         )
 
-        rows = result.mappings().all()
+        rows = [
+            row
+            for row in result.mappings().all()
+            if row["distance"] is not None and float(row["distance"]) <= MAX_COSINE_DISTANCE
+        ]
 
         return [
             PolicySearchResult(

@@ -26,8 +26,9 @@ from app.core.permissions import require_admin
 from app.models.employee import Employee
 from app.models.policy_version import PolicyVersion
 from app.schemas.policy import (
+    AdminPolicyDocumentListResponse,
+    AdminPolicyDocumentResponse,
     CreatePolicyDocumentRequest,
-    PolicyDocumentListResponse,
     PolicyDocumentResponse,
     PolicyVersionListResponse,
     PolicyVersionResponse,
@@ -50,6 +51,7 @@ from app.services.policy_versions import (
     PolicyVersionService,
 )
 
+
 router = APIRouter(
     prefix="/admin/policies",
     tags=["Company Policies"],
@@ -59,15 +61,61 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=PolicyDocumentListResponse,
+    response_model=AdminPolicyDocumentListResponse,
 )
 async def list_policy_documents(
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> PolicyDocumentListResponse:
+) -> AdminPolicyDocumentListResponse:
     documents = await PolicyDocumentService(db).list_documents()
 
-    return PolicyDocumentListResponse(
-        documents=[PolicyDocumentResponse.model_validate(document) for document in documents],
+    if not documents:
+        return AdminPolicyDocumentListResponse(documents=[])
+
+    document_ids = [document.id for document in documents]
+
+    versions = (
+        await db.scalars(
+            select(PolicyVersion)
+            .where(
+                PolicyVersion.document_id.in_(document_ids),
+            )
+            .order_by(
+                PolicyVersion.document_id,
+                PolicyVersion.version_number.desc(),
+            )
+        )
+    ).all()
+
+    latest_versions: dict[uuid.UUID, PolicyVersion] = {}
+
+    for version in versions:
+        latest_versions.setdefault(
+            version.document_id,
+            version,
+        )
+
+    results: list[AdminPolicyDocumentResponse] = []
+
+    for document in documents:
+        version = latest_versions.get(document.id)
+
+        if version is None:
+            policy_status = "no_document"
+        elif version.publication_status != "draft":
+            policy_status = version.publication_status
+        else:
+            policy_status = version.ingestion_status
+
+        results.append(
+            AdminPolicyDocumentResponse(
+                **PolicyDocumentResponse.model_validate(document).model_dump(),
+                latest_version_number=(version.version_number if version is not None else None),
+                status=policy_status,
+            )
+        )
+
+    return AdminPolicyDocumentListResponse(
+        documents=results,
     )
 
 
@@ -86,7 +134,6 @@ async def create_policy_document(
 ) -> PolicyDocumentResponse:
     try:
         await csrf_protect.validate_csrf(request)
-
     except CsrfProtectError as error:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -118,7 +165,6 @@ async def upload_policy_version(
 ) -> PolicyVersionResponse:
     try:
         await csrf_protect.validate_csrf(request)
-
     except CsrfProtectError as error:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -150,13 +196,11 @@ async def upload_policy_version(
             content=content,
             effective_date=effective_date,
         )
-
     except PolicyDocumentNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
-
     except InvalidPolicyFileError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -178,7 +222,6 @@ async def list_policy_versions(
         versions = await PolicyVersionService(db).list_versions(
             document_id=document_id,
         )
-
     except PolicyDocumentNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -222,13 +265,11 @@ async def get_policy_version_file(
 
     try:
         content = await PolicyStorageService().download_pdf(version.file_path)
-
     except PolicyStorageNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Policy PDF not found",
         ) from error
-
     except PolicyStorageError as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -259,95 +300,6 @@ async def get_policy_version_file(
 
 
 @router.post(
-    "/{document_id}/versions/{version_id}/process",
-    response_model=PolicyVersionResponse,
-    dependencies=[Depends(validate_request_origin)],
-)
-async def process_policy_version(
-    document_id: uuid.UUID,
-    version_id: uuid.UUID,
-    request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    csrf_protect: Annotated[CsrfProtect, Depends()],
-) -> PolicyVersionResponse:
-    try:
-        await csrf_protect.validate_csrf(request)
-    except CsrfProtectError as error:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid or missing CSRF token",
-        ) from error
-
-    version = await db.scalar(
-        select(PolicyVersion).where(
-            PolicyVersion.id == version_id,
-            PolicyVersion.document_id == document_id,
-        )
-    )
-
-    if version is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Policy version not found",
-        )
-
-    if version.publication_status != "draft":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only draft policy versions can be processed",
-        )
-
-    if version.ingestion_status == "processing":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Policy version is already being processed",
-        )
-
-    if version.ingestion_status == "ready":
-        return PolicyVersionResponse.model_validate(version)
-
-    service = PolicyIngestionService(get_session_factory())
-
-    try:
-        await service.process_version(version_id)
-
-    except PolicyVersionNotFoundError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Policy version not found",
-        ) from error
-
-    except PolicyIngestionConflictError as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(error),
-        ) from error
-
-    except PolicyIngestionError as error:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to process policy document",
-        ) from error
-
-    db.expire_all()
-
-    processed_version = await db.scalar(
-        select(PolicyVersion).where(
-            PolicyVersion.id == version_id,
-            PolicyVersion.document_id == document_id,
-        )
-    )
-
-    if processed_version is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Policy version not found",
-        )
-
-    return PolicyVersionResponse.model_validate(processed_version)
-
-
-@router.post(
     "/{document_id}/versions/{version_id}/publish",
     response_model=PolicyVersionResponse,
     dependencies=[Depends(validate_request_origin)],
@@ -372,13 +324,11 @@ async def publish_policy_version(
             document_id=document_id,
             version_id=version_id,
         )
-
     except PolicyPublicationNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
-
     except PolicyPublicationConflictError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

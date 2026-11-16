@@ -12,11 +12,12 @@ from app.services.assistant_execution_result import (
     AssistantExecutionResult,
     AssistantTaskSuggestions,
 )
-from app.services.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant_orchestrator import AssistantOrchestrator, extract_policy_references
 from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.calendar.calendar_extraction import CalendarExtractionService
 from app.services.capability_classifier import CapabilityClassification
 from app.services.task_extraction import TaskExtractionService
+import re
 
 
 class OrchestratedAssistantService:
@@ -60,6 +61,8 @@ class OrchestratedAssistantService:
             config=self.orchestrator.config,
         )
 
+        referenced_ids = extract_policy_references(response.content)
+
         citations_by_reference = {
             citation.reference: citation
             for result in results
@@ -69,7 +72,7 @@ class OrchestratedAssistantService:
         policy_citations = tuple(
             citation
             for reference, citation in citations_by_reference.items()
-            if f"[{reference}]" in response.content
+            if reference in referenced_ids
         )
 
         return AssistantExecutionResult(

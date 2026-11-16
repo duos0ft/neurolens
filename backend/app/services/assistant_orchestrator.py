@@ -308,6 +308,18 @@ MAX_GENERATION_HISTORY = 6
 MAX_CLASSIFICATION_ATTEMPTS = 2
 
 
+def extract_policy_references(content: str) -> set[str]:
+    references: set[str] = set()
+
+    for group in re.findall(
+        r"\[((?:P\d+\s*,\s*)*P\d+)\]",
+        content,
+    ):
+        references.update(re.findall(r"P\d+", group))
+
+    return references
+
+
 class AssistantOrchestrator:
     def __init__(
         self,
@@ -401,7 +413,7 @@ class AssistantOrchestrator:
 
         response = await provider.generate(request)
 
-        cited_references = set(re.findall(r"\[(P\d+)\]", response.content))
+        cited_references = extract_policy_references(response.content)
 
         citations = tuple(
             citation for citation in prepared.citations if citation.reference in cited_references

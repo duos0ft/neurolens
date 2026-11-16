@@ -21,6 +21,7 @@ export interface ConversationMessage {
     task_suggestions: TaskSuggestions | null;
     calendar_suggestions: CalendarSuggestions | null;
     clarifications: ConversationClarifications | null;
+    policy_citations: PolicyCitation[] | null;
 }
 
 export interface ConversationDetail extends Conversation {
@@ -75,6 +76,16 @@ export interface ExtractedCalendarEvent {
 export interface CalendarSuggestions {
     source_message_id: string | null;
     events: ExtractedCalendarEvent[];
+}
+
+export interface PolicyCitation {
+    reference: string;
+    document_id: string;
+    version_id: string;
+    document_title: string;
+    version_number: number;
+    page_number: number | null;
+    chunk_id: string;
 }
 
 export function getConversations(): Promise<Conversation[]> {

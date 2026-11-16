@@ -14,6 +14,16 @@ PolicyCategory = Literal[
     "other",
 ]
 
+PolicyDirectoryStatus = Literal[
+    "no_document",
+    "pending",
+    "processing",
+    "ready",
+    "failed",
+    "published",
+    "archived",
+]
+
 
 class CreatePolicyDocumentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -111,3 +121,12 @@ class PublishedPolicyResponse(BaseModel):
 
 class PublishedPolicyListResponse(BaseModel):
     documents: list[PublishedPolicyResponse]
+
+
+class AdminPolicyDocumentResponse(PolicyDocumentResponse):
+    latest_version_number: int | None = None
+    status: PolicyDirectoryStatus = "no_document"
+
+
+class AdminPolicyDocumentListResponse(BaseModel):
+    documents: list[AdminPolicyDocumentResponse]
