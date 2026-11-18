@@ -8,6 +8,7 @@ class ResendSendEmailRequest(BaseModel):
     to: list[EmailStr] = Field(min_length=1)
     subject: str = Field(min_length=1)
     html: str = Field(min_length=1)
+    text: str = Field(min_length=1)
 
 
 class ResendSendEmailResponse(BaseModel):

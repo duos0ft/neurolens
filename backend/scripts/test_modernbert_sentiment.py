@@ -5,7 +5,6 @@ from app.ai.providers.modernbert_sentiment import (
     ModernBERTSentimentProvider,
 )
 
-
 MESSAGES = [
     "Thank you for helping me resolve this issue!",
     "Please review the report before Friday.",

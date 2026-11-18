@@ -2,21 +2,59 @@ import { type ChangeEvent, type KeyboardEvent, type SyntheticEvent, useEffect, u
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, MessageSquarePlus, MessagesSquare } from "lucide-react";
 import { useSearchParams } from "react-router";
-import { toast } from "sonner";
 
 import { Button } from "../../components/button";
+import { toast } from "../../components/toast";
 import { TaskSuggestions } from "../../components/task-suggestions/TaskSuggestions";
+import { CalendarSuggestions } from "../../components/calendar-suggestions/CalendarSuggestions";
+import { SuggestedClarifications } from "../../components/suggested-clarifications/SuggestedClarifications";
+import { PolicySources } from "../../components/policy-sources/PolicySources";
+import { SentimentAnalysis } from "../../components/sentiment-analysis/SentimentAnalysis";
 import {
     type Conversation,
     createConversation,
     getConversation,
+    getConversationFeatures,
     sendConversationMessage,
 } from "../../lib/conversations";
 import { ChatMessageContent } from "./ChatMessageContent";
 import { chatPageStyles as styles } from "./ChatPage.styles";
-import { CalendarSuggestions } from "../../components/calendar-suggestions/CalendarSuggestions";
-import { SuggestedClarifications } from "../../components/suggested-clarifications/SuggestedClarifications";
-import { PolicySources } from "../../components/policy-sources/PolicySources";
+import { ChatThinkingIndicator } from "./ChatThinkingIndicator";
+
+function isMessageExplanation(metadata: unknown): boolean {
+    if (
+        metadata === null
+        || typeof metadata !== "object"
+    ) {
+        return false;
+    }
+
+    const capabilities = (
+        metadata as Record<string, unknown>
+    ).capabilities;
+
+    if (!Array.isArray(capabilities)) {
+        return false;
+    }
+
+    return capabilities.some((capability: unknown) => {
+        if (capability === "message_explanation") {
+            return true;
+        }
+
+        if (
+            capability !== null
+            && typeof capability === "object"
+        ) {
+            return (
+                (capability as Record<string, unknown>).capability
+                === "message_explanation"
+            );
+        }
+
+        return false;
+    });
+}
 
 export function Component() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -32,6 +70,13 @@ export function Component() {
         queryKey: [ "conversation", selectedConversationId ],
         queryFn: () => getConversation(selectedConversationId!),
         enabled: selectedConversationId !== null,
+    });
+
+    const featuresQuery = useQuery({
+        queryKey: [ "conversation-features" ],
+        queryFn: getConversationFeatures,
+        enabled: selectedConversationId !== null,
+        staleTime: 5 * 60 * 1000,
     });
 
     const createMutation = useMutation({
@@ -96,7 +141,11 @@ export function Component() {
     const conversationTitle = conversationQuery.data?.title ?? "New conversation";
 
     const isBusy = createMutation.isPending || sendMutation.isPending;
-    const conversationReady = selectedConversationId !== null && conversationQuery.isSuccess;
+
+    const conversationReady = (
+        selectedConversationId !== null
+        && conversationQuery.isSuccess
+    );
 
     function handleNewConversation() {
         if (isBusy) {
@@ -200,12 +249,17 @@ export function Component() {
     return (
         <div className={styles.root}>
             <div className={styles.workspace}>
-                <section className={styles.chatArea} aria-label="Conversation">
+                <section
+                    className={styles.chatArea}
+                    aria-label="Conversation"
+                >
                     <header className={styles.chatHeader}>
                         <div className={styles.chatHeaderMain}>
                             <div className={styles.chatHeaderContent}>
                                 <h1 className={styles.chatTitle}>
-                                    {selectedConversationId ? conversationTitle : "Assistant"}
+                                    {selectedConversationId
+                                        ? conversationTitle
+                                        : "Assistant"}
                                 </h1>
 
                                 <span className={styles.chatSubtitle}>
@@ -224,7 +278,9 @@ export function Component() {
                                 onClick={handleNewConversation}
                             >
                                 <MessageSquarePlus className={styles.actionIcon}/>
-                                {createMutation.isPending ? "Creating..." : "New conversation"}
+                                {createMutation.isPending
+                                    ? "Creating..."
+                                    : "New conversation"}
                             </Button>
                         </div>
                     </header>
@@ -263,7 +319,10 @@ export function Component() {
                                 )}
 
                                 {conversationQuery.isError && (
-                                    <div className={styles.messageError} role="alert">
+                                    <div
+                                        className={styles.messageError}
+                                        role="alert"
+                                    >
                                         <p>Unable to load this conversation.</p>
 
                                         <Button
@@ -286,16 +345,32 @@ export function Component() {
                                     </div>
                                 )}
 
-                                {conversationQuery.data?.messages.map((item) => (
+                                {conversationQuery.data?.messages.map((item, index) => (
                                     item.role === "user" ? (
                                         <div
                                             key={item.id}
                                             className={styles.userMessageRow}
                                         >
-                                            <div className={styles.userMessage}>
-                                                <p className={styles.messageContent}>
-                                                    {item.content}
-                                                </p>
+                                            <div className={styles.userMessageGroup}>
+                                                <div className={styles.userMessage}>
+                                                    <p className={styles.messageContent}>
+                                                        {item.content}
+                                                    </p>
+                                                </div>
+
+                                                {selectedConversationId
+                                                    && featuresQuery.data?.enable_sentiment_analysis === true
+                                                    && isMessageExplanation(
+                                                        conversationQuery.data?.messages[index + 1]
+                                                            ?.capability_metadata,
+                                                    )
+                                                    && (
+                                                        <SentimentAnalysis
+                                                            conversationId={selectedConversationId}
+                                                            messageId={item.id}
+                                                            prediction={item.sentiment_analysis ?? null}
+                                                        />
+                                                    )}
                                             </div>
                                         </div>
                                     ) : (
@@ -304,7 +379,9 @@ export function Component() {
                                             className={styles.messageRow}
                                         >
                                             <div className={styles.assistantAvatar}>
-                                                <MessagesSquare className={styles.assistantAvatarIcon}/>
+                                                <MessagesSquare
+                                                    className={styles.assistantAvatarIcon}
+                                                />
                                             </div>
 
                                             <div className={styles.assistantMessage}>
@@ -312,37 +389,55 @@ export function Component() {
                                                     NeuroLens
                                                 </div>
 
-                                                <ChatMessageContent
-                                                    content={item.content}
-                                                    citations={item.policy_citations}
-                                                />
-
-                                                {item.policy_citations && item.policy_citations.length > 0 && (
-                                                    <PolicySources
+                                                <div className={styles.assistantContent}>
+                                                    <ChatMessageContent
+                                                        content={item.content}
                                                         citations={item.policy_citations}
                                                     />
-                                                )}
+                                                </div>
 
-                                                {item.clarifications
-                                                    && item.clarifications.questions.length > 0 && (
-                                                    <SuggestedClarifications
-                                                        key={item.id}
-                                                        clarifications={item.clarifications}
-                                                    />
-                                                )}
+                                                {(Boolean(item.policy_citations?.length)
+                                                    || Boolean(item.clarifications?.questions.length)
+                                                    || Boolean(item.task_suggestions)
+                                                    || Boolean(item.calendar_suggestions)) && (
+                                                    <div className={styles.assistantExtras}>
+                                                        {item.policy_citations
+                                                            && item.policy_citations.length > 0 && (
+                                                            <div className={styles.assistantExtraSection}>
+                                                                <PolicySources
+                                                                    citations={item.policy_citations}
+                                                                />
+                                                            </div>
+                                                        )}
 
-                                                {item.task_suggestions && (
-                                                    <TaskSuggestions
-                                                        messageId={item.id}
-                                                        suggestions={item.task_suggestions}
-                                                    />
-                                                )}
+                                                        {item.clarifications
+                                                            && item.clarifications.questions.length > 0 && (
+                                                            <div className={styles.assistantExtraSection}>
+                                                                <SuggestedClarifications
+                                                                    key={item.id}
+                                                                    clarifications={item.clarifications}
+                                                                />
+                                                            </div>
+                                                        )}
 
-                                                {item.calendar_suggestions && (
-                                                    <CalendarSuggestions
-                                                        messageId={item.id}
-                                                        suggestions={item.calendar_suggestions}
-                                                    />
+                                                        {item.task_suggestions && (
+                                                            <div className={styles.assistantExtraSection}>
+                                                                <TaskSuggestions
+                                                                    messageId={item.id}
+                                                                    suggestions={item.task_suggestions}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {item.calendar_suggestions && (
+                                                            <div className={styles.assistantExtraSection}>
+                                                                <CalendarSuggestions
+                                                                    messageId={item.id}
+                                                                    suggestions={item.calendar_suggestions}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -350,18 +445,7 @@ export function Component() {
                                 ))}
 
                                 {sendMutation.isPending && (
-                                    <div
-                                        className={styles.messageRow}
-                                        role="status"
-                                    >
-                                        <div className={styles.assistantAvatar}>
-                                            <MessagesSquare className={styles.assistantAvatarIcon}/>
-                                        </div>
-
-                                        <p className={styles.messageHint}>
-                                            NeuroLens is thinking...
-                                        </p>
-                                    </div>
+                                    <ChatThinkingIndicator/>
                                 )}
                             </div>
 
@@ -378,7 +462,10 @@ export function Component() {
                                         placeholder="Paste a message or ask a question..."
                                         className={styles.messageInput}
                                         maxLength={10000}
-                                        disabled={!conversationReady || sendMutation.isPending}
+                                        disabled={
+                                            !conversationReady
+                                            || sendMutation.isPending
+                                        }
                                         aria-label="Message NeuroLens"
                                         rows={1}
                                     />

@@ -1,44 +1,62 @@
 export const chatMessageContentStyles = {
     root: [
         "min-w-0 break-words",
-        "text-sm leading-7 text-slate-800",
+        "text-sm leading-7 text-fg",
         "[&>*:first-child]:mt-0",
         "[&>*:last-child]:mb-0",
     ].join(" "),
 
     heading: [
-        "mb-3 mt-6 text-base font-semibold",
-        "tracking-tight text-slate-950",
+        "mb-3 mt-7",
+        "text-base font-semibold leading-6",
+        "tracking-tight text-fg",
     ].join(" "),
 
     subheading: [
-        "mb-2 mt-5 text-sm font-semibold",
-        "text-slate-900",
+        "mb-3 mt-6",
+        "text-sm font-semibold leading-6",
+        "text-fg",
     ].join(" "),
 
-    paragraph: "mb-3 whitespace-pre-wrap",
+    paragraph: [
+        "mb-4 whitespace-pre-wrap",
+        "leading-7 text-fg-body",
+    ].join(" "),
 
-    unorderedList: "mb-4 list-disc space-y-1.5 pl-5",
+    unorderedList: [
+        "my-4 list-disc space-y-3 pl-6",
+        "text-fg-body",
+    ].join(" "),
 
-    orderedList: "mb-4 list-decimal space-y-1.5 pl-5",
+    orderedList: [
+        "my-4 list-decimal space-y-3 pl-6",
+        "text-fg-body",
+    ].join(" "),
 
-    listItem: "pl-1 leading-7",
+    listItem: [
+        "pl-1 leading-7",
+    ].join(" "),
 
     blockquote: [
-        "my-4 border-l-2 border-slate-300",
-        "pl-4 italic text-slate-600",
+        "my-5 border-l-2 border-border-strong",
+        "pl-4 italic text-fg-muted",
     ].join(" "),
 
-    strong: "font-semibold text-slate-950",
+    strong: [
+        "font-semibold text-fg",
+    ].join(" "),
 
     link: [
-        "font-medium text-slate-800 underline",
-        "underline-offset-4 hover:text-slate-950",
+        "font-medium text-fg underline",
+        "underline-offset-4",
+        "transition-colors hover:text-accent",
+        "focus-visible:outline-2",
+        "focus-visible:outline-border-strong",
     ].join(" "),
 
     code: [
-        "rounded-md bg-slate-100 px-1.5 py-0.5",
-        "font-mono text-xs text-slate-900",
+        "rounded-md bg-muted px-1.5 py-0.5",
+        "font-mono text-xs text-fg",
     ].join(" "),
 
     citationLink: [
@@ -46,7 +64,7 @@ export const chatMessageContentStyles = {
         "bg-accent-soft px-1.5 py-0.5",
         "text-xs font-semibold text-accent",
         "no-underline transition-colors",
-        "hover:underline",
+        "hover:bg-muted",
         "focus-visible:outline-2",
         "focus-visible:outline-border-strong",
     ].join(" "),

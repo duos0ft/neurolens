@@ -17,7 +17,6 @@ from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.calendar.calendar_extraction import CalendarExtractionService
 from app.services.capability_classifier import CapabilityClassification
 from app.services.task_extraction import TaskExtractionService
-import re
 
 
 class OrchestratedAssistantService:

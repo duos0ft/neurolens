@@ -1,7 +1,6 @@
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-
 MODEL_ID = "aieng-lab/ModernBERT-base_sentiment"
 
 examples = [

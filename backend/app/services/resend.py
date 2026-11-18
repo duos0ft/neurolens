@@ -35,6 +35,7 @@ class ResendService:
                     json=request.model_dump(
                         mode="json",
                         by_alias=True,
+                        exclude_none=True,
                     ),
                 )
 

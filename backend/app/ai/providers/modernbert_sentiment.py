@@ -10,10 +10,8 @@ from transformers import (
 
 from app.ai.capabilities.sentiment_analysis import (
     SentimentAnalysisError,
-    SentimentLabel,
     SentimentPrediction,
 )
-
 
 MODEL_ID = "aieng-lab/ModernBERT-base_sentiment"
 MAX_LENGTH = 128

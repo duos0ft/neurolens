@@ -8,8 +8,8 @@ Create Date: 2026-11-18 21:13:31.254231
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
@@ -37,4 +37,3 @@ def downgrade() -> None:
         "sentiment_analysis",
         schema="public",
     )
-

@@ -18,8 +18,8 @@ from app.ai.registry import (
 from app.api.assistant_dependencies import (
     get_ai_provider_registry,
     get_orchestrated_assistant,
-    get_task_extraction_service,
     get_sentiment_analysis_service,
+    get_task_extraction_service,
 )
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
@@ -40,6 +40,7 @@ from app.schemas.task_extraction import (
     ResolvedTaskExtractionResponse,
     TaskExtractionResponse,
 )
+from app.services.assistant_config_service import AssistantConfigService
 from app.services.assistant_orchestrator import (
     CapabilityClassificationError,
     CapabilityDisabledError,
@@ -193,6 +194,26 @@ async def list_conversations(
         )
         for conversation in conversations
     ]
+
+
+@router.get("/features")
+async def get_conversation_features(
+    employee: Annotated[
+        Employee,
+        Depends(get_current_employee),
+    ],
+    db: Annotated[
+        AsyncSession,
+        Depends(get_db),
+    ],
+) -> dict[str, bool]:
+    config = await AssistantConfigService(db).get_config(
+        employee_id=employee.user_id,
+    )
+
+    return {
+        "enable_sentiment_analysis": config.enable_sentiment_analysis,
+    }
 
 
 @router.get(
@@ -666,9 +687,7 @@ async def analyze_conversation_message_sentiment(
         return SentimentAnalysisResponse.model_validate(source_message.sentiment_analysis)
 
     try:
-        prediction = await sentiment_service.analyze(
-            source_message.content
-        )
+        prediction = await sentiment_service.analyze(source_message.content)
     except SentimentAnalysisError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -682,9 +701,7 @@ async def analyze_conversation_message_sentiment(
         analyzed_at=datetime.now(timezone.utc),
     )
 
-    source_message.sentiment_analysis = result.model_dump(
-        mode="json"
-    )
+    source_message.sentiment_analysis = result.model_dump(mode="json")
 
     await db.commit()
 

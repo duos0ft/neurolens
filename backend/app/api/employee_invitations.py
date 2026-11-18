@@ -33,7 +33,7 @@ from app.services.employee_invitation import (
     EmployeeAlreadyExistsError,
     EmployeeInvitationService,
 )
-from app.services.invitation_provisioning import (
+from app.services.invitation.invitation_provisioning import (
     InvitationProvisioningCoordinator,
 )
 from app.services.resend import ResendService

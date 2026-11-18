@@ -73,15 +73,15 @@ export const chatPageStyles = {
     ].join(" "),
 
     messages: [
-        "flex min-h-0 flex-1 flex-col gap-7",
+        "flex min-h-0 flex-1 flex-col gap-10",
         "overflow-y-auto overscroll-contain",
-        "bg-subtle px-4 py-6",
-        "sm:px-8 sm:py-8",
+        "bg-subtle px-4 py-7",
+        "sm:px-8 sm:py-10",
     ].join(" "),
 
     messageRow: [
         "mx-auto flex w-full max-w-content",
-        "items-start gap-3",
+        "items-start gap-3 sm:gap-4",
     ].join(" "),
 
     userMessageRow: [
@@ -98,20 +98,19 @@ export const chatPageStyles = {
     assistantAvatarIcon: "size-4",
 
     userMessage: [
-        "w-fit max-w-[90%]",
+        "w-fit max-w-full",
         "rounded-bubble bg-primary",
         "px-4 py-3",
         "text-sm leading-relaxed text-on-primary",
-        "sm:max-w-[78%]",
     ].join(" "),
 
     assistantMessage: [
-        "min-w-0 flex-1",
-        "text-sm leading-relaxed text-fg",
+        "flex min-w-0 flex-1 flex-col",
+        "text-sm leading-7 text-fg",
     ].join(" "),
 
     assistantMeta: [
-        "mb-3 flex items-center gap-2",
+        "mb-4 flex items-center gap-2",
         "text-eyebrow font-medium uppercase",
         "tracking-eyebrow text-fg-muted",
     ].join(" "),
@@ -171,4 +170,23 @@ export const chatPageStyles = {
         "mx-auto mt-2 max-w-content",
         "text-center text-caption text-fg-muted",
     ].join(" "),
+
+    userMessageGroup: [
+        "flex w-fit max-w-[90%] flex-col items-end gap-2",
+        "sm:max-w-[78%]",
+    ].join(" "),
+
+    assistantContent: [
+        "min-w-0 max-w-3xl",
+    ].join(" "),
+
+    assistantExtras: [
+        "mt-7 flex min-w-0 max-w-3xl",
+        "flex-col gap-7",
+    ].join(" "),
+
+    assistantExtraSection: [
+        "min-w-0",
+    ].join(" "),
+
 };

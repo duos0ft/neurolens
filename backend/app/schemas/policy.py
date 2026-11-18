@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -62,9 +62,6 @@ class PolicyDocumentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-
-from datetime import date
-from typing import Literal
 
 PolicyIngestionStatus = Literal[
     "pending",

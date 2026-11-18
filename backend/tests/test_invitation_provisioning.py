@@ -19,7 +19,7 @@ from app.schemas.auth0_errors import (
 from app.schemas.invitation_provisioning import ProvisioningStatus
 from app.services.auth0_error_classifier import Auth0OperationError
 from app.services.employee_invitation import EmployeeInvitationService
-from app.services.invitation_provisioning import (
+from app.services.invitation.invitation_provisioning import (
     InvitationProvisioningCoordinator,
 )
 

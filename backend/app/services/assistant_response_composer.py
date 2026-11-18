@@ -4,6 +4,7 @@ from app.ai.capabilities.types import AICapability
 from app.services.assistant_config import AssistantConfig
 from app.services.assistant_orchestrator import CapabilityResult
 
+
 CAPABILITY_HEADINGS = {
     AICapability.GENERAL_CONVERSATION: "Response",
     AICapability.MESSAGE_EXPLANATION: "What this means",
@@ -22,14 +23,26 @@ class AssistantResponseComposer:
             explanation.explanation,
         ]
 
-        if config.highlight_ambiguity and explanation.ambiguities:
+        has_suggested_clarifications = config.highlight_ambiguity and bool(
+            explanation.clarification_questions
+        )
+
+        if (
+            config.highlight_ambiguity
+            and explanation.ambiguities
+            and not has_suggested_clarifications
+        ):
             ambiguities = "\n".join(f"- {item}" for item in explanation.ambiguities)
 
             sections.append(f"**What needs clarification**\n\n{ambiguities}")
 
         if config.step_by_step_guidance and explanation.steps:
             steps = "\n".join(
-                f"{index}. {step}" for index, step in enumerate(explanation.steps, start=1)
+                f"{index}. {step}"
+                for index, step in enumerate(
+                    explanation.steps,
+                    start=1,
+                )
             )
 
             sections.append(f"**How to approach it**\n\n{steps}")
@@ -81,7 +94,7 @@ class AssistantResponseComposer:
             )
 
         if len(results) == 1 and len(sections) == 1:
-            capability, content = sections[0]
+            _, content = sections[0]
 
             return TextGenerationResponse(
                 content=content,

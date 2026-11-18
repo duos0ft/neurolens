@@ -51,7 +51,6 @@ from app.services.policy_versions import (
     PolicyVersionService,
 )
 
-
 router = APIRouter(
     prefix="/admin/policies",
     tags=["Company Policies"],

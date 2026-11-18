@@ -1,20 +1,31 @@
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.models import ApplicationSettings
 from app.models.email_outbox import EmailOutbox
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.services.email_outbox import EmailOutboxService
-from app.services.invitation_crypto import InvitationCryptoService
-from app.services.invitation_email import InvitationEmailService
+from app.services.invitation.invitation_crypto import InvitationCryptoService
+from app.services.invitation.invitation_email import InvitationEmailService
 from app.services.resend import ResendAPIError, ResendService
 
 
 class EmailDeliveryNotReadyError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class InvitationDeliveryDetails:
+    recipient: str
+    encrypted_token: str
+    invitation_id: uuid.UUID
+    expires_at: datetime
+    organization_name: str
 
 
 class EmailDeliveryCoordinator:
@@ -33,13 +44,21 @@ class EmailDeliveryCoordinator:
         self,
         outbox_id: uuid.UUID,
         attempt_id: uuid.UUID,
-    ) -> tuple[str, str, uuid.UUID]:
+    ) -> InvitationDeliveryDetails:
         async with self.session_factory() as session:
+            organization_name_query = (
+                select(ApplicationSettings.organization_name)
+                .where(ApplicationSettings.id == 1)
+                .scalar_subquery()
+            )
+
             result = await session.execute(
                 select(
                     Employee.email,
                     EmailOutbox.encrypted_token,
                     EmployeeInvitation.id,
+                    EmployeeInvitation.expires_at,
+                    organization_name_query.label("organization_name"),
                 )
                 .join(
                     EmployeeInvitation,
@@ -63,12 +82,29 @@ class EmailDeliveryCoordinator:
             if row is None:
                 raise EmailDeliveryNotReadyError("Email delivery is not ready")
 
-            recipient, encrypted_token, invitation_id = row
+            (
+                recipient,
+                encrypted_token,
+                invitation_id,
+                expires_at,
+                organization_name,
+            ) = row
 
-            if recipient is None or encrypted_token is None:
+            if (
+                recipient is None
+                or encrypted_token is None
+                or expires_at is None
+                or not organization_name
+            ):
                 raise ValueError("Email delivery data is incomplete")
 
-            return recipient, encrypted_token, invitation_id
+            return InvitationDeliveryDetails(
+                recipient=recipient,
+                encrypted_token=encrypted_token,
+                invitation_id=invitation_id,
+                expires_at=expires_at,
+                organization_name=organization_name,
+            )
 
     async def deliver_invitation(
         self,
@@ -85,19 +121,21 @@ class EmailDeliveryCoordinator:
             raise RuntimeError("Claimed delivery has no attempt ID")
 
         try:
-            recipient, encrypted_token, invitation_id = await self.get_delivery_details(
+            details = await self.get_delivery_details(
                 outbox_id=outbox_id,
                 attempt_id=attempt_id,
             )
 
             token = self.crypto.decrypt(
-                encrypted_token=encrypted_token,
-                invitation_id=str(invitation_id),
+                encrypted_token=details.encrypted_token,
+                invitation_id=str(details.invitation_id),
             )
 
             email_request = InvitationEmailService.build_email(
-                recipient=recipient,
+                recipient=details.recipient,
                 token=token,
+                organization_name=details.organization_name,
+                expires_at=details.expires_at,
             )
 
         except EmailDeliveryNotReadyError:

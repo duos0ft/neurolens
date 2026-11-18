@@ -28,7 +28,6 @@ from app.services.task_source_resolver import (
     TaskSourceResolver,
 )
 
-
 logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 20
@@ -609,9 +608,9 @@ class ConversationService:
         return conversation
 
     async def delete(
-            self,
-            employee_id: uuid.UUID,
-            conversation_id: uuid.UUID,
+        self,
+        employee_id: uuid.UUID,
+        conversation_id: uuid.UUID,
     ) -> bool:
         conversation = await self.get(
             employee_id=employee_id,

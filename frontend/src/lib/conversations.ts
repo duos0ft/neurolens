@@ -12,6 +12,11 @@ export interface ConversationClarifications {
     questions: string[];
 }
 
+export interface ConversationCapabilityMetadata {
+    capabilities: string[];
+    sources?: unknown[];
+}
+
 export interface ConversationMessage {
     id: string;
     role: "user" | "assistant";
@@ -22,6 +27,8 @@ export interface ConversationMessage {
     calendar_suggestions: CalendarSuggestions | null;
     clarifications: ConversationClarifications | null;
     policy_citations: PolicyCitation[] | null;
+    sentiment_analysis: SentimentAnalysisResponse | null;
+    capability_metadata: ConversationCapabilityMetadata | null;
 }
 
 export interface ConversationDetail extends Conversation {
@@ -30,6 +37,10 @@ export interface ConversationDetail extends Conversation {
 
 export interface ExtractedSubtask {
     title: string;
+}
+
+export interface ConversationFeatures {
+    enable_sentiment_analysis: boolean;
 }
 
 export interface ExtractedTask {
@@ -86,6 +97,18 @@ export interface PolicyCitation {
     version_number: number;
     page_number: number | null;
     chunk_id: string;
+}
+
+export type SentimentLabel =
+    | "negative"
+    | "neutral"
+    | "positive";
+
+export interface SentimentAnalysisResponse {
+    label: SentimentLabel;
+    confidence: number;
+    model: string;
+    analyzed_at: string;
 }
 
 export function getConversations(): Promise<Conversation[]> {
@@ -149,5 +172,23 @@ export function renameConversation(
                 title,
             },
         },
+    );
+}
+
+export function analyzeMessageSentiment(
+    conversationId: string,
+    messageId: string,
+): Promise<SentimentAnalysisResponse> {
+    return apiFetch<SentimentAnalysisResponse>(
+        `/api/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/analyze-sentiment`,
+        {
+            method: "POST",
+        },
+    );
+}
+
+export function getConversationFeatures(): Promise<ConversationFeatures> {
+    return apiFetch<ConversationFeatures>(
+        "/api/conversations/features",
     );
 }

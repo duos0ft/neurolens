@@ -108,4 +108,3 @@ class ConversationMessage(Base):
         JSONB,
         nullable=True,
     )
-

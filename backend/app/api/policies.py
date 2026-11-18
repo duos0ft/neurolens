@@ -4,12 +4,10 @@ from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_employee_read_only, get_current_employee
-from app.core.csrf import validate_request_origin
+from app.core.auth import get_current_employee, get_current_employee_read_only
 from app.core.database import get_db
 from app.models import PolicyVersion
 from app.models.employee import Employee

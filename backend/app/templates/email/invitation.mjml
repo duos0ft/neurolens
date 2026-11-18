@@ -1,0 +1,198 @@
+
+<mjml>
+  <mj-head>
+    <mj-title>Join {{ organization_name }} on NeuroLens</mj-title>
+
+    <mj-preview>
+      You've been invited to join {{ organization_name }} on NeuroLens.
+    </mj-preview>
+
+    <mj-attributes>
+      <mj-all
+        font-family="Arial, Helvetica, sans-serif"
+      />
+
+      <mj-text
+        padding="0"
+        color="#3f3f46"
+        font-size="15px"
+        line-height="24px"
+      />
+    </mj-attributes>
+
+    <mj-style inline="inline">
+      .orb {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        vertical-align: middle;
+        background-color: #2563eb;
+        background-image: radial-gradient(
+          circle at 32% 28%,
+          #ffffff 0%,
+          #bfe0ff 14%,
+          #6fb4ff 36%,
+          #2c7bff 62%,
+          #0a5cff 80%,
+          #0626b8 100%
+        );
+      }
+
+      .brand-name {
+        display: inline-block;
+        margin-left: 8px;
+        vertical-align: middle;
+        color: #18181b;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 24px;
+      }
+
+      .fallback-link {
+        color: #2563eb !important;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+        word-break: break-all;
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body
+    width="600px"
+    background-color="#fafafa"
+  >
+
+    <!-- Outer spacing -->
+    <mj-section padding="24px 24px 0">
+      <mj-column>
+        <mj-spacer height="1px" />
+      </mj-column>
+    </mj-section>
+
+    <!-- Invitation card -->
+    <mj-section
+      background-color="#ffffff"
+      border="1px solid #e4e4e7"
+      border-radius="16px"
+      padding="36px 44px 36px"
+    >
+      <mj-column>
+
+        <!-- Brand -->
+        <mj-text
+          padding="0 0 34px"
+          line-height="24px"
+        >
+          <span class="orb">&nbsp;</span>
+          <span class="brand-name">NeuroLens</span>
+        </mj-text>
+
+        <!-- Title -->
+        <mj-text
+          padding="0 0 14px"
+          font-size="22px"
+          font-weight="700"
+          line-height="29px"
+          letter-spacing="-0.4px"
+          color="#18181b"
+        >
+          Join {{ organization_name }} on NeuroLens
+        </mj-text>
+
+        <!-- Description -->
+        <mj-text
+          padding="0 0 28px"
+          color="#3f3f46"
+          font-size="15px"
+          line-height="24px"
+        >
+          You've been invited to join the
+          {{ organization_name }} workspace.
+          NeuroLens helps you understand messages,
+          keep track of tasks and find answers
+          in company policy.
+        </mj-text>
+
+        <!-- Action -->
+        <mj-button
+          href="{{ invite_url }}"
+          align="left"
+          background-color="#18181b"
+          color="#ffffff"
+          font-size="14px"
+          font-weight="700"
+          line-height="20px"
+          border-radius="10px"
+          inner-padding="12px 22px"
+          padding="0 0 32px"
+        >
+          Accept invitation
+        </mj-button>
+
+        <!-- Divider -->
+        <mj-divider
+          padding="0 0 20px"
+          border-color="#e4e4e7"
+          border-width="1px"
+        />
+
+        <!-- Expiration information -->
+        <mj-text
+          padding="0 0 4px"
+          color="#71717a"
+          font-size="12px"
+          line-height="20px"
+        >
+          This invitation expires on {{ expiry_date }}.
+          If the button doesn't work, paste
+          this link into your browser:
+        </mj-text>
+
+        <!-- Fallback invitation link -->
+        <mj-text
+          padding="0"
+          font-size="12px"
+          line-height="20px"
+        >
+          <a
+            href="{{ invite_url }}"
+            class="fallback-link"
+          >{{ invite_url }}</a>
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding="20px 30px 24px">
+      <mj-column>
+
+        <mj-text
+          padding="0"
+          font-size="12px"
+          line-height="18px"
+          color="#71717a"
+        >
+          You received this because
+          {{ recipient_email }} was invited to
+          {{ organization_name }}.
+
+          If you weren't expecting it,
+          you can ignore this email.
+        </mj-text>
+
+        <mj-text
+          padding="4px 0 0"
+          font-size="12px"
+          line-height="18px"
+          color="#71717a"
+        >
+          NeuroLens
+        </mj-text>
+
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

@@ -85,6 +85,7 @@ class ConversationMessageResponse(BaseModel):
     clarifications: ConversationClarificationsResponse | None = None
     policy_citations: list[PolicyCitationResponse] | None = None
     sentiment_analysis: SentimentAnalysisResponse | None = None
+    capability_metadata: dict | None = None
 
 
 class ConversationDetailResponse(ConversationResponse):

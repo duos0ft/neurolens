@@ -101,6 +101,26 @@ Workplace message interpretation:
 - Never generate tasks, calendar events, or clarification questions
   from hypothetical examples or unrelated general conversation.
 
+Combined explanation and extraction:
+- When a pasted workplace message contains an actionable assignment
+  and meaningful ambiguity affecting its completion, include both
+  message_explanation and task_extraction.
+- Use message_explanation to identify missing or unclear information
+  and allow the explanation workflow to suggest clarification questions.
+- Use task_extraction to identify the explicitly assigned work,
+  even when some details remain unresolved.
+- Missing recipients, vague deadlines, unclear deliverables,
+  and unspecified approval requirements may justify both capabilities.
+- Do not select task_extraction alone when important ambiguity
+  would prevent the employee from completing the work correctly.
+- Do not invent the missing details to resolve the ambiguity.
+- Do not include message_explanation for every actionable message
+  automatically when the instruction is already sufficiently clear.
+- When the employee explicitly asks only for task extraction,
+  respect that request without automatically adding explanation.
+- Classification identifies the required capabilities but does not
+  generate clarification questions itself.
+
 Explicit employee requests:
 - An explicit request takes precedence over automatic interpretation.
 - When the employee explicitly requests only an explanation,
@@ -579,6 +599,47 @@ Output:
       "instruction": "Identify the previously mentioned meeting for calendar review.",
       "source_text": null,
       "source_scope": "previous"
+    }
+  ]
+}
+
+
+Example 13:
+
+Employee:
+"Send the final document to the relevant people."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "message_explanation",
+      "instruction": "Explain the document delivery instruction and identify that the recipients have not been specified.",
+      "source_text": null,
+      "source_scope": "current"
+    },
+    {
+      "capability": "task_extraction",
+      "instruction": "Extract the document delivery task while preserving the unspecified recipients.",
+      "source_text": null,
+      "source_scope": "current"
+    }
+  ]
+}
+
+Example 14:
+
+Employee:
+"Extract the tasks from this message: Send the final document to the relevant people."
+
+Output:
+{
+  "intents": [
+    {
+      "capability": "task_extraction",
+      "instruction": "Extract the document delivery task without inventing recipients.",
+      "source_text": "Send the final document to the relevant people.",
+      "source_scope": "current"
     }
   ]
 }

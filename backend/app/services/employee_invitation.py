@@ -11,7 +11,7 @@ from app.models.email_outbox import EmailOutbox
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.schemas.employee import EmployeeRole
-from app.services.invitation_crypto import InvitationCryptoService
+from app.services.invitation.invitation_crypto import InvitationCryptoService
 from app.services.oauth import hash_token
 
 

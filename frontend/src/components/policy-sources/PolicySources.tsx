@@ -15,6 +15,34 @@ export function PolicySources({
         return null;
     }
 
+    const groupedCitations = Object.values(
+        citations.reduce<
+            Record<string, {
+                citation: PolicyCitation;
+                references: string[];
+            }>
+        >((groups, citation) => {
+            const key = [
+                citation.document_id,
+                citation.version_id,
+                citation.page_number ?? "unknown",
+            ].join(":");
+
+            if (!groups[key]) {
+                groups[key] = {
+                    citation,
+                    references: [],
+                };
+            }
+
+            if (!groups[key].references.includes(citation.reference)) {
+                groups[key].references.push(citation.reference);
+            }
+
+            return groups;
+        }, {}),
+    );
+
     return (
         <section
             className={styles.root}
@@ -25,9 +53,9 @@ export function PolicySources({
             </h3>
 
             <div className={styles.list}>
-                {citations.map((citation) => (
+                {groupedCitations.map(({ citation, references }) => (
                     <a
-                        key={`${citation.reference}-${citation.chunk_id}`}
+                        key={`${citation.version_id}-${citation.page_number ?? "unknown"}`}
                         href={getCitedPolicyFileUrl(
                             citation.document_id,
                             citation.version_id,
@@ -47,8 +75,7 @@ export function PolicySources({
                             </span>
 
                             <span className={styles.metadata}>
-                                [{citation.reference}]
-                                {" · "}
+                                [{references.join(", ")}]
                                 Version {citation.version_number}
                                 {citation.page_number !== null && (
                                     <> · Page {citation.page_number}</>
