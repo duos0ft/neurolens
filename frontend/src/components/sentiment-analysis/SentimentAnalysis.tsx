@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Info, ScanHeart } from "lucide-react";
+import { ScanHeart } from "lucide-react";
 
 import { Badge, type BadgeVariant } from "../badge/Badge";
 import { Button } from "../button";
@@ -103,23 +103,12 @@ export function SentimentAnalysis({
             aria-label="Sentiment analysis"
         >
             <div className={styles.header}>
-                <div className={styles.identity}>
-                    <div className={styles.iconContainer}>
-                        <ScanHeart
-                            className={styles.icon}
-                            aria-hidden="true"
-                        />
-                    </div>
-
-                    <div className={styles.titleGroup}>
-                        <span className={styles.heading}>
-                            Language sentiment
-                        </span>
-
-                        <span className={styles.subtitle}>
-                            ModernBERT analysis
-                        </span>
-                    </div>
+                <div className={styles.title}>
+                    <ScanHeart
+                        className={styles.icon}
+                        aria-hidden="true"
+                    />
+                    <span>Language sentiment</span>
                 </div>
 
                 <Badge variant={presentation.variant}>
@@ -127,27 +116,21 @@ export function SentimentAnalysis({
                 </Badge>
             </div>
 
-            <div className={styles.divider}/>
-
-            <div className={styles.confidence}>
-                <span>Model confidence</span>
+            <div className={styles.details}>
+                <span className={styles.detailLabel}>
+                    Model confidence
+                </span>
 
                 <span className={styles.confidenceValue}>
                     {Math.round(result.confidence * 100)}%
                 </span>
             </div>
 
-            <div className={styles.disclaimer}>
-                <Info
-                    className={styles.infoIcon}
-                    aria-hidden="true"
-                />
-
-                <p>
-                    This reflects patterns in the message's language,
-                    not the sender's actual emotions or intentions.
-                </p>
-            </div>
+            <p className={styles.disclaimer}>
+                This prediction reflects language patterns, not the
+                sender's actual emotions or intentions.
+            </p>
         </section>
     );
+
 }
