@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ScanHeart } from "lucide-react";
+import { Info, ScanHeart } from "lucide-react";
 
 import { Badge, type BadgeVariant } from "../badge/Badge";
 import { Button } from "../button";
@@ -103,14 +103,31 @@ export function SentimentAnalysis({
             aria-label="Sentiment analysis"
         >
             <div className={styles.header}>
-                <span className={styles.heading}>
-                    Language sentiment
-                </span>
+                <div className={styles.identity}>
+                    <div className={styles.iconContainer}>
+                        <ScanHeart
+                            className={styles.icon}
+                            aria-hidden="true"
+                        />
+                    </div>
+
+                    <div className={styles.titleGroup}>
+                        <span className={styles.heading}>
+                            Language sentiment
+                        </span>
+
+                        <span className={styles.subtitle}>
+                            ModernBERT analysis
+                        </span>
+                    </div>
+                </div>
 
                 <Badge variant={presentation.variant}>
                     {presentation.label}
                 </Badge>
             </div>
+
+            <div className={styles.divider}/>
 
             <div className={styles.confidence}>
                 <span>Model confidence</span>
@@ -120,10 +137,17 @@ export function SentimentAnalysis({
                 </span>
             </div>
 
-            <p className={styles.disclaimer}>
-                This prediction describes language patterns,
-                not the sender's actual emotions or intentions.
-            </p>
+            <div className={styles.disclaimer}>
+                <Info
+                    className={styles.infoIcon}
+                    aria-hidden="true"
+                />
+
+                <p>
+                    This reflects patterns in the message's language,
+                    not the sender's actual emotions or intentions.
+                </p>
+            </div>
         </section>
     );
 }
