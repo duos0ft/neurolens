@@ -11,11 +11,11 @@ from app.core.csrf import validate_request_origin
 from app.core.database import get_db
 from app.models.employee import Employee
 from app.models.employee_profile import EmployeeProfile
-from app.schemas.preferences import (
+from app.schemas.preferences.preferences import (
     EmployeePreferencesResponse,
     UpdateEmployeePreferencesRequest,
 )
-from app.services.timezone import TimezoneService
+from app.services.timezone.timezone import TimezoneService
 
 router = APIRouter(
     prefix="/preferences",

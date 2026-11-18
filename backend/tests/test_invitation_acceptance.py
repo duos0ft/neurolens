@@ -12,7 +12,7 @@ from app.models.auth_flow import AuthFlow
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_session import EmployeeSession
-from app.services.oauth import generate_token, hash_token
+from app.services.authentication.oauth import generate_token, hash_token
 
 
 @pytest.mark.asyncio

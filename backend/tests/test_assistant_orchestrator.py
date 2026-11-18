@@ -9,8 +9,8 @@ from app.ai.capabilities.text_generation import (
 )
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
-from app.services.assistant_config import AssistantConfig
-from app.services.assistant_orchestrator import (
+from app.services.assistant.assistant_config import AssistantConfig
+from app.services.assistant.assistant_orchestrator import (
     AssistantOrchestrator,
     CapabilityClassificationError,
 )

@@ -10,7 +10,7 @@ from app.core.database import async_session_factory, get_db
 from app.core.settings import settings
 from app.models.employee import Employee
 from app.models.employee_session import EmployeeSession
-from app.services.oauth import hash_token
+from app.services.authentication.oauth import hash_token
 
 SESSION_IDLE_TIMEOUT = timedelta(hours=12)
 SESSION_ACTIVITY_INTERVAL = timedelta(minutes=5)

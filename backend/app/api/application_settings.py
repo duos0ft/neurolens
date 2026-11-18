@@ -9,7 +9,7 @@ from app.core.csrf import validate_request_origin
 from app.core.database import get_db
 from app.core.permissions import require_admin
 from app.models.application_settings import ApplicationSettings
-from app.schemas.application_settings import (
+from app.schemas.applicationsettings.application_settings import (
     ApplicationSettingsResponse,
     UpdateApplicationSettingsRequest,
 )

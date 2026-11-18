@@ -13,8 +13,8 @@ from app.core.database import get_db
 from app.models.employee import Employee
 from app.models.subtask import Subtask
 from app.models.task import Task
-from app.schemas.pagination import PageResponse
-from app.schemas.task import (
+from app.schemas.pagination.pagination import PageResponse
+from app.schemas.task.task import (
     CreateTaskRequest,
     SaveReviewedTasksRequest,
     SaveTaskSuggestionsRequest,
@@ -25,7 +25,7 @@ from app.schemas.task import (
     UpdateTaskRequest,
     UpdateTaskStatusRequest,
 )
-from app.services.task import (
+from app.services.task.task import (
     InvalidSubtaskError,
     InvalidTaskSelectionError,
     SubtaskNotFoundError,
@@ -33,7 +33,7 @@ from app.services.task import (
     TaskService,
     TaskSuggestionNotFoundError,
 )
-from app.services.timezone import TimezoneService
+from app.services.timezone.timezone import TimezoneService
 
 router = APIRouter(
     prefix="/tasks",

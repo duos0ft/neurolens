@@ -6,19 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
-from app.schemas.auth0 import (
+from app.schemas.authentication.auth0 import (
     Auth0AppMetadata,
     Auth0Identity,
     Auth0User,
 )
-from app.schemas.auth0_errors import (
+from app.schemas.authentication.auth0_errors import (
     Auth0ErrorCategory,
     Auth0ErrorResult,
     Auth0Operation,
 )
-from app.schemas.invitation_provisioning import ProvisioningStatus
-from app.services.auth0_error_classifier import Auth0OperationError
-from app.services.employee_invitation import EmployeeInvitationService
+from app.schemas.invitation.invitation_provisioning import ProvisioningStatus
+from app.services.authentication.auth0_error_classifier import Auth0OperationError
+from app.services.invitation.employee_invitation import EmployeeInvitationService
 from app.services.invitation.invitation_provisioning import (
     InvitationProvisioningCoordinator,
 )

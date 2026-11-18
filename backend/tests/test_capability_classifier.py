@@ -8,7 +8,7 @@ from app.ai.capabilities.text_generation import (
     TextGenerationResponse,
 )
 from app.ai.capabilities.types import AICapability
-from app.services.capability_classifier import CapabilityClassifier
+from app.services.capability.capability_classifier import CapabilityClassifier
 from tests.test_assistant_orchestrator import MockProvider
 
 

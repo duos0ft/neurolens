@@ -2,7 +2,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from app.core.settings import settings
-from app.schemas.resend import ResendSendEmailRequest
+from app.schemas.email.resend import ResendSendEmailRequest
 from app.services.email.template_renderer import EmailTemplateRenderer
 
 

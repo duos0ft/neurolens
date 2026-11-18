@@ -26,7 +26,7 @@ from app.core.csrf import validate_request_origin
 from app.core.database import get_db, get_session_factory
 from app.models import ApplicationSettings, Conversation, ConversationMessage
 from app.models.employee import Employee
-from app.schemas.conversation import (
+from app.schemas.conversation.conversation import (
     ConversationDetailResponse,
     ConversationMessageResponse,
     ConversationResponse,
@@ -34,35 +34,35 @@ from app.schemas.conversation import (
     SendConversationMessageRequest,
     UpdateConversationRequest,
 )
-from app.schemas.sentiment import SentimentAnalysisResponse
-from app.schemas.task_extraction import (
+from app.schemas.sentimentanalysis.sentiment import SentimentAnalysisResponse
+from app.schemas.task.task_extraction import (
     ConversationTaskExtractionRequest,
     ResolvedTaskExtractionResponse,
     TaskExtractionResponse,
 )
-from app.services.assistant_config_service import AssistantConfigService
-from app.services.assistant_orchestrator import (
+from app.services.assistant.assistant_config_service import AssistantConfigService
+from app.services.assistant.assistant_orchestrator import (
     CapabilityClassificationError,
     CapabilityDisabledError,
 )
+from app.services.assistant.orchestrated_assistant import OrchestratedAssistantService
 from app.services.calendar.calendar_extraction import (
     CalendarExtractionError,
 )
-from app.services.conversation import (
+from app.services.conversation.conversation import (
     ConversationService,
     TaskSourceAmbiguityError,
 )
-from app.services.orchestrated_assistant import OrchestratedAssistantService
-from app.services.sentiment_analysis import SentimentAnalysisService
-from app.services.task_extraction import (
+from app.services.sentimentanalysis.sentiment_analysis import SentimentAnalysisService
+from app.services.task.task_extraction import (
     TaskExtractionError,
     TaskExtractionService,
 )
-from app.services.task_source_resolver import (
+from app.services.task.task_source_resolver import (
     TaskSourceResolutionError,
     TaskSourceResolver,
 )
-from app.services.timezone import TimezoneService
+from app.services.timezone.timezone import TimezoneService
 
 router = APIRouter(
     prefix="/conversations",

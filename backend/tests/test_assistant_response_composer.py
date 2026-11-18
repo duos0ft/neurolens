@@ -1,7 +1,7 @@
 from app.ai.capabilities.text_generation import TextGenerationResponse
 from app.ai.capabilities.types import AICapability
-from app.services.assistant_orchestrator import CapabilityResult
-from app.services.assistant_response_composer import AssistantResponseComposer
+from app.services.assistant.assistant_orchestrator import CapabilityResult
+from app.services.assistant.assistant_response_composer import AssistantResponseComposer
 
 
 def test_composes_multiple_capabilities() -> None:

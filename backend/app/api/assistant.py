@@ -14,12 +14,12 @@ from app.api.assistant_dependencies import get_orchestrated_assistant
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
 from app.models.employee import Employee
-from app.schemas.assistant import (
+from app.schemas.assistant.assistant import (
     AssistantMessageRequest,
     AssistantMessageResponse,
 )
-from app.services.assistant import AssistantService
-from app.services.orchestrated_assistant import OrchestratedAssistantService
+from app.services.assistant.assistant import AssistantService
+from app.services.assistant.orchestrated_assistant import OrchestratedAssistantService
 
 router = APIRouter(
     prefix="/assistant",

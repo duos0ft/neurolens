@@ -4,7 +4,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.database import async_session_factory, engine
-from app.services.policy_ingestion import PolicyIngestionService
+from app.services.policy.policy_ingestion import PolicyIngestionService
 
 logger = logging.getLogger(__name__)
 

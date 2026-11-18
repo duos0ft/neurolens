@@ -25,7 +25,7 @@ from app.core.database import get_db
 from app.core.permissions import require_admin
 from app.models.employee import Employee
 from app.models.policy_version import PolicyVersion
-from app.schemas.policy import (
+from app.schemas.policy.policy import (
     AdminPolicyDocumentListResponse,
     AdminPolicyDocumentResponse,
     CreatePolicyDocumentRequest,
@@ -33,18 +33,18 @@ from app.schemas.policy import (
     PolicyVersionListResponse,
     PolicyVersionResponse,
 )
-from app.services.policy_documents import PolicyDocumentService
-from app.services.policy_publication import (
+from app.services.policy.policy_documents import PolicyDocumentService
+from app.services.policy.policy_publication import (
     PolicyPublicationConflictError,
     PolicyPublicationNotFoundError,
     PolicyPublicationService,
 )
-from app.services.policy_storage import (
+from app.services.policy.policy_storage import (
     PolicyStorageError,
     PolicyStorageNotFoundError,
     PolicyStorageService,
 )
-from app.services.policy_versions import (
+from app.services.policy.policy_versions import (
     MAX_POLICY_FILE_SIZE,
     InvalidPolicyFileError,
     PolicyDocumentNotFoundError,

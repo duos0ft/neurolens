@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.settings import settings
 from app.models.employee_session import EmployeeSession
-from app.services.oauth import hash_token
+from app.services.authentication.oauth import hash_token
 
 
 def validate_request_origin(request: Request) -> None:

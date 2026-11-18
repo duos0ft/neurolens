@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.pagination import PageResponse
+from app.schemas.pagination.pagination import PageResponse
 
 T = TypeVar("T", bound=BaseModel)
 

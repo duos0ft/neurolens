@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.ai.capabilities.types import AICapability
 from app.models.employee_profile import EmployeeProfile
-from app.services.assistant_config import AssistantConfig
-from app.services.assistant_orchestrator import (
+from app.services.assistant.assistant_config import AssistantConfig
+from app.services.assistant.assistant_orchestrator import (
     AssistantOrchestrator,
     CapabilityDisabledError,
 )

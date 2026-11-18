@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from app.ai.capabilities.text_generation import GenerationMessage
 from app.ai.capabilities.types import AICapability
 from app.ai.resolver import resolve_ai_provider_registry
-from app.services.assistant_config import AssistantConfig
-from app.services.assistant_orchestrator import AssistantOrchestrator
-from app.services.task_extraction import TaskExtractionService
+from app.services.assistant.assistant_config import AssistantConfig
+from app.services.assistant.assistant_orchestrator import AssistantOrchestrator
+from app.services.task.task_extraction import TaskExtractionService
 
 
 @dataclass(frozen=True)

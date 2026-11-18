@@ -13,13 +13,13 @@ from app.core.database import get_db
 from app.core.pagination import paginate
 from app.core.permissions import require_admin
 from app.models.contact_person import ContactPerson
-from app.schemas.contact_person import (
+from app.schemas.contactperson.contact_person import (
     ContactPersonResponse,
     ContactPersonsPageResponse,
     CreateContactPersonRequest,
     UpdateContactPersonRequest,
 )
-from app.services.contact_person import ContactPersonService
+from app.services.contactperson.contact_person import ContactPersonService
 
 router = APIRouter(
     prefix="/admin/contact-persons",

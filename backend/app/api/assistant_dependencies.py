@@ -10,13 +10,13 @@ from app.ai.resolver import resolve_ai_provider_registry
 from app.core.auth import get_current_employee
 from app.core.database import get_db
 from app.models.employee import Employee
-from app.services.assistant_config_service import AssistantConfigService
-from app.services.assistant_orchestrator import AssistantOrchestrator
-from app.services.assistant_response_composer import AssistantResponseComposer
-from app.services.orchestrated_assistant import OrchestratedAssistantService
-from app.services.policy_questions import PolicyQuestionService
-from app.services.sentiment_analysis import SentimentAnalysisService
-from app.services.task_extraction import TaskExtractionService
+from app.services.assistant.assistant_config_service import AssistantConfigService
+from app.services.assistant.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant.assistant_response_composer import AssistantResponseComposer
+from app.services.assistant.orchestrated_assistant import OrchestratedAssistantService
+from app.services.policy.policy_questions import PolicyQuestionService
+from app.services.sentimentanalysis.sentiment_analysis import SentimentAnalysisService
+from app.services.task.task_extraction import TaskExtractionService
 
 
 def get_ai_provider_registry() -> AIProviderRegistry:

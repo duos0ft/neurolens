@@ -11,7 +11,7 @@ from app.main import create_app
 from app.models.employee import Employee
 from app.models.employee_profile import EmployeeProfile
 from app.models.employee_session import EmployeeSession
-from app.services.oauth import generate_token, hash_token
+from app.services.authentication.oauth import generate_token, hash_token
 
 
 @pytest.fixture

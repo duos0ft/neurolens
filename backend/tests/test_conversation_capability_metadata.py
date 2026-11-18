@@ -1,7 +1,7 @@
 import pytest
 
 from app.ai.capabilities.types import AICapability
-from app.services.conversation_capability_metadata import (
+from app.services.conversation.conversation_capability_metadata import (
     ConversationCapabilityMetadata,
 )
 

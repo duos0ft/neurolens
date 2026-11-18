@@ -5,18 +5,18 @@ from pydantic import BaseModel, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.employee_invitation import EmployeeInvitation
-from app.schemas.auth0 import Auth0User
-from app.schemas.auth0_errors import Auth0Operation
-from app.schemas.invitation_provisioning import (
+from app.schemas.authentication.auth0 import Auth0User
+from app.schemas.authentication.auth0_errors import Auth0Operation
+from app.schemas.invitation.invitation_provisioning import (
     ProvisioningResult,
     ProvisioningStatus,
 )
-from app.services.auth0_error_classifier import Auth0OperationError
-from app.services.auth0_management import (
+from app.services.authentication.auth0_error_classifier import Auth0OperationError
+from app.services.authentication.auth0_management import (
     Auth0IdentityConflictError,
     Auth0ManagementService,
 )
-from app.services.employee_invitation import EmployeeInvitationService
+from app.services.invitation.employee_invitation import EmployeeInvitationService
 
 
 class IdentityReconciliationStatus(StrEnum):

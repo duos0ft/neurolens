@@ -11,13 +11,16 @@ from app.core.auth import get_current_employee, get_current_employee_read_only
 from app.core.database import get_db
 from app.models import PolicyVersion
 from app.models.employee import Employee
-from app.schemas.policy import PublishedPolicyListResponse
-from app.services.policy_storage import (
+from app.schemas.policy.policy import PublishedPolicyListResponse
+from app.services.policy.policy_storage import (
     PolicyStorageError,
     PolicyStorageNotFoundError,
     PolicyStorageService,
 )
-from app.services.published_policies import PublishedPolicyNotFoundError, PublishedPolicyService
+from app.services.policy.published_policies import (
+    PublishedPolicyNotFoundError,
+    PublishedPolicyService,
+)
 
 router = APIRouter(
     prefix="/policies",

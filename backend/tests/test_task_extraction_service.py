@@ -8,7 +8,7 @@ from app.ai.capabilities.text_generation import (
 )
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
-from app.services.task_extraction import (
+from app.services.task.task_extraction import (
     TaskExtractionError,
     TaskExtractionService,
 )

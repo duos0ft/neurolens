@@ -20,23 +20,23 @@ from app.core.permissions import require_admin
 from app.models.email_outbox import EmailOutbox
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
-from app.schemas.employee import (
+from app.schemas.employee.employee import (
     InvitationDeliveryStatus,
     InviteEmployeeRequest,
     InviteEmployeeResponse,
 )
-from app.schemas.invitation_provisioning import ProvisioningStatus
-from app.services.auth0_management import Auth0ManagementService
-from app.services.email_delivery import EmailDeliveryCoordinator
-from app.services.email_outbox import EmailOutboxService
-from app.services.employee_invitation import (
+from app.schemas.invitation.invitation_provisioning import ProvisioningStatus
+from app.services.authentication.auth0_management import Auth0ManagementService
+from app.services.email.email_delivery import EmailDeliveryCoordinator
+from app.services.email.email_outbox import EmailOutboxService
+from app.services.email.resend import ResendService
+from app.services.invitation.employee_invitation import (
     EmployeeAlreadyExistsError,
     EmployeeInvitationService,
 )
 from app.services.invitation.invitation_provisioning import (
     InvitationProvisioningCoordinator,
 )
-from app.services.resend import ResendService
 
 logger = logging.getLogger(__name__)
 

@@ -22,12 +22,12 @@ from app.core.settings import settings
 from app.main import create_app
 from app.models.employee import Employee
 from app.models.employee_session import EmployeeSession
-from app.services.assistant_orchestrator import (
+from app.services.assistant.assistant_orchestrator import (
     AssistantOrchestrator,
     CapabilityDisabledError,
 )
+from app.services.authentication.oauth import generate_token, hash_token
 from app.services.conversation import ConversationService
-from app.services.oauth import generate_token, hash_token
 
 
 class MockTextGenerationProvider:

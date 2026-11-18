@@ -26,15 +26,15 @@ from app.models.calendar_sync_record import CalendarSyncRecord
 from app.models.employee import Employee
 from app.models.employee_session import EmployeeSession
 from app.models.task import Task
-from app.services.calendar_sync import CalendarSyncService
-from app.services.calendar_token_encryption import (
-    CalendarTokenEncryption,
-    CalendarTokenEncryptionError,
-)
-from app.services.oauth import (
+from app.services.authentication.oauth import (
     generate_code_challenge,
     generate_token,
     hash_token,
+)
+from app.services.calendar.calendar_sync import CalendarSyncService
+from app.services.calendar.calendar_token_encryption import (
+    CalendarTokenEncryption,
+    CalendarTokenEncryptionError,
 )
 
 router = APIRouter(

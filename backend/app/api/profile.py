@@ -12,7 +12,7 @@ from app.core.csrf import validate_request_origin
 from app.core.database import get_db
 from app.models.employee import Employee
 from app.models.employee_profile import EmployeeProfile
-from app.schemas.employee import (
+from app.schemas.employee.employee import (
     AuthenticatedEmployeeResponse,
     UpdateEmployeeProfileRequest,
 )

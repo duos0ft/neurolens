@@ -31,18 +31,18 @@ from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_profile import EmployeeProfile
 from app.models.employee_session import EmployeeSession
-from app.schemas.employee import (
+from app.schemas.employee.employee import (
     AuthenticatedEmployeeResponse,
     InvitationValidationResponse,
 )
-from app.services.auth0 import verify_id_token
-from app.services.auth_flow import consume_auth_flow
-from app.services.oauth import (
+from app.services.authentication.auth0 import verify_id_token
+from app.services.authentication.auth_flow import consume_auth_flow
+from app.services.authentication.oauth import (
     generate_code_challenge,
     generate_token,
     hash_token,
 )
-from app.services.session import create_employee_session
+from app.services.authentication.session import create_employee_session
 
 logger = logging.getLogger(__name__)
 

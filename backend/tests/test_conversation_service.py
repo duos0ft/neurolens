@@ -13,10 +13,10 @@ from app.ai.capabilities.types import AICapability
 from app.ai.registry import AIProviderRegistry
 from app.models.conversation import Conversation
 from app.services.assistant import AssistantService
-from app.services.assistant_orchestrator import AssistantOrchestrator
-from app.services.assistant_response_composer import AssistantResponseComposer
+from app.services.assistant.assistant_orchestrator import AssistantOrchestrator
+from app.services.assistant.assistant_response_composer import AssistantResponseComposer
+from app.services.assistant.orchestrated_assistant import OrchestratedAssistantService
 from app.services.conversation import ConversationService
-from app.services.orchestrated_assistant import OrchestratedAssistantService
 
 
 class MockTextGenerationProvider:

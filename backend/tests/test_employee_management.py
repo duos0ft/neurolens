@@ -13,9 +13,9 @@ from app.models.email_outbox import EmailOutbox
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_session import EmployeeSession
-from app.services.email_outbox import EmailOutboxService
-from app.services.employee_invitation import EmployeeInvitationService
-from app.services.oauth import generate_token, hash_token
+from app.services.authentication.oauth import generate_token, hash_token
+from app.services.email.email_outbox import EmailOutboxService
+from app.services.invitation.employee_invitation import EmployeeInvitationService
 
 
 @pytest.mark.asyncio

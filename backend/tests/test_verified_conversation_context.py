@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from app.ai.capabilities.types import AICapability
-from app.services.verified_conversation_context import (
+from app.services.conversation.verified_conversation_context import (
     VerifiedConversationContextResolver,
 )
 

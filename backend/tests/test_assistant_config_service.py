@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.employee_profile import EmployeeProfile
-from app.services.assistant_config_service import AssistantConfigService
+from app.services.assistant.assistant_config_service import AssistantConfigService
 
 
 @pytest.mark.asyncio

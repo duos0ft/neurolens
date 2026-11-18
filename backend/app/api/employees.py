@@ -23,7 +23,7 @@ from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_profile import EmployeeProfile
 from app.models.employee_session import EmployeeSession
-from app.schemas.employee import (
+from app.schemas.employee.employee import (
     EmployeeListResponse,
     EmployeeResponse,
     EmployeeRole,

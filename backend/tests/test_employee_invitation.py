@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
-from app.services.employee_invitation import EmployeeInvitationService
+from app.services.invitation.employee_invitation import EmployeeInvitationService
 
 
 @pytest.mark.asyncio

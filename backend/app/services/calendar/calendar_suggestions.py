@@ -12,7 +12,7 @@ from app.schemas.calendar.calendar_suggestions import ReviewedCalendarEvent
 from app.services.calendar.calendar_extraction import (
     normalize_calendar_extraction_data,
 )
-from app.services.calendar_sync import CalendarSyncService
+from app.services.calendar.calendar_sync import CalendarSyncService
 
 
 class CalendarSuggestionNotFoundError(Exception):

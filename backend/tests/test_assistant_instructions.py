@@ -1,5 +1,5 @@
-from app.services.assistant_config import AssistantConfig
-from app.services.assistant_instructions import build_preference_instructions
+from app.services.assistant.assistant_config import AssistantConfig
+from app.services.assistant.assistant_instructions import build_preference_instructions
 
 
 def test_default_preferences() -> None:

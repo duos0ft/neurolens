@@ -22,7 +22,7 @@ from app.main import create_app
 from app.models.employee import Employee
 from app.models.employee_invitation import EmployeeInvitation
 from app.models.employee_session import EmployeeSession
-from app.services.oauth import generate_token, hash_token
+from app.services.authentication.oauth import generate_token, hash_token
 
 load_dotenv(
     dotenv_path=Path(__file__).resolve().parents[1] / ".env",

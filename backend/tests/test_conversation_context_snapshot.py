@@ -1,14 +1,14 @@
 import pytest
 
 from app.ai.capabilities.types import AICapability
-from app.services.capability_intent import CapabilityIntent
-from app.services.conversation_context_snapshot import (
+from app.services.capability.capability_intent import CapabilityIntent
+from app.services.conversation.conversation_context_snapshot import (
     ConversationContextSnapshot,
 )
-from app.services.conversation_snapshot_builder import (
+from app.services.conversation.conversation_snapshot_builder import (
     ConversationSnapshotBuilder,
 )
-from app.services.conversation_source import ConversationSourceResolver
+from app.services.conversation.conversation_source import ConversationSourceResolver
 
 
 def test_resolves_exact_quoted_source() -> None:
