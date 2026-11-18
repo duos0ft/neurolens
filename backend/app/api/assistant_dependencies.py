@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.embedding_factory import create_embedding_provider
+from app.ai.providers.sentiment_factory import create_sentiment_provider
 from app.ai.registry import AIProviderRegistry, ProviderNotConfiguredError
 from app.ai.resolver import resolve_ai_provider_registry
 from app.core.auth import get_current_employee
@@ -14,6 +15,7 @@ from app.services.assistant_orchestrator import AssistantOrchestrator
 from app.services.assistant_response_composer import AssistantResponseComposer
 from app.services.orchestrated_assistant import OrchestratedAssistantService
 from app.services.policy_questions import PolicyQuestionService
+from app.services.sentiment_analysis import SentimentAnalysisService
 from app.services.task_extraction import TaskExtractionService
 
 
@@ -82,3 +84,9 @@ def get_task_extraction_service(
     ],
 ) -> TaskExtractionService:
     return TaskExtractionService(registry=registry)
+
+
+def get_sentiment_analysis_service() -> SentimentAnalysisService:
+    return SentimentAnalysisService(
+        provider=create_sentiment_provider(),
+    )

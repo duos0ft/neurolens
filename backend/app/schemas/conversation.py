@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.ai.capabilities.calendar_extraction import ExtractedCalendarEvent
 from app.ai.capabilities.task_extraction import ExtractedTask
+from app.schemas.sentiment import SentimentAnalysisResponse
 
 
 class CreateConversationRequest(BaseModel):
@@ -83,6 +84,7 @@ class ConversationMessageResponse(BaseModel):
     calendar_suggestions: ConversationCalendarSuggestionsResponse | None = None
     clarifications: ConversationClarificationsResponse | None = None
     policy_citations: list[PolicyCitationResponse] | None = None
+    sentiment_analysis: SentimentAnalysisResponse | None = None
 
 
 class ConversationDetailResponse(ConversationResponse):

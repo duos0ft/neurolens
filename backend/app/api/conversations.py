@@ -1,11 +1,14 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.ai.capabilities.sentiment_analysis import SentimentAnalysisError
 from app.ai.capabilities.text_generation import TextGenerationError
 from app.ai.capabilities.types import AICapability
 from app.ai.registry import (
@@ -16,10 +19,12 @@ from app.api.assistant_dependencies import (
     get_ai_provider_registry,
     get_orchestrated_assistant,
     get_task_extraction_service,
+    get_sentiment_analysis_service,
 )
 from app.core.auth import get_current_employee
 from app.core.csrf import validate_request_origin
 from app.core.database import get_db, get_session_factory
+from app.models import ApplicationSettings, Conversation, ConversationMessage
 from app.models.employee import Employee
 from app.schemas.conversation import (
     ConversationDetailResponse,
@@ -29,6 +34,7 @@ from app.schemas.conversation import (
     SendConversationMessageRequest,
     UpdateConversationRequest,
 )
+from app.schemas.sentiment import SentimentAnalysisResponse
 from app.schemas.task_extraction import (
     ConversationTaskExtractionRequest,
     ResolvedTaskExtractionResponse,
@@ -46,6 +52,7 @@ from app.services.conversation import (
     TaskSourceAmbiguityError,
 )
 from app.services.orchestrated_assistant import OrchestratedAssistantService
+from app.services.sentiment_analysis import SentimentAnalysisService
 from app.services.task_extraction import (
     TaskExtractionError,
     TaskExtractionService,
@@ -609,3 +616,76 @@ async def extract_conversation_tasks(
         source_message_id=source_message.id,
         tasks=result.tasks,
     )
+
+
+@router.post(
+    "/{conversation_id}/messages/{message_id}/analyze-sentiment",
+    response_model=SentimentAnalysisResponse,
+    dependencies=[Depends(validate_request_origin)],
+)
+async def analyze_conversation_message_sentiment(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    employee: Annotated[Employee, Depends(get_current_employee)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    sentiment_service: Annotated[
+        SentimentAnalysisService,
+        Depends(get_sentiment_analysis_service),
+    ],
+    _: Annotated[None, Depends(validate_mutation_csrf)],
+) -> SentimentAnalysisResponse:
+    source_message = await db.scalar(
+        select(ConversationMessage)
+        .join(
+            Conversation,
+            Conversation.id == ConversationMessage.conversation_id,
+        )
+        .where(
+            Conversation.id == conversation_id,
+            Conversation.employee_id == employee.user_id,
+            ConversationMessage.id == message_id,
+            ConversationMessage.role == "user",
+        )
+    )
+
+    if source_message is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source message not found",
+        )
+
+    application_settings = await db.scalar(select(ApplicationSettings).limit(1))
+
+    if application_settings is None or not application_settings.enable_sentiment_analysis:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Sentiment analysis is currently disabled",
+        )
+
+    if source_message.sentiment_analysis is not None:
+        return SentimentAnalysisResponse.model_validate(source_message.sentiment_analysis)
+
+    try:
+        prediction = await sentiment_service.analyze(
+            source_message.content
+        )
+    except SentimentAnalysisError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to analyze message sentiment",
+        ) from error
+
+    result = SentimentAnalysisResponse(
+        label=prediction.label,
+        confidence=prediction.confidence,
+        model=prediction.model,
+        analyzed_at=datetime.now(timezone.utc),
+    )
+
+    source_message.sentiment_analysis = result.model_dump(
+        mode="json"
+    )
+
+    await db.commit()
+
+    return result

@@ -104,3 +104,8 @@ class ConversationMessage(Base):
         nullable=True,
     )
 
+    sentiment_analysis: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+

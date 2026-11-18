@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # AI providers
     ai_text_generation_provider: str = "openai"
     ai_embedding_provider: str = "openai"
+    ai_sentiment_provider: str = "modernbert"
 
     # OpenAI
     openai_api_key: str | None = None
