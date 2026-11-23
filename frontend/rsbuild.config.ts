@@ -4,6 +4,9 @@ import { pluginTailwindcss } from "@rsbuild/plugin-tailwindcss";
 
 export default defineConfig({
     plugins: [ pluginReact(), pluginTailwindcss() ],
+    html: {
+        title: "NeuroLens | Workplace Assistant",
+    },
     server: {
         proxy: {
             "/api": {
