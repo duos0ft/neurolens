@@ -41,7 +41,7 @@ jobs:
           file: ./${{ matrix.service }}/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/duosoft/neurolens-${{ matrix.service }}:${{ github.event.release.tag_name }}
+          tags: ghcr.io/duos0ft/neurolens-${{ matrix.service }}:${{ github.event.release.tag_name }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ github.event.release.tag_name }}
