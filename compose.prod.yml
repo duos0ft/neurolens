@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: neurolens-frontend:local
+    image: ghcr.io/duos0ft/neurolens-frontend:v26.48.02
     ports:
       - "80:80"
       - "443:443"
@@ -12,7 +12,7 @@ services:
       - caddy_config:/config
 
   backend:
-    image: neurolens-backend:local
+    image: ghcr.io/duos0ft/neurolens-backend:v26.48.02
     env_file:
       - ./.env.production
     command:
@@ -27,14 +27,14 @@ services:
     restart: unless-stopped
 
   calendar-worker:
-    image: neurolens-backend:local
+    image: ghcr.io/duos0ft/neurolens-backend:v26.48.02
     env_file:
       - ./.env.production
     command: python -m app.workers.calendar_sync
     restart: unless-stopped
 
   policy-worker:
-    image: neurolens-backend:local
+    image: ghcr.io/duos0ft/neurolens-backend:v26.48.02
     env_file:
       - ./.env.production
     command: python -m app.workers.policy_ingestion
