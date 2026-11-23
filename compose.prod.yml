@@ -1,0 +1,45 @@
+services:
+  frontend:
+    image: neurolens-frontend:local
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+  backend:
+    image: neurolens-backend:local
+    env_file:
+      - ./.env.production
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+    restart: unless-stopped
+
+  calendar-worker:
+    image: neurolens-backend:local
+    env_file:
+      - ./.env.production
+    command: python -m app.workers.calendar_sync
+    restart: unless-stopped
+
+  policy-worker:
+    image: neurolens-backend:local
+    env_file:
+      - ./.env.production
+    command: python -m app.workers.policy_ingestion
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
